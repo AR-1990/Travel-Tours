@@ -8,6 +8,7 @@ use App\Mail\PasswordResetMail;
 use App\Mail\EmailVerificationMail;
 use App\Mail\WelcomeMail;
 use App\Models\Users\User;
+use App\Models\System\Role;
 
 class TestEmail extends Command
 {
@@ -55,7 +56,8 @@ class TestEmail extends Command
                         'last_name' => 'User',
                         'email' => $email,
                         'password' => bcrypt('password'),
-                        'role_id' => 4,
+                        'role_id' => Role::where('slug', 'public-user')->value('id'),
+                        'user_type' => 'public',
                     ]);
                     Mail::to($email)->send(new WelcomeMail($user));
                     $this->info('✓ Welcome email sent successfully!');

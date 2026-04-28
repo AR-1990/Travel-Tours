@@ -1,6 +1,6 @@
-# Laravel Boilerplate
+# Travel Tours
 
-A clean, production-ready Laravel boilerplate with admin panel, user management, roles & permissions, and API structure. Perfect starting point for your next Laravel project.
+A multi-tenant Laravel travel platform with super admin, tenant onboarding/approval, tenant admin & sub-agent access control, public user signup, and API structure.
 
 ![Laravel](https://img.shields.io/badge/Laravel-11.47-red.svg)
 ![PHP](https://img.shields.io/badge/PHP-8.2+-blue.svg)
@@ -10,23 +10,26 @@ A clean, production-ready Laravel boilerplate with admin panel, user management,
 
 ### 🔐 Authentication & Authorization
 - ✅ User registration and login
-- ✅ Admin panel with role-based access control (RBAC)
+- ✅ Tenant signup with super-admin approval before admin access
+- ✅ Admin panel with tenant-aware role-based access control (RBAC)
 - ✅ Password reset functionality
 - ✅ Email verification support
 - ✅ Separate admin and user login flows
 
 ### 👥 Admin Panel
-- ✅ User management (CRUD operations)
-- ✅ Role management (CRUD operations)
-- ✅ Permission management (CRUD operations)
-- ✅ Manager/Editor management
-- ✅ Dashboard with statistics
+- ✅ Super Admin dashboard (tenant approvals + global controls)
+- ✅ Tenant Admin dashboard (tenant users/sub-agents/roles)
+- ✅ Sub-agent dashboard (permission-based module access)
+- ✅ Tenant-aware role/category management
+- ✅ Tenant-aware sub-agent management with direct permission assignment
+- ✅ Super Admin Blog management (CRUD + SEO + image upload)
 - ✅ Modern, responsive UI with Tailwind CSS
 
 ### 👤 User Panel
 - ✅ User dashboard
 - ✅ Profile management
 - ✅ Settings page
+- ✅ Public blogs listing and detail pages (`/blogs`, `/blogs/{slug}`)
 
 ### 🔌 API Structure
 - ✅ Laravel Sanctum for API authentication
@@ -60,8 +63,8 @@ A clean, production-ready Laravel boilerplate with admin panel, user management,
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ubaidkodekaizen/laravel-boilerplate.git
-cd laravel-boilerplate
+git clone https://github.com/AR-1990/Travel-Tours.git
+cd Travel-Tours
 ```
 
 ### 2. Install PHP Dependencies
@@ -91,25 +94,28 @@ Edit `.env` file and update your database credentials:
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=laravel_boilerplate
+DB_DATABASE=travel_tours
 DB_USERNAME=root
 DB_PASSWORD=your_password
 ```
 
-### 6. Run Migrations
+### 6. Run Migrations & Seed Data
 
 ```bash
 php artisan migrate
+php artisan db:seed
 ```
 
 This will create all necessary tables including:
-- `users` - User accounts
-- `roles` - System roles (Admin, Manager, Editor, Member)
-- `permissions` - System permissions
+- `tenants` - Tenant agencies with approval status
+- `users` - Super admin, tenant admin, sub-agents, public users
+- `roles` - Global + tenant-scoped roles/categories
+- `permissions` - Permission catalog
 - `role_permissions` - Role-Permission relationships
-- `user_permissions` - User-specific permissions
+- `user_permissions` - User-specific permission overrides
+- `blogs` - Blog posts with SEO metadata and image
 
-### 7. Create Admin User
+### 7. Optional: Create Another Super Admin User
 
 ```bash
 php artisan admin:create
@@ -121,9 +127,12 @@ Or with custom credentials:
 php artisan admin:create --email=admin@example.com --password=your_password --name=Admin
 ```
 
-**Default Admin Credentials:**
-- Email: `admin@example.com`
-- Password: `password`
+**Seeded Demo Credentials (all passwords: `password123`):**
+- Super Admin: `superadmin@traveltours.com`
+- Tenant Admin: `tenantadmin@traveltours.com`
+- Sub Agent (Finance): `finance.agent@traveltours.com`
+- Sub Agent (Sales): `sales.agent@traveltours.com`
+- Sub Agent (Operations): `operations.agent@traveltours.com`
 
 ### 8. Build Assets
 
@@ -139,14 +148,22 @@ php artisan serve
 
 Visit `http://127.0.0.1:8000` in your browser.
 
-## 👥 Default Roles
+## 👥 Access Model
 
-The boilerplate comes with the following default roles:
+The project uses a tenant-aware hierarchy:
 
-1. **Admin** (ID: 1) - Full access to all features
-2. **Manager** (ID: 2) - Can manage users and content
-3. **Editor** (ID: 3) - Can edit content
-4. **Member** (ID: 4) - Regular user with limited access
+1. **Super Admin** - Global platform control and tenant approval
+2. **Tenant Admin** - Tenant owner/admin with tenant-level management
+3. **Sub Agents** - Tenant staff with category/permission based access
+4. **Public User** - Website/app end user
+
+Default tenant role categories:
+- `admin`
+- `finance`
+- `sales`
+- `operations`
+
+Tenants can also create custom role categories and assign permissions.
 
 ## 🔑 Access Points
 
@@ -157,14 +174,20 @@ The boilerplate comes with the following default roles:
 - **User Register:** `http://127.0.0.1:8000/register`
 - **User Dashboard:** `http://127.0.0.1:8000/dashboard`
 - **Admin Login:** `http://127.0.0.1:8000/admin/login`
+- **Agent Login:** `http://127.0.0.1:8000/agent/login`
+- **Sub-Agent Login:** `http://127.0.0.1:8000/sub-agent/login`
 - **Admin Dashboard:** `http://127.0.0.1:8000/admin/dashboard`
+- **Tenant Signup:** `http://127.0.0.1:8000/tenant/register`
+- **Blogs Listing:** `http://127.0.0.1:8000/blogs`
 
 ### Admin Panel Routes
 
 - **Users Management:** `/admin/users`
 - **Roles Management:** `/admin/roles`
 - **Permissions Management:** `/admin/permissions`
-- **Managers/Editors:** `/admin/managers` (Admin only)
+- **Sub Agents:** `/admin/sub-agents`
+- **Tenants (Super Admin):** `/admin/tenants`
+- **Blogs (Super Admin):** `/admin/blogs`
 
 ## 🔧 Configuration
 
@@ -378,7 +401,7 @@ php artisan admin:list
 ## 📁 Project Structure
 
 ```
-laravel-boilerplate/
+Travel-Tours/
 ├── app/
 │   ├── Console/
 │   │   └── Commands/          # Custom artisan commands
@@ -411,7 +434,7 @@ laravel-boilerplate/
 
 ## 🎨 Color Theme
 
-The boilerplate uses a modern gradient color scheme:
+The project uses a modern gradient color scheme:
 
 - **Primary:** Indigo to Purple gradient (#6366f1 → #8b5cf6)
 - **Accent Colors:** Blue, Cyan, Teal, Pink gradients
@@ -431,7 +454,7 @@ All views are styled consistently with this theme.
 
 ## 📝 License
 
-This boilerplate is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 ## 🤝 Contributing
 

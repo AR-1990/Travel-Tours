@@ -4,16 +4,28 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Users\User;
+use App\Models\System\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use App\Mail\EmailVerificationMail;
 
 class UserController extends Controller
 {
+    protected function dashboardRouteForUser(User $user): string
+    {
+        return match ($user->user_type) {
+            'super_admin' => 'admin.dashboard',
+            'tenant_admin' => 'agent.dashboard',
+            'sub_agent' => 'subagent.dashboard',
+            default => 'dashboard',
+        };
+    }
+
     /**
      * Show registration form
      */
@@ -42,7 +54,8 @@ class UserController extends Controller
             'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role_id' => 4, // Default user role
+            'role_id' => Role::where('slug', 'public-user')->value('id'),
+            'user_type' => 'public',
         ]);
 
         // Generate email verification token
@@ -58,7 +71,7 @@ class UserController extends Controller
             Mail::to($user->email)->send(new EmailVerificationMail($token, $user->first_name));
         } catch (\Exception $e) {
             // Log error but don't fail registration
-            \Log::error('Email verification failed to send', [
+            Log::error('Email verification failed to send', [
                 'email' => $user->email,
                 'error' => $e->getMessage(),
             ]);
@@ -76,8 +89,9 @@ class UserController extends Controller
     {
         if (Auth::check()) {
             $user = Auth::user();
-            if (in_array($user->role_id, [1, 2, 3])) {
-                return redirect()->route('admin.dashboard');
+            /** @var \App\Models\Users\User $user */
+            if ($user->canAccessAdminPanel()) {
+                return redirect()->route($this->dashboardRouteForUser($user));
             }
             return redirect()->route('dashboard');
         }
@@ -98,10 +112,21 @@ class UserController extends Controller
             $request->session()->regenerate();
 
             $user = Auth::user();
+            /** @var \App\Models\Users\User $user */
 
-            // Redirect based on role
-            if (in_array($user->role_id, [1, 2, 3])) {
-                return redirect()->route('admin.dashboard');
+            // Public portal should only allow public users.
+            if ($user->user_type !== 'public') {
+                Auth::logout();
+                $loginUrl = match ($user->user_type) {
+                    'super_admin' => route('admin.login'),
+                    'tenant_admin' => route('agent.login'),
+                    'sub_agent' => route('subagent.login'),
+                    default => route('login.form'),
+                };
+
+                return back()->withErrors([
+                    'email' => 'Use your dedicated login portal: ' . $loginUrl,
+                ]);
             }
 
             return redirect()->route('dashboard')->with('success', 'Login successful!');
@@ -118,9 +143,10 @@ class UserController extends Controller
     public function dashboard()
     {
         $user = Auth::user();
+        /** @var \App\Models\Users\User $user */
         
-        if (in_array($user->role_id, [1, 2, 3])) {
-            return redirect()->route('admin.dashboard');
+        if ($user->canAccessAdminPanel()) {
+            return redirect()->route($this->dashboardRouteForUser($user));
         }
 
         return view('user.dashboard', compact('user'));
@@ -141,6 +167,7 @@ class UserController extends Controller
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
+        /** @var \App\Models\Users\User $user */
 
         $request->validate([
             'first_name' => 'required|string|max:255',
@@ -168,6 +195,7 @@ class UserController extends Controller
     public function updateSettings(Request $request)
     {
         $user = Auth::user();
+        /** @var \App\Models\Users\User $user */
 
         $request->validate([
             'password' => 'nullable|string|min:8|confirmed',

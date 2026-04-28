@@ -5,56 +5,77 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Users\User;
 use App\Models\System\Permission;
+use App\Models\System\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class ManagersController extends Controller
 {
+    protected function routePrefixForUser($user): string
+    {
+        return match ($user?->user_type) {
+            'super_admin' => 'admin',
+            'tenant_admin' => 'agent',
+            'sub_agent' => 'subagent',
+            default => 'admin',
+        };
+    }
+
+    protected function isSuperAdmin($user): bool
+    {
+        return (bool) ($user && $user->user_type === 'super_admin');
+    }
+
+    protected function baseSubAgentQuery($user)
+    {
+        $query = User::with('role')->where('user_type', 'sub_agent');
+
+        if (!$this->isSuperAdmin($user)) {
+            $query->where('tenant_id', $user->tenant_id);
+        }
+
+        return $query;
+    }
+
+    protected function roleOptionsForUser($user)
+    {
+        return Role::where('tenant_id', $user->tenant_id)
+            ->orderBy('name')
+            ->get();
+    }
+
+    protected function authorizeManagersAccess($user, string $permission): void
+    {
+        // Sub-agents are tenant-level management and should not be managed from super-admin area.
+        if ($this->isSuperAdmin($user)) {
+            abort(403, 'Sub-agent management is available under tenant admin scope.');
+        }
+
+        if ($user->hasPermission($permission)) {
+            return;
+        }
+
+        abort(403, 'Unauthorized action.');
+    }
+
     /**
      * Show all managers and editors
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user && $user->role_id == 1;
-        
-        // Check if user has view permission
-        if (!$isAdmin && (!$user || !$user->hasPermission('managers.view'))) {
-            abort(403, 'Unauthorized action.');
-        }
-        
-        $filter = $request->get('filter', 'all'); // all, manager, editor, deleted
-        
-        $allQuery = User::whereIn('role_id', [2, 3])->with('role');
-        $managerQuery = User::where('role_id', 2)->with('role');
-        $editorQuery = User::where('role_id', 3)->with('role');
-        $deletedQuery = User::onlyTrashed()->whereIn('role_id', [2, 3])->with('role');
-        
-        $allCount = $allQuery->count();
-        $managerCount = $managerQuery->count();
-        $editorCount = $editorQuery->count();
-        $deletedCount = $deletedQuery->count();
-        
+        $this->authorizeManagersAccess($user, 'managers.view');
+
+        $baseQuery = $this->baseSubAgentQuery($user)->withTrashed();
+        $managers = $baseQuery->orderBy('role_id')->orderBy('id')->get();
+
         $counts = [
-            'all' => $allCount,
-            'manager' => $managerCount,
-            'editor' => $editorCount,
-            'deleted' => $deletedCount,
+            'all' => (clone $this->baseSubAgentQuery($user))->count(),
+            'deleted' => (clone $this->baseSubAgentQuery($user))->onlyTrashed()->count(),
         ];
-        
-        // Get data based on filter
-        if ($filter === 'manager') {
-            $managers = $managerQuery->orderBy('id')->get();
-        } elseif ($filter === 'editor') {
-            $managers = $editorQuery->orderBy('id')->get();
-        } elseif ($filter === 'deleted') {
-            $managers = $deletedQuery->orderBy('id')->get();
-        } else {
-            $managers = $allQuery->orderBy('role_id')->orderBy('id')->get();
-        }
-        
-        return view('admin.managers.index', compact('managers', 'counts', 'filter'));
+
+        return view('admin.managers.index', compact('managers', 'counts'));
     }
 
     /**
@@ -62,6 +83,9 @@ class ManagersController extends Controller
      */
     public function create()
     {
+        $currentUser = Auth::user();
+        $this->authorizeManagersAccess($currentUser, 'managers.create');
+
         // Exclude dashboard and managers permissions - dashboard is accessible by default to all admin roles
         // Order by sidebar order: Users, Subscriptions, Products/Services, Blogs, Events, Ads, Scheduler Logs
         $groupOrder = ['users' => 1, 'subscriptions' => 2, 'products-services' => 3, 'blogs' => 4, 'events' => 5, 'ads' => 6, 'scheduler-logs' => 7];
@@ -130,7 +154,8 @@ class ManagersController extends Controller
         }
         
         $permissions = $orderedPermissions;
-        return view('admin.managers.form', compact('permissions'));
+        $roles = $this->roleOptionsForUser($currentUser);
+        return view('admin.managers.form', compact('permissions', 'roles'));
     }
 
     /**
@@ -138,15 +163,24 @@ class ManagersController extends Controller
      */
     public function store(Request $request)
     {
+        $currentUser = Auth::user();
+        $this->authorizeManagersAccess($currentUser, 'managers.create');
+
         $request->validate([
-            'role_id' => 'required|in:2,3', // Only Manager (2) or Editor (3)
+            'role_id' => 'required|exists:roles,id',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
+            'designation' => 'nullable|string|max:255',
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
         ]);
+
+        $role = Role::findOrFail($request->role_id);
+        if (!$this->isSuperAdmin($currentUser) && $role->tenant_id !== null && (int) $role->tenant_id !== (int) $currentUser->tenant_id) {
+            abort(403, 'Unauthorized role selection.');
+        }
 
         $user = User::create([
             'first_name' => $request->first_name,
@@ -154,6 +188,9 @@ class ManagersController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role_id' => $request->role_id,
+            'tenant_id' => $this->isSuperAdmin($currentUser) ? $role->tenant_id : $currentUser->tenant_id,
+            'designation' => $request->designation,
+            'user_type' => 'sub_agent',
             'email_verified_at' => now(), // Auto-verify for managers/editors
         ]);
 
@@ -162,13 +199,7 @@ class ManagersController extends Controller
             $user->userPermissions()->sync($request->permissions ?? []);
         }
 
-        // Redirect to managers page only if current user is Admin (role_id = 1)
-        $currentUser = Auth::user();
-        if ($currentUser && $currentUser->role_id == 1) {
-            return redirect()->route('admin.managers')->with('success', 'Manager/Editor created successfully!');
-        }
-        
-        return redirect()->route('admin.dashboard')->with('success', 'Manager/Editor created successfully!');
+        return redirect()->route($this->routePrefixForUser($currentUser) . '.managers')->with('success', 'Sub-agent created successfully!');
     }
 
     /**
@@ -176,7 +207,10 @@ class ManagersController extends Controller
      */
     public function edit($id)
     {
-        $manager = User::whereIn('role_id', [2, 3])->with(['role', 'userPermissions'])->findOrFail($id);
+        $currentUser = Auth::user();
+        $this->authorizeManagersAccess($currentUser, 'managers.edit');
+
+        $manager = $this->baseSubAgentQuery($currentUser)->with(['role', 'userPermissions'])->findOrFail($id);
         // Exclude dashboard and managers permissions - dashboard is accessible by default to all admin roles
         // Order by sidebar order: Users, Subscriptions, Products/Services, Blogs, Events, Ads, Scheduler Logs
         $groupOrder = ['users' => 1, 'subscriptions' => 2, 'products-services' => 3, 'blogs' => 4, 'events' => 5, 'ads' => 6, 'scheduler-logs' => 7];
@@ -245,10 +279,11 @@ class ManagersController extends Controller
         }
         
         $permissions = $orderedPermissions;
+        $roles = $this->roleOptionsForUser($currentUser);
         // Get user-specific permissions (not role permissions)
         $managerPermissions = $manager->userPermissions->pluck('id')->toArray();
         
-        return view('admin.managers.form', compact('manager', 'permissions', 'managerPermissions'));
+        return view('admin.managers.form', compact('manager', 'permissions', 'managerPermissions', 'roles'));
     }
 
     /**
@@ -256,13 +291,17 @@ class ManagersController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $manager = User::whereIn('role_id', [2, 3])->with('role')->findOrFail($id);
+        $currentUser = Auth::user();
+        $this->authorizeManagersAccess($currentUser, 'managers.edit');
+
+        $manager = $this->baseSubAgentQuery($currentUser)->with('role')->findOrFail($id);
 
         $validationRules = [
-            'role_id' => 'required|in:2,3',
+            'role_id' => 'required|exists:roles,id',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
+            'designation' => 'nullable|string|max:255',
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
         ];
@@ -273,13 +312,18 @@ class ManagersController extends Controller
 
         $request->validate($validationRules);
 
-        $oldRoleId = $manager->role_id;
+        $role = Role::findOrFail($request->role_id);
+        if (!$this->isSuperAdmin($currentUser) && $role->tenant_id !== null && (int) $role->tenant_id !== (int) $currentUser->tenant_id) {
+            abort(403, 'Unauthorized role selection.');
+        }
+
         $newRoleId = $request->role_id;
 
         $manager->update([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
+            'designation' => $request->designation,
             'role_id' => $newRoleId,
         ]);
 
@@ -294,13 +338,7 @@ class ManagersController extends Controller
             $manager->userPermissions()->sync($request->permissions ?? []);
         }
 
-        // Redirect to managers page only if current user is Admin (role_id = 1)
-        $currentUser = Auth::user();
-        if ($currentUser && $currentUser->role_id == 1) {
-            return redirect()->route('admin.managers')->with('success', 'Manager/Editor updated successfully!');
-        }
-        
-        return redirect()->route('admin.dashboard')->with('success', 'Manager/Editor updated successfully!');
+        return redirect()->route($this->routePrefixForUser($currentUser) . '.managers')->with('success', 'Sub-agent updated successfully!');
     }
 
     /**
@@ -308,7 +346,9 @@ class ManagersController extends Controller
      */
     public function updatePermissions(Request $request, $id)
     {
-        $manager = User::whereIn('role_id', [2, 3])->findOrFail($id);
+        $currentUser = Auth::user();
+        $this->authorizeManagersAccess($currentUser, 'managers.edit');
+        $manager = $this->baseSubAgentQuery($currentUser)->findOrFail($id);
 
         $request->validate([
             'permissions' => 'nullable|array',
@@ -318,13 +358,7 @@ class ManagersController extends Controller
         // Update user-specific permissions (not role permissions)
         $manager->userPermissions()->sync($request->permissions ?? []);
 
-        // Redirect to managers page only if current user is Admin (role_id = 1)
-        $currentUser = Auth::user();
-        if ($currentUser && $currentUser->role_id == 1) {
-            return redirect()->route('admin.managers')->with('success', 'Permissions updated successfully!');
-        }
-        
-        return redirect()->route('admin.dashboard')->with('success', 'Permissions updated successfully!');
+        return redirect()->route($this->routePrefixForUser($currentUser) . '.managers')->with('success', 'Permissions updated successfully!');
     }
 
     /**
@@ -332,16 +366,12 @@ class ManagersController extends Controller
      */
     public function destroy($id)
     {
-        $manager = User::whereIn('role_id', [2, 3])->findOrFail($id);
+        $currentUser = Auth::user();
+        $this->authorizeManagersAccess($currentUser, 'managers.delete');
+        $manager = $this->baseSubAgentQuery($currentUser)->findOrFail($id);
         $manager->delete();
 
-        // Redirect to managers page only if current user is Admin (role_id = 1)
-        $currentUser = Auth::user();
-        if ($currentUser && $currentUser->role_id == 1) {
-            return redirect()->route('admin.managers')->with('success', 'Manager/Editor deleted successfully!');
-        }
-        
-        return redirect()->route('admin.dashboard')->with('success', 'Manager/Editor deleted successfully!');
+        return redirect()->route($this->routePrefixForUser($currentUser) . '.managers')->with('success', 'Sub-agent deleted successfully!');
     }
 
     /**
@@ -349,15 +379,11 @@ class ManagersController extends Controller
      */
     public function restore($id)
     {
-        $manager = User::onlyTrashed()->whereIn('role_id', [2, 3])->findOrFail($id);
+        $currentUser = Auth::user();
+        $this->authorizeManagersAccess($currentUser, 'managers.restore');
+        $manager = $this->baseSubAgentQuery($currentUser)->onlyTrashed()->findOrFail($id);
         $manager->restore();
 
-        // Redirect to managers page only if current user is Admin (role_id = 1)
-        $currentUser = Auth::user();
-        if ($currentUser && $currentUser->role_id == 1) {
-            return redirect()->route('admin.managers', ['filter' => 'deleted'])->with('success', 'Manager/Editor restored successfully!');
-        }
-        
-        return redirect()->route('admin.dashboard')->with('success', 'Manager/Editor restored successfully!');
+        return redirect()->route($this->routePrefixForUser($currentUser) . '.managers')->with('success', 'Sub-agent restored successfully!');
     }
 }

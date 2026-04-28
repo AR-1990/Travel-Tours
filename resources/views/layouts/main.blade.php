@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', config('app.name', 'Laravel Boilerplate'))</title>
+    <meta name="description" content="@yield('meta_description', 'Travel Tours platform for admins, agents, sub-agents, and users.')">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">

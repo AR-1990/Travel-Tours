@@ -8,8 +8,10 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\System\Permission;
 use App\Models\System\Role;
+use App\Models\System\Tenant;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -24,6 +26,10 @@ class User extends Authenticatable
         'phone',
         'email_verified_at',
         'role_id',
+        'tenant_id',
+        'designation',
+        'user_type',
+        'is_active',
     ];
 
     /**
@@ -32,6 +38,11 @@ class User extends Authenticatable
     public function role()
     {
         return $this->belongsTo(Role::class);
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     /**
@@ -51,18 +62,15 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permissionSlug): bool
     {
-        // Admin users (role_id = 1) have all permissions
-        if ($this->role_id == 1) {
+        if ($this->user_type === 'super_admin') {
             return true;
         }
-        
-        // Role 4 (User) users don't have admin permissions
-        if ($this->role_id == 4) {
+
+        if ($this->user_type === 'public') {
             return false;
         }
-        
-        // If role_id is null or invalid, return false
-        if (!$this->role_id || !in_array($this->role_id, [1, 2, 3])) {
+
+        if (!$this->role_id) {
             return false;
         }
         
@@ -100,6 +108,33 @@ class User extends Authenticatable
         return $this->role->slug === $roleSlug;
     }
 
+    public function canAccessAdminPanel(): bool
+    {
+        if (!$this->is_active) {
+            return false;
+        }
+
+        if ($this->tenant_id) {
+            if (!$this->relationLoaded('tenant')) {
+                $this->load('tenant');
+            }
+
+            if (!$this->tenant || !$this->tenant->is_active || $this->tenant->status !== 'approved') {
+                return false;
+            }
+        }
+
+        if ($this->user_type === 'super_admin') {
+            return true;
+        }
+
+        if ($this->user_type === 'tenant_admin' || $this->user_type === 'sub_agent') {
+            return $this->hasPermission('dashboard.view');
+        }
+
+        return false;
+    }
+
     protected $hidden = [
         'password',
         'remember_token',
@@ -110,6 +145,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 }

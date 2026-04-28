@@ -12,7 +12,7 @@ class ShowAdminUsers extends Command
 
     public function handle()
     {
-        $admins = User::where('role_id', 1)->get(['id', 'first_name', 'last_name', 'email', 'created_at']);
+        $admins = User::where('user_type', 'super_admin')->get(['id', 'first_name', 'last_name', 'email', 'created_at']);
 
         if ($admins->count() === 0) {
             $this->info('No admin users found.');

@@ -6,14 +6,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\System\Permission;
 use App\Models\Users\User;
+use App\Models\System\Tenant;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Role extends Model
 {
     protected $fillable = [
+        'tenant_id',
         'name',
         'slug',
+        'category',
         'description',
+        'is_system',
     ];
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
 
     /**
      * Get the permissions for the role.
@@ -38,8 +48,8 @@ class Role extends Model
      */
     public function hasPermission(string $permissionSlug): bool
     {
-        // Admin role (id = 1) has all permissions
-        if ($this->id == 1) {
+        // Global super-admin role keeps full access.
+        if ($this->slug === 'super-admin' && $this->tenant_id === null) {
             return true;
         }
         

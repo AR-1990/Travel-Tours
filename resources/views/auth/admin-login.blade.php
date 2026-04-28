@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - {{ config('app.name') }}</title>
+    <title>{{ $title ?? 'Admin Login' }} - {{ config('app.name') }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/app.css'])
 </head>
@@ -19,9 +19,9 @@
                     </svg>
                 </div>
                 <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
-                    Admin Panel
+                    {{ $title ?? 'Admin Panel' }}
                 </h2>
-                <p class="mt-2 text-gray-600">Sign in to access admin dashboard</p>
+                <p class="mt-2 text-gray-600">{{ $description ?? 'Sign in to access admin dashboard' }}</p>
             </div>
 
             <!-- Alerts -->
@@ -36,7 +36,7 @@
             @endif
 
             <!-- Form -->
-            <form action="{{ route('post.admin.login') }}" method="POST" class="space-y-6">
+            <form action="{{ route($actionRoute ?? 'post.admin.login') }}" method="POST" class="space-y-6">
                 @csrf
                 
                 <!-- Email -->
@@ -44,7 +44,7 @@
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
                     <input type="email" id="email" name="email" value="{{ old('email') }}" required
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                        placeholder="admin@example.com">
+                        placeholder="you@example.com">
                 </div>
 
                 <!-- Password -->
@@ -69,10 +69,11 @@
                 </button>
 
                 <!-- User Login Link -->
-                <div class="text-center">
-                    <a href="{{ route('login.form') }}" class="text-sm text-gray-600 hover:text-indigo-600">
-                        User Login →
-                    </a>
+                <div class="text-center space-y-1">
+                    <a href="{{ route('login.form') }}" class="block text-sm text-gray-600 hover:text-indigo-600">User Login</a>
+                    <a href="{{ route('admin.login') }}" class="block text-sm text-gray-600 hover:text-indigo-600">Super Admin Login</a>
+                    <a href="{{ route('agent.login') }}" class="block text-sm text-gray-600 hover:text-indigo-600">Agent Admin Login</a>
+                    <a href="{{ route('subagent.login') }}" class="block text-sm text-gray-600 hover:text-indigo-600">Sub Agent Login</a>
                 </div>
             </form>
         </div>

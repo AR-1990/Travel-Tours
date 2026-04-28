@@ -105,15 +105,18 @@
 </style>
 @section('content')
 <main class="main-content">
+    @php
+        $user = auth()->user();
+        $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
+    @endphp
     <div class="container">
         <div class="row">
             <div class="col-12">
                 <div class="card" style="border: none;">
                     <div class="card-header">
-                        <!-- <h4 class="card-title">{{ isset($manager) ? 'Edit Manager/Editor' : 'Add Manager/Editor' }}</h4> -->
                         <h4 class="card-title">
-                                <a href="{{ url('/admin/managers') }}"><img src=" {{ asset('assets/images/dashboard/dashboardBackChevron.svg') }}" alt=""></a>
-                                    {{ isset($manager) ? 'Edit Manager/Editor' : 'Add Manager/Editor' }}
+                                <a href="{{ route($panelPrefix . '.managers') }}"><img src=" {{ asset('assets/images/dashboard/dashboardBackChevron.svg') }}" alt=""></a>
+                                    {{ isset($manager) ? 'Edit Sub-Agent' : 'Add Sub-Agent' }}
                             </h4>
                     </div>
                     <div class="card-body">
@@ -134,7 +137,7 @@
                             </div>
                         @endif
 
-                        <form method="POST" action="{{ isset($manager) ? route('admin.update.manager', $manager->id) : route('admin.create.manager') }}">
+                        <form method="POST" action="{{ isset($manager) ? route($panelPrefix . '.managers.update', $manager->id) : route($panelPrefix . '.managers.store') }}">
                             @csrf
                             @if(isset($manager))
                                 @method('PUT')
@@ -142,23 +145,15 @@
 
                             <div class="row mb-4">
                                 <div class="col-md-12">
-                                    <label class="form-label">Role <span class="text-danger">*</span></label>
-                                    <div class="d-flex gap-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="role_id" id="role_manager" value="2" 
-                                                {{ (isset($manager) && $manager->role_id == 2) || old('role_id') == 2 ? 'checked' : '' }} required>
-                                            <label class="form-check-label" for="role_manager">
-                                                Manager
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="role_id" id="role_editor" value="3"
-                                                {{ (isset($manager) && $manager->role_id == 3) || old('role_id') == 3 ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="role_editor">
-                                                Editor
-                                            </label>
-                                        </div>
-                                    </div>
+                                    <label class="form-label">Category/Role <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="role_id" required>
+                                        <option value="">Select role</option>
+                                        @foreach(($roles ?? []) as $role)
+                                            <option value="{{ data_get($role, 'id') }}" {{ (string) old('role_id', data_get($manager ?? null, 'role_id', '')) === (string) data_get($role, 'id') ? 'selected' : '' }}>
+                                                {{ data_get($role, 'name') }}{{ data_get($role, 'category') ? ' (' . ucfirst(str_replace('-', ' ', data_get($role, 'category'))) . ')' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
 
@@ -194,7 +189,7 @@
                             <hr class="my-4">
 
                             <h5 class="mb-4" style="font-family: 'Inter'; font-weight: 600; color: #333;">Permissions</h5>
-                            <p class="text-muted mb-4">Select the permissions for this Manager/Editor. Permissions are grouped by admin sections.</p>
+                            <p class="text-muted mb-4">Select permissions for this sub-agent. Permissions are grouped by admin sections.</p>
 
                             @if(isset($permissions) && !empty($permissions))
                                 @foreach($permissions as $group => $groupPermissions)
@@ -242,7 +237,7 @@
                             <div class="row mt-4">
                                 <div class="col-12">
                                     <button type="submit" class="btn btn-primary">{{ isset($manager) ? 'Update' : 'Create' }}</button>
-                                    <a href="{{ route('admin.managers') }}" class="btn btn-secondary">Cancel</a>
+                                    <a href="{{ route($panelPrefix . '.managers') }}" class="btn btn-secondary">Cancel</a>
                                 </div>
                             </div>
                         </form>

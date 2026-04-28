@@ -22,6 +22,7 @@ class RoleMiddleware
         }
 
         $user = Auth::user();
+        /** @var \App\Models\Users\User $user */
         
         // Refresh user from database to ensure we have latest role_id
         $user->refresh();
@@ -58,15 +59,19 @@ class RoleMiddleware
             }
         }
         
-        // Dashboard and admin routes are accessible to Admin (1), Manager (2), and Editor (3)
+        // Existing role-id based access remains supported.
         if (in_array($userRoleId, $allowedRoleIds, true)) {
             return $next($request);
         }
 
-        // Role 4 (Member) users should be redirected to their user area, not shown a 403
-        if ($userRoleId == 4) {
+        // Tenant-aware fallback: users with dashboard permission can enter admin panel routes.
+        if ($user->canAccessAdminPanel()) {
+            return $next($request);
+        }
+
+        if ($user->user_type === 'public') {
             return redirect()->route('news-feed')->withErrors([
-                'message' => 'Access denied. This area is only accessible to Admin, Manager, and Editor roles.'
+                'message' => 'Access denied. This area is only accessible to admin panel users.'
             ]);
         }
 

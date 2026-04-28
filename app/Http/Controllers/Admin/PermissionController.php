@@ -10,13 +10,29 @@ use Illuminate\Support\Str;
 
 class PermissionController extends Controller
 {
+    protected function isSuperAdmin($user): bool
+    {
+        return (bool) ($user && $user->user_type === 'super_admin');
+    }
+
+    protected function routePrefixForUser($user): string
+    {
+        return match ($user?->user_type) {
+            'super_admin' => 'admin',
+            'tenant_admin' => 'agent',
+            'sub_agent' => 'subagent',
+            default => 'admin',
+        };
+    }
+
     /**
      * Display a listing of permissions.
      */
     public function index()
     {
         $user = Auth::user();
-        $isAdmin = $user && $user->role_id == 1;
+        /** @var \App\Models\Users\User $user */
+        $isAdmin = $this->isSuperAdmin($user);
         
         if (!$isAdmin && (!$user || !$user->hasPermission('permissions.view'))) {
             abort(403, 'Unauthorized action.');
@@ -33,7 +49,8 @@ class PermissionController extends Controller
     public function create()
     {
         $user = Auth::user();
-        $isAdmin = $user && $user->role_id == 1;
+        /** @var \App\Models\Users\User $user */
+        $isAdmin = $this->isSuperAdmin($user);
         
         if (!$isAdmin && (!$user || !$user->hasPermission('permissions.create'))) {
             abort(403, 'Unauthorized action.');
@@ -48,7 +65,8 @@ class PermissionController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user && $user->role_id == 1;
+        /** @var \App\Models\Users\User $user */
+        $isAdmin = $this->isSuperAdmin($user);
         
         if (!$isAdmin && (!$user || !$user->hasPermission('permissions.create'))) {
             abort(403, 'Unauthorized action.');
@@ -67,7 +85,7 @@ class PermissionController extends Controller
             'description' => $request->description,
         ]);
 
-        return redirect()->route('admin.permissions')->with('success', 'Permission created successfully!');
+        return redirect()->route($this->routePrefixForUser($user) . '.permissions')->with('success', 'Permission created successfully!');
     }
 
     /**
@@ -76,7 +94,8 @@ class PermissionController extends Controller
     public function edit($id)
     {
         $user = Auth::user();
-        $isAdmin = $user && $user->role_id == 1;
+        /** @var \App\Models\Users\User $user */
+        $isAdmin = $this->isSuperAdmin($user);
         
         if (!$isAdmin && (!$user || !$user->hasPermission('permissions.edit'))) {
             abort(403, 'Unauthorized action.');
@@ -93,7 +112,8 @@ class PermissionController extends Controller
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-        $isAdmin = $user && $user->role_id == 1;
+        /** @var \App\Models\Users\User $user */
+        $isAdmin = $this->isSuperAdmin($user);
         
         if (!$isAdmin && (!$user || !$user->hasPermission('permissions.edit'))) {
             abort(403, 'Unauthorized action.');
@@ -114,7 +134,7 @@ class PermissionController extends Controller
             'description' => $request->description,
         ]);
 
-        return redirect()->route('admin.permissions')->with('success', 'Permission updated successfully!');
+        return redirect()->route($this->routePrefixForUser($user) . '.permissions')->with('success', 'Permission updated successfully!');
     }
 
     /**
@@ -123,7 +143,8 @@ class PermissionController extends Controller
     public function destroy($id)
     {
         $user = Auth::user();
-        $isAdmin = $user && $user->role_id == 1;
+        /** @var \App\Models\Users\User $user */
+        $isAdmin = $this->isSuperAdmin($user);
         
         if (!$isAdmin && (!$user || !$user->hasPermission('permissions.delete'))) {
             abort(403, 'Unauthorized action.');
@@ -132,6 +153,6 @@ class PermissionController extends Controller
         $permission = Permission::findOrFail($id);
         $permission->delete();
 
-        return redirect()->route('admin.permissions')->with('success', 'Permission deleted successfully!');
+        return redirect()->route($this->routePrefixForUser($user) . '.permissions')->with('success', 'Permission deleted successfully!');
     }
 }

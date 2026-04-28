@@ -10,10 +10,12 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Mail\PasswordResetMail;
 use App\Mail\EmailVerificationMail;
 use App\Mail\WelcomeMail;
+use App\Models\System\Role;
 
 class AuthController extends Controller
 {
@@ -42,7 +44,8 @@ class AuthController extends Controller
             'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role_id' => 4, // Default user role
+            'role_id' => Role::where('slug', 'public-user')->value('id'),
+            'user_type' => 'public',
         ]);
 
         // Generate email verification token
@@ -57,7 +60,7 @@ class AuthController extends Controller
         try {
             Mail::to($user->email)->send(new EmailVerificationMail($verificationToken, $user->first_name));
         } catch (\Exception $e) {
-            \Log::error('Email verification failed to send', [
+            Log::error('Email verification failed to send', [
                 'email' => $user->email,
                 'error' => $e->getMessage(),
             ]);
@@ -158,7 +161,7 @@ class AuthController extends Controller
                 'message' => 'Password reset link sent to your email'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Password reset email failed', [
+            Log::error('Password reset email failed', [
                 'email' => $request->email,
                 'error' => $e->getMessage(),
             ]);

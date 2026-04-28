@@ -3,6 +3,10 @@
 @section('title', 'Permissions Management')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
+@endphp
 <div class="container-fluid">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -10,7 +14,7 @@
             <h1 class="h3 mb-1 text-gray-800">Permissions Management</h1>
             <p class="text-gray-600 mb-0">Manage system permissions</p>
         </div>
-        <a href="{{ route('admin.permissions.create') }}" class="btn btn-primary">
+        <a href="{{ route($panelPrefix . '.permissions.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>Add New Permission
         </a>
     </div>
@@ -47,10 +51,10 @@
                                 <td>{{ $permission->description ?? '-' }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
-                                        <a href="{{ route('admin.permissions.edit', $permission->id) }}" class="btn btn-sm btn-primary">
+                                        <a href="{{ route($panelPrefix . '.permissions.edit', $permission->id) }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route('admin.permissions.destroy', $permission->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this permission?');">
+                                        <form action="{{ route($panelPrefix . '.permissions.destroy', $permission->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this permission?');">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-danger">

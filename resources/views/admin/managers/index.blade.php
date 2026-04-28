@@ -279,10 +279,10 @@
 @section('content')
 <main class="main-content">
     @php
-        $filter = $filter ?? 'all';
         $counts = $counts ?? [];
         $user = Auth::user();
-        $isAdmin = $user && $user->role_id == 1;
+        $isAdmin = $user && $user->user_type === 'super_admin';
+        $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
         $canView = $isAdmin || ($user && $user->hasPermission('managers.view'));
         $canCreate = $isAdmin || ($user && $user->hasPermission('managers.create'));
         $canEdit = $isAdmin || ($user && $user->hasPermission('managers.edit'));
@@ -299,43 +299,16 @@
             <div class="col-12">
                 <div class="card" style="border: none;">
                     <div class="card-header card_header_flex">
-                        <h4 class="card-title">User Access</h4>
-                        @if($canCreate && $filter !== 'deleted')
-                            <a href="{{ route('admin.managers.create') }}" class="btn btn-primary">Add Manager/Editor</a>
+                        <h4 class="card-title">Sub Agents</h4>
+                        @if($canCreate)
+                            <a href="{{ route($panelPrefix . '.managers.create') }}" class="btn btn-primary">Add Sub-Agent</a>
                         @endif
                     </div>
                     <div class="card-body">
-                        <!-- Tabs Navigation -->
-                        <ul class="nav nav-tabs mb-4 pb-3" id="managersTabs" role="tablist" style="border-bottom: 2px solid #E1E0E0;">
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link {{ $filter === 'all' ? 'active' : '' }}" 
-                                   href="{{ route('admin.managers', ['filter' => 'all']) }}"
-                                   style="color: #333; font-family: 'Inter'; font-weight: 500; padding: 12px 20px; border: none;">
-                                    All <span class="badge bg-secondary">{{ $counts['all'] ?? 0 }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link {{ $filter === 'manager' ? 'active' : '' }}" 
-                                   href="{{ route('admin.managers', ['filter' => 'manager']) }}"
-                                   style="color: #333; font-family: 'Inter'; font-weight: 500; padding: 12px 20px; border: none;">
-                                    Manager <span class="badge bg-secondary">{{ $counts['manager'] ?? 0 }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link {{ $filter === 'editor' ? 'active' : '' }}" 
-                                   href="{{ route('admin.managers', ['filter' => 'editor']) }}"
-                                   style="color: #333; font-family: 'Inter'; font-weight: 500; padding: 12px 20px; border: none;">
-                                    Editor <span class="badge bg-secondary">{{ $counts['editor'] ?? 0 }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item delete" role="presentation">
-                                <a class="nav-link {{ $filter === 'deleted' ? 'active' : '' }}" 
-                                   href="{{ route('admin.managers', ['filter' => 'deleted']) }}"
-                                   style="color: #333; font-family: 'Inter'; font-weight: 500; padding: 12px 20px; border: none;">
-                                    Deleted <span class="badge bg-danger">{{ $counts['deleted'] ?? 0 }}</span>
-                                </a>
-                            </li>
-                        </ul>
+                        <div class="d-flex gap-3 mb-4">
+                            <div class="badge bg-secondary p-2">All {{ $counts['all'] ?? 0 }}</div>
+                            <div class="badge bg-danger p-2">Deleted {{ $counts['deleted'] ?? 0 }}</div>
+                        </div>
                         <style>
                                 .nav-tabs .nav-link {
                                 border: none;
@@ -403,6 +376,7 @@
                                     <th>First Name</th>
                                     <th>Last Name</th>
                                     <th>Email</th>
+                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -419,9 +393,16 @@
                                     <td>{{ $manager->last_name }}</td>
                                     <td>{{ $manager->email }}</td>
                                     <td>
-                                        @if($filter === 'deleted')
+                                        @if(method_exists($manager, 'trashed') && $manager->trashed())
+                                            <span class="badge bg-danger">Deleted</span>
+                                        @else
+                                            <span class="badge bg-success">Active</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if(method_exists($manager, 'trashed') && $manager->trashed())
                                             @if($canRestore)
-                                            <form action="{{ route('admin.managers.restore', $manager->id) }}" method="POST"
+                                            <form action="{{ route($panelPrefix . '.managers.restore', $manager->id) }}" method="POST"
                                                 style="display:inline-block;" class="restore-manager-form">
                                                 @csrf
                                                 <button id="restoreBtn" type="submit" class="btn btn-success btn-sm" title="Restore">
@@ -431,10 +412,10 @@
                                             @endif
                                         @else
                                             @if($canEdit)
-                                            <a id="edit" href="{{ route('admin.managers.edit', $manager->id) }}" class="btn btn-warning btn-sm"></a>
+                                            <a id="edit" href="{{ route($panelPrefix . '.managers.edit', $manager->id) }}" class="btn btn-warning btn-sm"></a>
                                             @endif
                                             @if($canDelete)
-                                            <form action="{{ route('admin.managers.destroy', $manager->id) }}" method="POST"
+                                            <form action="{{ route($panelPrefix . '.managers.destroy', $manager->id) }}" method="POST"
                                                 style="display:inline-block;" class="delete-manager-form">
                                                 @csrf
                                                 @method('DELETE')
@@ -446,7 +427,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="6" class="text-center">No Managers/Editors found</td>
+                                    <td colspan="7" class="text-center">No sub-agents found</td>
                                 </tr>
                                 @endforelse
                             </tbody>
@@ -475,7 +456,7 @@
             
             Swal.fire({
                 title: 'Are you sure?',
-                text: 'You want to delete this Manager/Editor? This action cannot be undone!',
+                text: 'You want to delete this sub-agent? This action cannot be undone!',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -495,8 +476,8 @@
             const form = $(this);
             
             Swal.fire({
-                title: 'Restore Manager/Editor?',
-                text: 'This Manager/Editor will be restored and become active again.',
+                title: 'Restore Sub-Agent?',
+                text: 'This sub-agent will be restored and become active again.',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
@@ -510,16 +491,7 @@
             });
         });
 
-        // Show success message if exists
-        @if(session('success'))
-            Swal.fire({
-                icon: 'success',
-                title: 'Success!',
-                text: '{{ session('success') }}',
-                showConfirmButton: false,
-                timer: 3000
-            });
-        @endif
+        
     });
 </script>
 @endsection

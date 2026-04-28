@@ -4,14 +4,36 @@
 
 @section('content')
 <div class="container-fluid">
+    @php
+        $currentUser = auth()->user();
+        $isSuperAdmin = $currentUser && $currentUser->user_type === 'super_admin';
+        $isTenantAdmin = $currentUser && $currentUser->user_type === 'tenant_admin';
+        $isSubAgent = $currentUser && $currentUser->user_type === 'sub_agent';
+    @endphp
+
     <div class="row g-4">
+        @if($isSuperAdmin)
+        <div class="col-lg-3 col-md-6">
+            <div class="card-modern">
+                <h3 class="h4 mb-1 text-gray-700">Agents</h3>
+                <p class="h2 mb-0 text-indigo-600">{{ $totalTenants ?? 0 }}</p>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card-modern">
+                <h3 class="h4 mb-1 text-gray-700">Pending Agents</h3>
+                <p class="h2 mb-0 text-indigo-600">{{ $pendingTenants ?? 0 }}</p>
+            </div>
+        </div>
+        @endif
+
         <!-- Stats Cards -->
         <div class="col-lg-3 col-md-6">
             <div class="card-modern">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h3 class="h4 mb-1 text-gray-700">Users</h3>
-                        <p class="h2 mb-0 text-indigo-600">{{ \App\Models\Users\User::count() }}</p>
+                        <p class="h2 mb-0 text-indigo-600">{{ $totalUsers ?? 0 }}</p>
                     </div>
                     <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-content-center">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,7 +49,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h3 class="h4 mb-1 text-gray-700">Roles</h3>
-                        <p class="h2 mb-0 text-indigo-600">{{ \App\Models\System\Role::count() }}</p>
+                        <p class="h2 mb-0 text-indigo-600">{{ \App\Models\System\Role::query()->when($isSuperAdmin, fn($q) => $q->whereNull('tenant_id')->where('slug', '!=', 'admin'))->when(!$isSuperAdmin, fn($q) => $q->where('tenant_id', auth()->user()->tenant_id))->count() }}</p>
                     </div>
                     <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-content-center">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,8 +80,8 @@
             <div class="card-modern">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h3 class="h4 mb-1 text-gray-700">Managers</h3>
-                        <p class="h2 mb-0 text-indigo-600">{{ \App\Models\Users\User::where('role_id', 2)->count() }}</p>
+                        <h3 class="h4 mb-1 text-gray-700">Sub Agents</h3>
+                        <p class="h2 mb-0 text-indigo-600">{{ $subAgentCount ?? 0 }}</p>
                     </div>
                     <div class="w-16 h-16 bg-gradient-to-br from-teal-500 to-green-600 rounded-xl flex items-center justify-content-center">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,9 +97,27 @@
     <div class="row mt-4">
         <div class="col-12">
             <div class="card-modern">
-                <h2 class="h3 mb-3 text-gray-800">Welcome to Admin Panel</h2>
+                <h2 class="h3 mb-3 text-gray-800">
+                    @if($isSuperAdmin)
+                        Super Admin Dashboard
+                    @elseif($isTenantAdmin)
+                        Agent Admin Dashboard
+                    @elseif($isSubAgent)
+                        Sub Agent Dashboard
+                    @else
+                        Admin Dashboard
+                    @endif
+                </h2>
                 <p class="text-gray-600 mb-0">
-                    Manage users, roles, permissions, and more from this dashboard. Use the sidebar to navigate to different sections.
+                    @if($isSuperAdmin)
+                        Manage agent approvals, agent creation, and system-wide users.
+                    @elseif($isTenantAdmin)
+                        Manage your agent sub agents and role/permission categories.
+                    @elseif($isSubAgent)
+                        Access your assigned modules and operations based on your permissions.
+                    @else
+                        Manage users, roles, permissions, and more from this dashboard.
+                    @endif
                 </p>
             </div>
         </div>

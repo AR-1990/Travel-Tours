@@ -3,6 +3,10 @@
 @section('title', 'Edit Permission')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
+@endphp
 <div class="container-fluid">
     <div class="row">
         <div class="col-lg-8 mx-auto">
@@ -12,14 +16,14 @@
                     <h1 class="h3 mb-1 text-gray-800">Edit Permission</h1>
                     <p class="text-gray-600 mb-0">Update permission information</p>
                 </div>
-                <a href="{{ route('admin.permissions') }}" class="btn btn-secondary">
+                <a href="{{ route($panelPrefix . '.permissions') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Permissions
                 </a>
             </div>
 
             <!-- Form -->
             <div class="card-modern">
-                <form action="{{ route('admin.permissions.update', $permission->id) }}" method="POST">
+                <form action="{{ route($panelPrefix . '.permissions.update', $permission->id) }}" method="POST">
                     @csrf
                     @method('PUT')
 
@@ -62,7 +66,7 @@
 
                     <!-- Submit Buttons -->
                     <div class="d-flex justify-content-end gap-2">
-                        <a href="{{ route('admin.permissions') }}" class="btn btn-secondary">Cancel</a>
+                        <a href="{{ route($panelPrefix . '.permissions') }}" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save me-2"></i>Update Permission
                         </button>

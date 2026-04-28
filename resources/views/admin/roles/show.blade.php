@@ -3,6 +3,10 @@
 @section('title', 'View Role')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
+@endphp
 <div class="container-fluid">
     <div class="row">
         <div class="col-lg-10 mx-auto">
@@ -13,10 +17,10 @@
                     <p class="text-gray-600 mb-0">View role information and permissions</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('admin.roles.edit', $role->id) }}" class="btn btn-primary">
+                    <a href="{{ route($panelPrefix . '.roles.edit', $role->id) }}" class="btn btn-primary">
                         <i class="fas fa-edit me-2"></i>Edit
                     </a>
-                    <a href="{{ route('admin.roles') }}" class="btn btn-secondary">
+                    <a href="{{ route($panelPrefix . '.roles') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Back
                     </a>
                 </div>

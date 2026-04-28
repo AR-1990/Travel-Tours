@@ -4,12 +4,24 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Auth\TenantRegistrationController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\ManagersController;
+use App\Http\Controllers\Admin\TenantController;
+use App\Http\Controllers\Admin\BlogController as AdminBlogController;
+use App\Http\Controllers\Agent\DashboardController as AgentDashboardController;
+use App\Http\Controllers\Agent\RoleController as AgentRoleController;
+use App\Http\Controllers\Agent\PermissionController as AgentPermissionController;
+use App\Http\Controllers\Agent\SubAgentController as AgentSubAgentController;
+use App\Http\Controllers\SubAgent\DashboardController as SubAgentDashboardController;
+use App\Http\Controllers\SubAgent\RoleController as SubAgentRoleController;
+use App\Http\Controllers\SubAgent\PermissionController as SubAgentPermissionController;
+use App\Http\Controllers\SubAgent\SubAgentController as SubAgentManagementController;
 use App\Http\Middleware\RoleMiddleware;
 
 /*
@@ -21,6 +33,8 @@ use App\Http\Middleware\RoleMiddleware;
 Route::get('/', function () {
     return view('pages.home');
 })->name('home');
+Route::get('/blogs', [BlogController::class, 'index'])->name('blogs.index');
+Route::get('/blogs/{slug}', [BlogController::class, 'show'])->name('blogs.show');
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +63,18 @@ Route::middleware('guest')->group(function () {
     // Admin Login
     Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
     Route::post('/admin/login', [AdminController::class, 'login'])->name('post.admin.login');
+    Route::get('/tenant/login', [AdminController::class, 'showTenantLoginForm'])->name('tenant.login');
+    Route::post('/tenant/login', [AdminController::class, 'tenantLogin'])->name('post.tenant.login');
+    Route::get('/agent/login', [AdminController::class, 'showTenantLoginForm'])->name('agent.login');
+    Route::post('/agent/login', [AdminController::class, 'tenantLogin'])->name('post.agent.login');
+    Route::get('/sub-agent/login', [AdminController::class, 'showSubAgentLoginForm'])->name('subagent.login');
+    Route::post('/sub-agent/login', [AdminController::class, 'subAgentLogin'])->name('post.subagent.login');
+
+    // Agent Signup
+    Route::get('/tenant/register', [TenantRegistrationController::class, 'showForm'])->name('tenant.register.form');
+    Route::post('/tenant/register', [TenantRegistrationController::class, 'register'])->name('tenant.register');
+    Route::get('/agent/register', [TenantRegistrationController::class, 'showForm'])->name('agent.register.form');
+    Route::post('/agent/register', [TenantRegistrationController::class, 'register'])->name('agent.register');
 });
 
 /*
@@ -72,59 +98,102 @@ Route::middleware('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Admin Routes (Admin, Manager, Editor)
+| Prefixed Admin Spaces
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', RoleMiddleware::class . ':1|2|3'])->group(function () {
-    // Admin Dashboard
-    Route::get('/admin/dashboard', [AdminController::class, 'adminDashboard'])->name('admin.dashboard');
+Route::middleware(['auth', RoleMiddleware::class . ':1'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'adminDashboard'])->name('dashboard');
 
-    // Users Management
-    Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users');
-    Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
-    Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
-    Route::get('/admin/users/{id}', [AdminUserController::class, 'show'])->name('admin.users.show');
-    Route::get('/admin/users/{id}/edit', [AdminUserController::class, 'edit'])->name('admin.users.edit');
-    Route::put('/admin/users/{id}', [AdminUserController::class, 'update'])->name('admin.users.update');
-    Route::delete('/admin/users/{id}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
-    Route::post('/admin/users/{id}/restore', [AdminUserController::class, 'restore'])->name('admin.users.restore');
+    // Users (currently blocked by controller policy)
+    Route::get('/users', [AdminUserController::class, 'index'])->name('users');
+    Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
+    Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
+    Route::get('/users/{id}', [AdminUserController::class, 'show'])->name('users.show');
+    Route::get('/users/{id}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{id}', [AdminUserController::class, 'update'])->name('users.update');
+    Route::delete('/users/{id}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+    Route::post('/users/{id}/restore', [AdminUserController::class, 'restore'])->name('users.restore');
 
-    // Roles Management
-    Route::get('/admin/roles', [RoleController::class, 'index'])->name('admin.roles');
-    Route::get('/admin/roles/create', [RoleController::class, 'create'])->name('admin.roles.create');
-    Route::post('/admin/roles', [RoleController::class, 'store'])->name('admin.roles.store');
-    Route::get('/admin/roles/{id}', [RoleController::class, 'show'])->name('admin.roles.show');
-    Route::get('/admin/roles/{id}/edit', [RoleController::class, 'edit'])->name('admin.roles.edit');
-    Route::put('/admin/roles/{id}', [RoleController::class, 'update'])->name('admin.roles.update');
-    Route::delete('/admin/roles/{id}', [RoleController::class, 'destroy'])->name('admin.roles.destroy');
-    Route::post('/admin/roles/{id}/permissions', [RoleController::class, 'updatePermissions'])->name('admin.roles.permissions');
+    // Roles/Permissions/Sub-Agents
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles');
+    Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
+    Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+    Route::get('/roles/{id}', [RoleController::class, 'show'])->name('roles.show');
+    Route::get('/roles/{id}/edit', [RoleController::class, 'edit'])->name('roles.edit');
+    Route::put('/roles/{id}', [RoleController::class, 'update'])->name('roles.update');
+    Route::delete('/roles/{id}', [RoleController::class, 'destroy'])->name('roles.destroy');
+    Route::post('/roles/{id}/permissions', [RoleController::class, 'updatePermissions'])->name('roles.permissions');
 
-    // Permissions Management
-    Route::get('/admin/permissions', [PermissionController::class, 'index'])->name('admin.permissions');
-    Route::get('/admin/permissions/create', [PermissionController::class, 'create'])->name('admin.permissions.create');
-    Route::post('/admin/permissions', [PermissionController::class, 'store'])->name('admin.permissions.store');
-    Route::get('/admin/permissions/{id}/edit', [PermissionController::class, 'edit'])->name('admin.permissions.edit');
-    Route::put('/admin/permissions/{id}', [PermissionController::class, 'update'])->name('admin.permissions.update');
-    Route::delete('/admin/permissions/{id}', [PermissionController::class, 'destroy'])->name('admin.permissions.destroy');
+    Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions');
+    Route::get('/permissions/create', [PermissionController::class, 'create'])->name('permissions.create');
+    Route::post('/permissions', [PermissionController::class, 'store'])->name('permissions.store');
+    Route::get('/permissions/{id}/edit', [PermissionController::class, 'edit'])->name('permissions.edit');
+    Route::put('/permissions/{id}', [PermissionController::class, 'update'])->name('permissions.update');
+    Route::delete('/permissions/{id}', [PermissionController::class, 'destroy'])->name('permissions.destroy');
+
+    Route::get('/sub-agents', [ManagersController::class, 'index'])->name('managers');
+    Route::get('/sub-agents/create', [ManagersController::class, 'create'])->name('managers.create');
+    Route::post('/sub-agents', [ManagersController::class, 'store'])->name('managers.store');
+    Route::get('/sub-agents/{id}/edit', [ManagersController::class, 'edit'])->name('managers.edit');
+    Route::put('/sub-agents/{id}', [ManagersController::class, 'update'])->name('managers.update');
+    Route::post('/sub-agents/{id}/permissions', [ManagersController::class, 'updatePermissions'])->name('managers.permissions');
+    Route::delete('/sub-agents/{id}', [ManagersController::class, 'destroy'])->name('managers.destroy');
+    Route::post('/sub-agents/{id}/restore', [ManagersController::class, 'restore'])->name('managers.restore');
+
+    // Agent/Tenant oversight
+    Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
+    Route::get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
+    Route::post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
+    Route::post('/tenants/{tenant}/approve', [TenantController::class, 'approve'])->name('tenants.approve');
+    Route::post('/tenants/{tenant}/reject', [TenantController::class, 'reject'])->name('tenants.reject');
+
+    Route::get('/blogs', [AdminBlogController::class, 'index'])->name('blogs.index');
+    Route::get('/blogs/create', [AdminBlogController::class, 'create'])->name('blogs.create');
+    Route::post('/blogs', [AdminBlogController::class, 'store'])->name('blogs.store');
+    Route::get('/blogs/{id}/edit', [AdminBlogController::class, 'edit'])->name('blogs.edit');
+    Route::put('/blogs/{id}', [AdminBlogController::class, 'update'])->name('blogs.update');
+    Route::delete('/blogs/{id}', [AdminBlogController::class, 'destroy'])->name('blogs.destroy');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Admin Only Routes (Role ID = 1)
-|--------------------------------------------------------------------------
-*/
+Route::middleware(['auth', RoleMiddleware::class . ':1|2|3'])->prefix('agent')->name('agent.')->group(function () {
+    Route::get('/dashboard', [AgentDashboardController::class, 'adminDashboard'])->name('dashboard');
 
-Route::middleware(['auth', RoleMiddleware::class . ':1'])->group(function () {
-    // Managers Management
-    Route::get('/admin/managers', [ManagersController::class, 'index'])->name('admin.managers');
-    Route::get('/admin/managers/create', [ManagersController::class, 'create'])->name('admin.managers.create');
-    Route::post('/admin/managers', [ManagersController::class, 'store'])->name('admin.managers.store');
-    Route::get('/admin/managers/{id}/edit', [ManagersController::class, 'edit'])->name('admin.managers.edit');
-    Route::put('/admin/managers/{id}', [ManagersController::class, 'update'])->name('admin.managers.update');
-    Route::post('/admin/managers/{id}/permissions', [ManagersController::class, 'updatePermissions'])->name('admin.managers.permissions');
-    Route::delete('/admin/managers/{id}', [ManagersController::class, 'destroy'])->name('admin.managers.destroy');
-    Route::post('/admin/managers/{id}/restore', [ManagersController::class, 'restore'])->name('admin.managers.restore');
+    Route::get('/roles', [AgentRoleController::class, 'index'])->name('roles');
+    Route::get('/roles/create', [AgentRoleController::class, 'create'])->name('roles.create');
+    Route::post('/roles', [AgentRoleController::class, 'store'])->name('roles.store');
+    Route::get('/roles/{id}', [AgentRoleController::class, 'show'])->name('roles.show');
+    Route::get('/roles/{id}/edit', [AgentRoleController::class, 'edit'])->name('roles.edit');
+    Route::put('/roles/{id}', [AgentRoleController::class, 'update'])->name('roles.update');
+    Route::delete('/roles/{id}', [AgentRoleController::class, 'destroy'])->name('roles.destroy');
+    Route::post('/roles/{id}/permissions', [AgentRoleController::class, 'updatePermissions'])->name('roles.permissions');
+
+    Route::get('/permissions', [AgentPermissionController::class, 'index'])->name('permissions');
+    Route::get('/permissions/create', [AgentPermissionController::class, 'create'])->name('permissions.create');
+    Route::post('/permissions', [AgentPermissionController::class, 'store'])->name('permissions.store');
+    Route::get('/permissions/{id}/edit', [AgentPermissionController::class, 'edit'])->name('permissions.edit');
+    Route::put('/permissions/{id}', [AgentPermissionController::class, 'update'])->name('permissions.update');
+    Route::delete('/permissions/{id}', [AgentPermissionController::class, 'destroy'])->name('permissions.destroy');
+
+    Route::get('/sub-agents', [AgentSubAgentController::class, 'index'])->name('managers');
+    Route::get('/sub-agents/create', [AgentSubAgentController::class, 'create'])->name('managers.create');
+    Route::post('/sub-agents', [AgentSubAgentController::class, 'store'])->name('managers.store');
+    Route::get('/sub-agents/{id}/edit', [AgentSubAgentController::class, 'edit'])->name('managers.edit');
+    Route::put('/sub-agents/{id}', [AgentSubAgentController::class, 'update'])->name('managers.update');
+    Route::post('/sub-agents/{id}/permissions', [AgentSubAgentController::class, 'updatePermissions'])->name('managers.permissions');
+    Route::delete('/sub-agents/{id}', [AgentSubAgentController::class, 'destroy'])->name('managers.destroy');
+    Route::post('/sub-agents/{id}/restore', [AgentSubAgentController::class, 'restore'])->name('managers.restore');
+});
+
+Route::middleware(['auth', RoleMiddleware::class . ':1|2|3'])->prefix('sub-agent')->name('subagent.')->group(function () {
+    Route::get('/dashboard', [SubAgentDashboardController::class, 'adminDashboard'])->name('dashboard');
+
+    Route::get('/roles', [SubAgentRoleController::class, 'index'])->name('roles');
+    Route::get('/roles/{id}', [SubAgentRoleController::class, 'show'])->name('roles.show');
+
+    Route::get('/permissions', [SubAgentPermissionController::class, 'index'])->name('permissions');
+
+    Route::get('/sub-agents', [SubAgentManagementController::class, 'index'])->name('managers');
 });
 
 /*

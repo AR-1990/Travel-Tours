@@ -3,6 +3,10 @@
 @section('title', 'Roles Management')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
+@endphp
 <div class="container-fluid">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -10,7 +14,7 @@
             <h1 class="h3 mb-1 text-gray-800">Roles Management</h1>
             <p class="text-gray-600 mb-0">Manage system roles and their permissions</p>
         </div>
-        <a href="{{ route('admin.roles.create') }}" class="btn btn-primary">
+        <a href="{{ route($panelPrefix . '.roles.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>Add New Role
         </a>
     </div>
@@ -54,11 +58,11 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <a href="{{ route('admin.roles.edit', $role->id) }}" class="btn btn-sm btn-primary flex-fill">
+                        <a href="{{ route($panelPrefix . '.roles.edit', $role->id) }}" class="btn btn-sm btn-primary flex-fill">
                             <i class="fas fa-edit me-1"></i>Edit
                         </a>
                         @if($role->id != 1)
-                            <form action="{{ route('admin.roles.destroy', $role->id) }}" method="POST" class="flex-fill" onsubmit="return confirm('Are you sure you want to delete this role?');">
+                            <form action="{{ route($panelPrefix . '.roles.destroy', $role->id) }}" method="POST" class="flex-fill" onsubmit="return confirm('Are you sure you want to delete this role?');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-danger w-100">

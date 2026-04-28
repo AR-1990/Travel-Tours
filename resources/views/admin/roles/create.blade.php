@@ -3,6 +3,10 @@
 @section('title', 'Create Role')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
+@endphp
 <div class="container-fluid">
     <div class="row">
         <div class="col-lg-10 mx-auto">
@@ -12,14 +16,14 @@
                     <h1 class="h3 mb-1 text-gray-800">Create New Role</h1>
                     <p class="text-gray-600 mb-0">Add a new role with permissions</p>
                 </div>
-                <a href="{{ route('admin.roles') }}" class="btn btn-secondary">
+                <a href="{{ route($panelPrefix . '.roles') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Roles
                 </a>
             </div>
 
             <!-- Form -->
             <div class="card-modern">
-                <form action="{{ route('admin.roles.store') }}" method="POST">
+                <form action="{{ route($panelPrefix . '.roles.store') }}" method="POST">
                     @csrf
 
                     <!-- Name -->
@@ -73,7 +77,7 @@
 
                     <!-- Submit Buttons -->
                     <div class="d-flex justify-content-end gap-2">
-                        <a href="{{ route('admin.roles') }}" class="btn btn-secondary">Cancel</a>
+                        <a href="{{ route($panelPrefix . '.roles') }}" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save me-2"></i>Create Role
                         </button>
