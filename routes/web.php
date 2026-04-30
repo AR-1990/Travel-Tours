@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\TenantRegistrationController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\FrontController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\RoleController;
@@ -31,7 +32,7 @@ use App\Http\Middleware\RoleMiddleware;
 */
 
 Route::get('/', function () {
-    return view('pages.home');
+    return view('frontend.index');
 })->name('home');
 Route::get('/blogs', [BlogController::class, 'index'])->name('blogs.index');
 Route::get('/blogs/{slug}', [BlogController::class, 'show'])->name('blogs.show');
@@ -213,3 +214,109 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('admin.login');
     })->name('admin.logout');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Front Routes
+|--------------------------------------------------------------------------
+*/
+Route::get('/home', [FrontController::class, 'index']);
+
+Route::get('/404', [FrontController::class, 'notFound']);
+Route::get('/about', [FrontController::class, 'about']);
+Route::get('/activity-add', [FrontController::class, 'activityAdd']);
+Route::get('/activity-booking', [FrontController::class, 'activityBooking']);
+Route::get('/activity-full-width', [FrontController::class, 'activityFullWidth']);
+Route::get('/activity-grid', [FrontController::class, 'activityGrid']);
+Route::get('/activity-list', [FrontController::class, 'activityList']);
+Route::get('/activity-search-result', [FrontController::class, 'activitySearchResult']);
+Route::get('/activity-single', [FrontController::class, 'activitySingle']);
+
+Route::get('/become-expert', [FrontController::class, 'becomeExpert']);
+// Route::get('/blog', [FrontController::class, 'blog']);
+// Route::get('/blog-single', [FrontController::class, 'blogSingle']);
+
+Route::get('/booking-confirm', [FrontController::class, 'bookingConfirm']);
+
+Route::get('/car-add', [FrontController::class, 'carAdd']);
+Route::get('/car-booking', [FrontController::class, 'carBooking']);
+Route::get('/car-full-width', [FrontController::class, 'carFullWidth']);
+Route::get('/car-grid', [FrontController::class, 'carGrid']);
+Route::get('/car-list', [FrontController::class, 'carList']);
+Route::get('/car-search-result', [FrontController::class, 'carSearchResult']);
+Route::get('/car-single', [FrontController::class, 'carSingle']);
+
+Route::get('/career', [FrontController::class, 'career']);
+Route::get('/career-single', [FrontController::class, 'careerSingle']);
+
+Route::get('/cart', [FrontController::class, 'cart']);
+Route::get('/checkout', [FrontController::class, 'checkout']);
+Route::get('/coming-soon', [FrontController::class, 'comingSoon']);
+Route::get('/contact', [FrontController::class, 'contact']);
+
+Route::get('/cruise-add', [FrontController::class, 'cruiseAdd']);
+Route::get('/cruise-booking', [FrontController::class, 'cruiseBooking']);
+Route::get('/cruise-full-width', [FrontController::class, 'cruiseFullWidth']);
+Route::get('/cruise-grid', [FrontController::class, 'cruiseGrid']);
+Route::get('/cruise-list', [FrontController::class, 'cruiseList']);
+Route::get('/cruise-search-result', [FrontController::class, 'cruiseSearchResult']);
+Route::get('/cruise-single', [FrontController::class, 'cruiseSingle']);
+
+Route::get('/dashboard', [FrontController::class, 'dashboard']);
+Route::get('/destination', [FrontController::class, 'destination']);
+Route::get('/faq', [FrontController::class, 'faq']);
+
+Route::get('/flight-add', [FrontController::class, 'flightAdd']);
+Route::get('/flight-booking', [FrontController::class, 'flightBooking']);
+Route::get('/flight-full-width', [FrontController::class, 'flightFullWidth']);
+Route::get('/flight-grid', [FrontController::class, 'flightGrid']);
+Route::get('/flight-list', [FrontController::class, 'flightList']);
+Route::get('/flight-search-result', [FrontController::class, 'flightSearchResult']);
+Route::get('/flight-single', [FrontController::class, 'flightSingle']);
+
+Route::get('/forgot-password', [FrontController::class, 'forgotPassword']);
+Route::get('/gallery', [FrontController::class, 'gallery']);
+
+Route::get('/hotel-add', [FrontController::class, 'hotelAdd']);
+Route::get('/hotel-booking', [FrontController::class, 'hotelBooking']);
+Route::get('/hotel-full-width', [FrontController::class, 'hotelFullWidth']);
+Route::get('/hotel-grid', [FrontController::class, 'hotelGrid']);
+Route::get('/hotel-list', [FrontController::class, 'hotelList']);
+Route::get('/hotel-room-add', [FrontController::class, 'hotelRoomAdd']);
+Route::get('/hotel-room-full-width', [FrontController::class, 'hotelRoomFullWidth']);
+Route::get('/hotel-room-grid', [FrontController::class, 'hotelRoomGrid']);
+Route::get('/hotel-room-list', [FrontController::class, 'hotelRoomList']);
+Route::get('/hotel-room-search-result', [FrontController::class, 'hotelRoomSearchResult']);
+Route::get('/hotel-room-single', [FrontController::class, 'hotelRoomSingle']);
+Route::get('/hotel-search-result', [FrontController::class, 'hotelSearchResult']);
+Route::get('/hotel-single', [FrontController::class, 'hotelSingle']);
+
+// Route::get('/login', [FrontController::class, 'login']);
+Route::get('/pricing', [FrontController::class, 'pricing']);
+Route::get('/privacy', [FrontController::class, 'privacy']);
+
+Route::get('/profile', [FrontController::class, 'profile']);
+Route::get('/profile-booking-history', [FrontController::class, 'profileBookingHistory']);
+Route::get('/profile-booking', [FrontController::class, 'profileBooking']);
+Route::get('/profile-listing', [FrontController::class, 'profileListing']);
+Route::get('/profile-message', [FrontController::class, 'profileMessage']);
+Route::get('/profile-notification', [FrontController::class, 'profileNotification']);
+Route::get('/profile-setting', [FrontController::class, 'profileSetting']);
+Route::get('/profile-wallet', [FrontController::class, 'profileWallet']);
+Route::get('/profile-wishlist', [FrontController::class, 'profileWishlist']);
+
+Route::get('/register', [FrontController::class, 'register']);
+Route::get('/service', [FrontController::class, 'service']);
+Route::get('/service-single', [FrontController::class, 'serviceSingle']);
+
+Route::get('/team', [FrontController::class, 'team']);
+Route::get('/terms', [FrontController::class, 'terms']);
+Route::get('/testimonial', [FrontController::class, 'testimonial']);
+
+Route::get('/tour-add', [FrontController::class, 'tourAdd']);
+Route::get('/tour-booking', [FrontController::class, 'tourBooking']);
+Route::get('/tour-full-width', [FrontController::class, 'tourFullWidth']);
+Route::get('/tour-grid', [FrontController::class, 'tourGrid']);
+Route::get('/tour-list', [FrontController::class, 'tourList']);
+Route::get('/tour-search-result', [FrontController::class, 'tourSearchResult']);
+Route::get('/tour-single', [FrontController::class, 'tourSingle']);
