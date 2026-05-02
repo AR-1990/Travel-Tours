@@ -45,8 +45,8 @@
                                 </select>
                             </div>
                             <div class="account">
-                                <a href="login"><i class="far fa-sign-in"></i>Login</a>
-                                <a href="register"><i class="far fa-user-tie"></i>Sign Up</a>
+                                <a href="{{ route('login.form') }}"><i class="far fa-sign-in"></i>Login</a>
+                                <a href="{{ route('register.form') }}"><i class="far fa-user-tie"></i>Sign Up</a>
                             </div>
                         </div>
                     </div>
@@ -59,9 +59,9 @@
         <div class="main-navigation">
             <nav class="navbar navbar-expand-lg">
                 <div class="container">
-                    <a class="navbar-brand" href="index-2">
-                        <img src="assets/img/logo/logo.png" class="logo-display" alt="logo">
-                        <img src="assets/img/logo/logo-dark.png" class="logo-scrolled" alt="logo">
+                    <a class="navbar-brand" href="{{ route('home') }}">
+                        <img src="{{ asset('assets/img/logo/logo.png') }}" class="logo-display" alt="logo">
+                        <img src="{{ asset('assets/img/logo/logo-dark.png') }}" class="logo-scrolled" alt="logo">
                     </a>
                     <div class="mobile-menu-right">
                         <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
@@ -71,17 +71,17 @@
                     </div>
                     <div class="collapse navbar-collapse" id="main_nav">
                         <ul class="navbar-nav">
-                            <li class="nav-item"><a class="nav-link" href="index">Home</a></li>
-                            <li class="nav-item"><a class="nav-link" href="flight-list">Flight</a></li>
-                            <li class="nav-item"><a class="nav-link" href="hotel-grid">Hotel</a></li>
-                            <li class="nav-item"><a class="nav-link" href="about">About Us</a></li>
-                            <li class="nav-item"><a class="nav-link" href="activity-grid">Activity</a></li>
-                            <li class="nav-item"><a class="nav-link" href="blogs">blog</a></li>
-                            <li class="nav-item"><a class="nav-link" href="contact">Contact</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('home') }}">Home</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url('/flight-list') }}">Flight</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url('/hotel-grid') }}">Hotel</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url('/about') }}">About Us</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url('/activity-grid') }}">Activity</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ route('blogs.index') }}">Blog</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url('/contact') }}">Contact</a></li>
                         </ul>
                         <div class="header-nav-right">
                             <div class="header-btn">
-                                <a href="become-expert" class="theme-btn mt-2">Become An Expert</a>
+                                <a href="{{ url('/become-expert') }}" class="theme-btn mt-2">Become An Expert</a>
                             </div>
                         </div>
                     </div>

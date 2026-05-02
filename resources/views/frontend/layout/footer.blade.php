@@ -5,7 +5,7 @@
                     <div class="col-md-6 col-lg-3">
                         <div class="footer-widget-box about-us">
                             <a href="#" class="footer-logo">
-                                <img src="assets/img/logo/logo.png" alt="">
+                                <img src="{{ asset('assets/img/logo/logo.png') }}" alt="">
                             </a>
                             <p class="mb-4">
                                 We are many variations of passages available but the majority have suffer alteration
@@ -95,11 +95,11 @@
                             <div class="footer-payment-method">
                                 <h6>We Accept:</h6>
                                 <div class="payment-method-img">
-                                    <img src="assets/img/payment/paypal.svg" alt="">
-                                    <img src="assets/img/payment/mastercard.svg" alt="">
-                                    <img src="assets/img/payment/visa.svg" alt="">
-                                    <img src="assets/img/payment/discover.svg" alt="">
-                                    <img src="assets/img/payment/american-express.svg" alt="">
+                                    <img src="{{ asset('assets/img/payment/paypal.svg') }}" alt="">
+                                    <img src="{{ asset('assets/img/payment/mastercard.svg') }}" alt="">
+                                    <img src="{{ asset('assets/img/payment/visa.svg') }}" alt="">
+                                    <img src="{{ asset('assets/img/payment/discover.svg') }}" alt="">
+                                    <img src="{{ asset('assets/img/payment/american-express.svg') }}" alt="">
                                 </div>
                             </div>
                         </div>

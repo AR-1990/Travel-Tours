@@ -96,9 +96,7 @@ class BlogController extends Controller
 
         $imagePath = $blog->image;
         if ($request->hasFile('image')) {
-            if ($blog->image) {
-                Storage::disk('public')->delete($blog->image);
-            }
+            $this->deleteImageIfStored($blog->image);
             $imagePath = $request->file('image')->store('blogs', 'public');
         }
 
@@ -119,13 +117,20 @@ class BlogController extends Controller
         $this->ensureSuperAdmin();
         $blog = Blog::findOrFail($id);
 
-        if ($blog->image) {
-            Storage::disk('public')->delete($blog->image);
-        }
+        $this->deleteImageIfStored($blog->image);
 
         $blog->delete();
 
         return redirect()->route('admin.blogs.index')->with('success', 'Blog deleted successfully!');
+    }
+
+    protected function deleteImageIfStored(?string $imagePath): void
+    {
+        if (!$imagePath || Str::startsWith($imagePath, ['assets/', 'http://', 'https://'])) {
+            return;
+        }
+
+        Storage::disk('public')->delete($imagePath);
     }
 
     protected function uniqueSlug(string $baseSlug, ?int $ignoreId = null): string

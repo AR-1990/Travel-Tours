@@ -262,7 +262,7 @@ Route::get('/cruise-list', [FrontController::class, 'cruiseList']);
 Route::get('/cruise-search-result', [FrontController::class, 'cruiseSearchResult']);
 Route::get('/cruise-single', [FrontController::class, 'cruiseSingle']);
 
-Route::get('/dashboard', [FrontController::class, 'dashboard']);
+// Route::get('/dashboard', [FrontController::class, 'dashboard']);
 Route::get('/destination', [FrontController::class, 'destination']);
 Route::get('/faq', [FrontController::class, 'faq']);
 
@@ -274,7 +274,7 @@ Route::get('/flight-list', [FrontController::class, 'flightList']);
 Route::get('/flight-search-result', [FrontController::class, 'flightSearchResult']);
 Route::get('/flight-single', [FrontController::class, 'flightSingle']);
 
-Route::get('/forgot-password', [FrontController::class, 'forgotPassword']);
+// Route::get('/forgot-password', [FrontController::class, 'forgotPassword']);
 Route::get('/gallery', [FrontController::class, 'gallery']);
 
 Route::get('/hotel-add', [FrontController::class, 'hotelAdd']);
@@ -295,7 +295,7 @@ Route::get('/hotel-single', [FrontController::class, 'hotelSingle']);
 Route::get('/pricing', [FrontController::class, 'pricing']);
 Route::get('/privacy', [FrontController::class, 'privacy']);
 
-Route::get('/profile', [FrontController::class, 'profile']);
+// Route::get('/profile', [FrontController::class, 'profile']);
 Route::get('/profile-booking-history', [FrontController::class, 'profileBookingHistory']);
 Route::get('/profile-booking', [FrontController::class, 'profileBooking']);
 Route::get('/profile-listing', [FrontController::class, 'profileListing']);
@@ -305,7 +305,7 @@ Route::get('/profile-setting', [FrontController::class, 'profileSetting']);
 Route::get('/profile-wallet', [FrontController::class, 'profileWallet']);
 Route::get('/profile-wishlist', [FrontController::class, 'profileWishlist']);
 
-Route::get('/register', [FrontController::class, 'register']);
+// Route::get('/register', [FrontController::class, 'register']);
 Route::get('/service', [FrontController::class, 'service']);
 Route::get('/service-single', [FrontController::class, 'serviceSingle']);
 
