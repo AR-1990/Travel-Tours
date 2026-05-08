@@ -7,67 +7,97 @@
     $user = auth()->user();
     $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
 @endphp
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
+
+<div class="admin-panel">
+    <!-- ========== SIDEBAR START ========== -->
+    @include('admin.layouts.sidebar')
+    <!-- ========== SIDEBAR END ========== -->
+
+    <main class="main-content flex-grow-1">
+        <div class="container-fluid">
+
+            <!-- Page Header -->
+            <div class="page-header mb-4">
                 <div>
-                    <h1 class="h3 mb-1 text-gray-800">Create New Permission</h1>
-                    <p class="text-gray-600 mb-0">Add a new permission to the system</p>
+                    <h1 class="dashboard-title">
+                        <span class="title-icon">🔐</span> Create Permission
+                    </h1>
+                    <p class="dashboard-subtitle">Add a new permission to the system</p>
                 </div>
                 <a href="{{ route($panelPrefix . '.permissions') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Permissions
                 </a>
             </div>
 
-            <!-- Form -->
-            <div class="card-modern">
-                <form action="{{ route($panelPrefix . '.permissions.store') }}" method="POST">
+            <!-- Form Card -->
+            <div class="card-modern form-card">
+                <form action="{{ route($panelPrefix . '.permissions.store') }}" method="POST" class="perm-form">
                     @csrf
 
-                    <!-- Name -->
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Permission Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                               id="name" name="name" value="{{ old('name') }}" required placeholder="e.g., View Users">
-                        <small class="form-text text-muted">The display name for this permission</small>
-                        @error('name')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                    <!-- Basic Information Section -->
+                    <div class="form-section">
+                        <h5 class="form-section-title">
+                            <i class="fas fa-info-circle"></i> Permission Details
+                        </h5>
+
+                        <div class="row g-3">
+
+                            <!-- Name -->
+                            <div class="col-lg-6">
+                                <label for="name" class="form-label">
+                                    Permission Name <span class="required-star">*</span>
+                                </label>
+                                <input type="text" id="name" name="name"
+                                    class="form-control @error('name') is-invalid @enderror"
+                                    value="{{ old('name') }}" required placeholder="e.g., View Users">
+                                <small class="text-muted d-block mt-1">The display name for this permission</small>
+                                @error('name')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- Group -->
+                            <div class="col-lg-6">
+                                <label for="group" class="form-label">
+                                    Group <span class="required-star">*</span>
+                                </label>
+                                <input type="text" id="group" name="group"
+                                    class="form-control @error('group') is-invalid @enderror"
+                                    value="{{ old('group') }}" required placeholder="e.g., users">
+                                <small class="text-muted d-block mt-1">Module this permission belongs to (e.g., users, roles)</small>
+                                @error('group')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- Description -->
+                            <div class="col-12">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea id="description" name="description" rows="3"
+                                    class="form-control @error('description') is-invalid @enderror"
+                                    placeholder="Optional: briefly describe what this permission allows">{{ old('description') }}</textarea>
+                                @error('description')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                        </div>
                     </div>
 
-                    <!-- Group -->
-                    <div class="mb-3">
-                        <label for="group" class="form-label">Group <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control @error('group') is-invalid @enderror" 
-                               id="group" name="group" value="{{ old('group') }}" required placeholder="e.g., users">
-                        <small class="form-text text-muted">Group this permission belongs to (e.g., users, roles, permissions)</small>
-                        @error('group')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <!-- Description -->
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control @error('description') is-invalid @enderror" 
-                                  id="description" name="description" rows="3" placeholder="Optional description">{{ old('description') }}</textarea>
-                        @error('description')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <!-- Submit Buttons -->
-                    <div class="d-flex justify-content-end gap-2">
-                        <a href="{{ route($panelPrefix . '.permissions') }}" class="btn btn-secondary">Cancel</a>
+                    <!-- Form Actions -->
+                    <div class="form-actions">
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Create Permission
+                            <i class="fas fa-plus me-2"></i>Create Permission
                         </button>
+                        <a href="{{ route($panelPrefix . '.permissions') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
                     </div>
+
                 </form>
             </div>
+
         </div>
-    </div>
+    </main>
 </div>
 @endsection
