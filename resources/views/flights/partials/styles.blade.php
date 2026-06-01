@@ -33,6 +33,19 @@
         color: #fff;
         border-color: transparent;
     }
+    .flight-results-pagination .pagination {
+        justify-content: center;
+        margin-bottom: 0;
+    }
+    .flight-results-pagination .page-link {
+        border-radius: 0.5rem;
+        margin: 0 0.15rem;
+        color: #4f46e5;
+    }
+    .flight-results-pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border-color: transparent;
+    }
     .flight-search-card {
         background: #fff;
         border: 1px solid #e5e7eb;

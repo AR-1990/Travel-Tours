@@ -1,11 +1,23 @@
 @if(!empty($searchResult['solutions']))
     @php
-        $shown = count($searchResult['solutions']);
-        $total = (int) ($searchResult['total_found'] ?? $shown);
+        $onPage = count($searchResult['solutions']);
+        $listed = (int) ($searchResult['solutions_total'] ?? $onPage);
+        $apiTotal = (int) ($searchResult['total_found'] ?? $listed);
+        $paginator = $searchResult['solutions_paginator'] ?? null;
     @endphp
     <div class="results-header mb-3">
         <div>
-            <h2 class="h5 mb-1">{{ $shown }} fare{{ $shown !== 1 ? 's' : '' }} shown@if($total > $shown) <span class="text-muted fw-normal">of {{ $total }} returned</span>@endif</h2>
+            <h2 class="h5 mb-1">
+                @if($paginator)
+                    {{ $paginator->total() }} fare{{ $paginator->total() !== 1 ? 's' : '' }}
+                    <span class="text-muted fw-normal">(page {{ $paginator->currentPage() }} of {{ $paginator->lastPage() }})</span>
+                @else
+                    {{ $onPage }} fare{{ $onPage !== 1 ? 's' : '' }}
+                @endif
+                @if($apiTotal > $listed)
+                    <span class="text-muted fw-normal">· {{ $listed }} on this search</span>
+                @endif
+            </h2>
             @if(!empty($searchInput))
                 <p class="text-muted small mb-0">
                     {{ strtoupper($searchInput['origin'] ?? '') }} → {{ strtoupper($searchInput['destination'] ?? '') }}
@@ -46,5 +58,8 @@
             </tbody>
         </table>
     </div>
+
+    @include('flights.partials.results-pagination')
+
     <p class="small text-muted mt-2 mb-0">Tariff fares for the market — not tied to live seat availability. Use <strong>Fare Rules</strong> with a fare basis for restrictions.</p>
 @endif

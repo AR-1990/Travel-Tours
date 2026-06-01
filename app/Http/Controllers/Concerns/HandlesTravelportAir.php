@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Concerns;
 use App\Services\Travelport\TravelportAirCatalog;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
+use App\Support\FlightResultsPaginator;
 use Illuminate\Http\Request;
 
 trait HandlesTravelportAir
@@ -63,11 +64,25 @@ trait HandlesTravelportAir
 
         if ($request->isMethod('post')) {
             $result = $this->runRouteSearch($request, $air);
-            $data['searchResult'] = $result;
-            $data['searchInput'] = $request->only(['origin', 'destination', 'departure_date', 'return_date', 'adults', 'trip_type']);
-            $data['hasPricingContext'] = $air->hasStoredPricingContext();
+            $input = $request->only(['origin', 'destination', 'departure_date', 'return_date', 'adults', 'trip_type']);
 
-            session()->flash($result['ok'] ? 'success' : 'error', $result['message']);
+            session([
+                'travelport.flight_search' => [
+                    'result' => $result,
+                    'input' => $input,
+                ],
+            ]);
+
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.search', ['page' => 1])
+                ->with($result['ok'] ? 'success' : 'error', $result['message']);
+        }
+
+        $stored = session('travelport.flight_search');
+        if (is_array($stored) && isset($stored['result'])) {
+            $data['searchResult'] = FlightResultsPaginator::apply($stored['result'], $request);
+            $data['searchInput'] = $stored['input'] ?? [];
+            $data['hasPricingContext'] = $air->hasStoredPricingContext();
         }
 
         return view('flights.search', $data);
@@ -95,11 +110,26 @@ trait HandlesTravelportAir
 
         if ($request->isMethod('post')) {
             $result = $air->execute($operation, $this->operationParams($request, $operation));
-            $data['searchResult'] = $result;
-            $data['searchInput'] = $request->all();
-            $data['hasPricingContext'] = $air->hasStoredPricingContext();
+            $input = $this->operationParams($request, $operation);
 
-            session()->flash($result['ok'] ? 'success' : 'error', $result['message']);
+            session([
+                'travelport.flight_operation' => [
+                    'operation' => $operation,
+                    'result' => $result,
+                    'input' => $input,
+                ],
+            ]);
+
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.operation', ['operation' => $operation, 'page' => 1])
+                ->with($result['ok'] ? 'success' : 'error', $result['message']);
+        }
+
+        $stored = session('travelport.flight_operation');
+        if (is_array($stored) && ($stored['operation'] ?? '') === $operation && isset($stored['result'])) {
+            $data['searchResult'] = FlightResultsPaginator::apply($stored['result'], $request);
+            $data['searchInput'] = array_merge($request->all(), $stored['input'] ?? []);
+            $data['hasPricingContext'] = $air->hasStoredPricingContext();
         }
 
         return view('flights.operation', $data);

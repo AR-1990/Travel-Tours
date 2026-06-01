@@ -1,14 +1,21 @@
 @if(!empty($searchResult['solutions']))
     @php
-        $shown = count($searchResult['solutions']);
-        $total = (int) ($searchResult['total_found'] ?? $shown);
+        $onPage = count($searchResult['solutions']);
+        $listed = (int) ($searchResult['solutions_total'] ?? $onPage);
+        $apiTotal = (int) ($searchResult['total_found'] ?? $listed);
+        $paginator = $searchResult['solutions_paginator'] ?? null;
     @endphp
     <div class="results-header">
         <div>
             <h2 class="h5 mb-1">
-                {{ $shown }} fare option{{ $shown !== 1 ? 's' : '' }} shown
-                @if($total > $shown)
-                    <span class="text-muted fw-normal">of {{ $total }} returned</span>
+                @if($paginator)
+                    {{ $paginator->total() }} fare option{{ $paginator->total() !== 1 ? 's' : '' }}
+                    <span class="text-muted fw-normal">(page {{ $paginator->currentPage() }} of {{ $paginator->lastPage() }})</span>
+                @else
+                    {{ $onPage }} fare option{{ $onPage !== 1 ? 's' : '' }}
+                @endif
+                @if($apiTotal > $listed)
+                    <span class="text-muted fw-normal">· {{ $listed }} loaded from GDS</span>
                 @endif
             </h2>
             @if(!empty($searchInput))
@@ -95,6 +102,14 @@
             </div>
         </article>
     @endforeach
+
+    @include('flights.partials.results-pagination')
+@elseif(!empty($searchResult) && ($searchResult['ok'] ?? false))
+    <div class="empty-results">
+        <i class="fas fa-plane-slash fa-2x text-muted mb-3"></i>
+        <h3 class="h6">No fares to display</h3>
+        <p class="text-muted small mb-0">Try different dates or airports.</p>
+    </div>
 @else
     <div class="empty-results">
         <i class="fas fa-plane-slash fa-2x text-muted mb-3"></i>
