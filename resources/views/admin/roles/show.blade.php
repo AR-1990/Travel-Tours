@@ -17,7 +17,13 @@
                     <p class="text-gray-600 mb-0">View role information and permissions</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route($panelPrefix . '.roles.edit', $role->id) }}" class="btn btn-primary">
+                    <a href="{{ route($panelPrefix . '.roles.edit', $role->id) }}" class="btn btn-primary"
+                        data-swal-confirm
+                        data-swal-title="Edit this role?"
+                        data-swal-text="You will open the role editor."
+                        data-swal-icon="question"
+                        data-swal-confirm-text="Continue"
+                        data-swal-confirm-color="#0d6efd">
                         <i class="fas fa-edit me-2"></i>Edit
                     </a>
                     <a href="{{ route($panelPrefix . '.roles') }}" class="btn btn-secondary">

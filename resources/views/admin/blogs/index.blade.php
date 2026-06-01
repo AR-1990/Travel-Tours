@@ -52,10 +52,22 @@
                             <td>{{ $blog->updated_at?->format('M d, Y') }}</td>
                             <td>
                                 <div class="d-flex gap-2">
-                                    <a href="{{ route('admin.blogs.edit', $blog->id) }}" class="btn btn-sm btn-primary">
+                                    <a href="{{ route('admin.blogs.edit', $blog->id) }}" class="btn btn-sm btn-primary"
+                                        data-swal-confirm
+                                        data-swal-title="Edit this blog?"
+                                        data-swal-text="You will open the blog editor."
+                                        data-swal-icon="question"
+                                        data-swal-confirm-text="Continue"
+                                        data-swal-confirm-color="#0d6efd">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <form action="{{ route('admin.blogs.destroy', $blog->id) }}" method="POST" onsubmit="return confirm('Delete this blog?')">
+                                    <form action="{{ route('admin.blogs.destroy', $blog->id) }}" method="POST"
+                                        data-swal-confirm
+                                        data-swal-title="Delete this blog?"
+                                        data-swal-text="This action cannot be undone."
+                                        data-swal-icon="warning"
+                                        data-swal-confirm-text="Yes, delete"
+                                        data-swal-confirm-color="#dc3545">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-danger">

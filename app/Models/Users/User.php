@@ -2,16 +2,16 @@
 
 namespace App\Models\Users;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 use App\Models\System\Permission;
 use App\Models\System\Role;
 use App\Models\System\Tenant;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -22,8 +22,12 @@ class User extends Authenticatable
         'last_name',
         'slug',
         'email',
+        'username',
         'password',
         'phone',
+        'country',
+        'photo',
+        'agent_document',
         'email_verified_at',
         'role_id',
         'tenant_id',
@@ -51,7 +55,7 @@ class User extends Authenticatable
     public function userPermissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'user_permissions')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -70,26 +74,26 @@ class User extends Authenticatable
             return false;
         }
 
-        if (!$this->role_id) {
+        if (! $this->role_id) {
             return false;
         }
-        
+
         // Load userPermissions if not already loaded
-        if (!$this->relationLoaded('userPermissions')) {
+        if (! $this->relationLoaded('userPermissions')) {
             $this->load('userPermissions');
         }
-        
+
         // Check user-specific permissions first (takes precedence)
         if ($this->userPermissions && $this->userPermissions->where('slug', $permissionSlug)->isNotEmpty()) {
             return true;
         }
-        
+
         // If no user-specific permission, check role permissions
-        if (!$this->relationLoaded('role')) {
+        if (! $this->relationLoaded('role')) {
             $this->load('role');
         }
-        
-        if (!$this->role) {
+
+        if (! $this->role) {
             return false;
         }
 
@@ -101,7 +105,7 @@ class User extends Authenticatable
      */
     public function hasRole(string $roleSlug): bool
     {
-        if (!$this->role) {
+        if (! $this->role) {
             return false;
         }
 
@@ -110,16 +114,16 @@ class User extends Authenticatable
 
     public function canAccessAdminPanel(): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 
         if ($this->tenant_id) {
-            if (!$this->relationLoaded('tenant')) {
+            if (! $this->relationLoaded('tenant')) {
                 $this->load('tenant');
             }
 
-            if (!$this->tenant || !$this->tenant->is_active || $this->tenant->status !== 'approved') {
+            if (! $this->tenant || ! $this->tenant->is_active || $this->tenant->status !== 'approved') {
                 return false;
             }
         }
@@ -133,6 +137,33 @@ class User extends Authenticatable
         }
 
         return false;
+    }
+
+    /**
+     * Build credentials array for Auth::attempt using email or username.
+     */
+    public static function credentialsFromLogin(string $login, string $password): array
+    {
+        $login = trim($login);
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        return [$field => $login, 'password' => $password];
+    }
+
+    /**
+     * Generate a unique username from an email local-part (for sub-agents and defaults).
+     */
+    public static function generateUniqueUsernameFromEmail(string $email): string
+    {
+        $base = Str::slug(Str::before($email, '@')) ?: 'user';
+        $candidate = $base;
+        $n = 0;
+        while (static::withTrashed()->where('username', $candidate)->exists()) {
+            $n++;
+            $candidate = $base.'-'.$n;
+        }
+
+        return $candidate;
     }
 
     protected $hidden = [

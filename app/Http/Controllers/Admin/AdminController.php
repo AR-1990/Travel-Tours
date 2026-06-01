@@ -88,21 +88,24 @@ class AdminController extends Controller
     protected function handlePortalLogin(Request $request, string $expectedType, string $errorRoute, string $label)
     {
         $request->validate([
-            'email' => 'required|email',
+            'login' => 'required|string',
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($request->only('email', 'password'))) {
+        $credentials = User::credentialsFromLogin($request->input('login'), $request->input('password'));
+
+        if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
             $user = Auth::user();
             /** @var \App\Models\Users\User $user */
             $user->refresh();
-            
+
             if ($user->user_type !== $expectedType) {
                 Auth::logout();
+
                 return redirect()->route($errorRoute)->withErrors([
-                    'email' => 'Invalid portal. Please use the correct login URL for your account type.',
+                    'login' => 'Invalid portal. Please use the correct login URL for your account type.',
                 ]);
             }
 
@@ -110,14 +113,15 @@ class AdminController extends Controller
                 return redirect()->route($this->dashboardRouteForUser($user));
             } else {
                 Auth::logout();
+
                 return redirect()->route($errorRoute)->withErrors([
-                    'email' => 'Access denied for ' . $label . '. Your account is inactive or awaiting approval.',
+                    'login' => 'Access denied for '.$label.'. Your account is inactive or awaiting approval.',
                 ]);
             }
         }
 
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
+            'login' => 'The provided credentials do not match our records.',
         ]);
     }
 
@@ -128,7 +132,6 @@ class AdminController extends Controller
     {
         $user = Auth::user();
         /** @var \App\Models\Users\User $user */
-        
         if ($user->user_type === 'super_admin') {
             if (request()->routeIs('agent.*') || request()->routeIs('subagent.*')) {
                 return redirect()->route('admin.dashboard');
@@ -158,7 +161,7 @@ class AdminController extends Controller
         $subAgentCount = User::where('tenant_id', $tenantId)->where('user_type', 'sub_agent')->count();
         $totalTenants = null;
         $pendingTenants = null;
-        
+
         return view('admin.dashboard', compact('totalUsers', 'totalAdmins', 'recentUsers', 'subAgentCount', 'totalTenants', 'pendingTenants'));
     }
 }

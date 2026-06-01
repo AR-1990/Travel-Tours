@@ -15,7 +15,7 @@ class BlogController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->user_type !== 'super_admin') {
+        if (! $user || $user->user_type !== 'super_admin') {
             abort(403, 'Only super admin can manage blogs.');
         }
     }
@@ -31,6 +31,7 @@ class BlogController extends Controller
     public function create()
     {
         $this->ensureSuperAdmin();
+
         return view('admin.blogs.create');
     }
 
@@ -82,7 +83,7 @@ class BlogController extends Controller
 
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:blogs,slug,' . $blog->id,
+            'slug' => 'nullable|string|max:255|unique:blogs,slug,'.$blog->id,
             'description' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
@@ -96,7 +97,9 @@ class BlogController extends Controller
 
         $imagePath = $blog->image;
         if ($request->hasFile('image')) {
-            $this->deleteImageIfStored($blog->image);
+            if ($blog->image) {
+                Storage::disk('public')->delete($blog->image);
+            }
             $imagePath = $request->file('image')->store('blogs', 'public');
         }
 
@@ -117,20 +120,13 @@ class BlogController extends Controller
         $this->ensureSuperAdmin();
         $blog = Blog::findOrFail($id);
 
-        $this->deleteImageIfStored($blog->image);
+        if ($blog->image) {
+            Storage::disk('public')->delete($blog->image);
+        }
 
         $blog->delete();
 
         return redirect()->route('admin.blogs.index')->with('success', 'Blog deleted successfully!');
-    }
-
-    protected function deleteImageIfStored(?string $imagePath): void
-    {
-        if (!$imagePath || Str::startsWith($imagePath, ['assets/', 'http://', 'https://'])) {
-            return;
-        }
-
-        Storage::disk('public')->delete($imagePath);
     }
 
     protected function uniqueSlug(string $baseSlug, ?int $ignoreId = null): string
@@ -143,7 +139,7 @@ class BlogController extends Controller
                 ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
                 ->exists()
         ) {
-            $slug = $baseSlug . '-' . $counter;
+            $slug = $baseSlug.'-'.$counter;
             $counter++;
         }
 

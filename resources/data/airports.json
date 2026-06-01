@@ -1,0 +1,688 @@
+[
+  {
+    "code": "LHR",
+    "name": "Heathrow",
+    "city": "London",
+    "country": "United Kingdom",
+    "type": "airport"
+  },
+  {
+    "code": "LGW",
+    "name": "Gatwick",
+    "city": "London",
+    "country": "United Kingdom",
+    "type": "airport"
+  },
+  {
+    "code": "STN",
+    "name": "Stansted",
+    "city": "London",
+    "country": "United Kingdom",
+    "type": "airport"
+  },
+  {
+    "code": "LTN",
+    "name": "Luton",
+    "city": "London",
+    "country": "United Kingdom",
+    "type": "airport"
+  },
+  {
+    "code": "LCY",
+    "name": "City Airport",
+    "city": "London",
+    "country": "United Kingdom",
+    "type": "airport"
+  },
+  {
+    "code": "LON",
+    "name": "London (all airports)",
+    "city": "London",
+    "country": "United Kingdom",
+    "type": "city"
+  },
+  {
+    "code": "JFK",
+    "name": "John F. Kennedy",
+    "city": "New York",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "EWR",
+    "name": "Newark Liberty",
+    "city": "New York",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "LGA",
+    "name": "LaGuardia",
+    "city": "New York",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "NYC",
+    "name": "New York (all)",
+    "city": "New York",
+    "country": "United States",
+    "type": "city"
+  },
+  {
+    "code": "LAX",
+    "name": "Los Angeles Intl",
+    "city": "Los Angeles",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "SFO",
+    "name": "San Francisco Intl",
+    "city": "San Francisco",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "ORD",
+    "name": "O'Hare",
+    "city": "Chicago",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "MIA",
+    "name": "Miami Intl",
+    "city": "Miami",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "ATL",
+    "name": "Hartsfield-Jackson",
+    "city": "Atlanta",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "DFW",
+    "name": "Dallas/Fort Worth",
+    "city": "Dallas",
+    "country": "United States",
+    "type": "city"
+  },
+  {
+    "code": "SEA",
+    "name": "Seattle-Tacoma",
+    "city": "Seattle",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "BOS",
+    "name": "Logan",
+    "city": "Boston",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "IAD",
+    "name": "Dulles",
+    "city": "Washington",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "DCA",
+    "name": "Reagan National",
+    "city": "Washington",
+    "country": "United States",
+    "type": "airport"
+  },
+  {
+    "code": "DXB",
+    "name": "Dubai Intl",
+    "city": "Dubai",
+    "country": "United Arab Emirates",
+    "type": "airport"
+  },
+  {
+    "code": "AUH",
+    "name": "Abu Dhabi Intl",
+    "city": "Abu Dhabi",
+    "country": "United Arab Emirates",
+    "type": "airport"
+  },
+  {
+    "code": "DOH",
+    "name": "Hamad Intl",
+    "city": "Doha",
+    "country": "Qatar",
+    "type": "airport"
+  },
+  {
+    "code": "CDG",
+    "name": "Charles de Gaulle",
+    "city": "Paris",
+    "country": "France",
+    "type": "airport"
+  },
+  {
+    "code": "ORY",
+    "name": "Orly",
+    "city": "Paris",
+    "country": "France",
+    "type": "airport"
+  },
+  {
+    "code": "PAR",
+    "name": "Paris (all)",
+    "city": "Paris",
+    "country": "France",
+    "type": "city"
+  },
+  {
+    "code": "AMS",
+    "name": "Schiphol",
+    "city": "Amsterdam",
+    "country": "Netherlands",
+    "type": "airport"
+  },
+  {
+    "code": "FRA",
+    "name": "Frankfurt",
+    "city": "Frankfurt",
+    "country": "Germany",
+    "type": "airport"
+  },
+  {
+    "code": "MUC",
+    "name": "Munich",
+    "city": "Munich",
+    "country": "Germany",
+    "type": "airport"
+  },
+  {
+    "code": "BER",
+    "name": "Brandenburg",
+    "city": "Berlin",
+    "country": "Germany",
+    "type": "airport"
+  },
+  {
+    "code": "MAD",
+    "name": "Barajas",
+    "city": "Madrid",
+    "country": "Spain",
+    "type": "airport"
+  },
+  {
+    "code": "BCN",
+    "name": "El Prat",
+    "city": "Barcelona",
+    "country": "Spain",
+    "type": "airport"
+  },
+  {
+    "code": "FCO",
+    "name": "Fiumicino",
+    "city": "Rome",
+    "country": "Italy",
+    "type": "airport"
+  },
+  {
+    "code": "MXP",
+    "name": "Malpensa",
+    "city": "Milan",
+    "country": "Italy",
+    "type": "airport"
+  },
+  {
+    "code": "VCE",
+    "name": "Marco Polo",
+    "city": "Venice",
+    "country": "Italy",
+    "type": "airport"
+  },
+  {
+    "code": "IST",
+    "name": "Istanbul",
+    "city": "Istanbul",
+    "country": "Turkey",
+    "type": "airport"
+  },
+  {
+    "code": "SAW",
+    "name": "Sabiha Gokcen",
+    "city": "Istanbul",
+    "country": "Turkey",
+    "type": "airport"
+  },
+  {
+    "code": "SIN",
+    "name": "Changi",
+    "city": "Singapore",
+    "country": "Singapore",
+    "type": "airport"
+  },
+  {
+    "code": "HKG",
+    "name": "Hong Kong Intl",
+    "city": "Hong Kong",
+    "country": "Hong Kong",
+    "type": "airport"
+  },
+  {
+    "code": "NRT",
+    "name": "Narita",
+    "city": "Tokyo",
+    "country": "Japan",
+    "type": "airport"
+  },
+  {
+    "code": "HND",
+    "name": "Haneda",
+    "city": "Tokyo",
+    "country": "Japan",
+    "type": "airport"
+  },
+  {
+    "code": "TYO",
+    "name": "Tokyo (all)",
+    "city": "Tokyo",
+    "country": "Japan",
+    "type": "city"
+  },
+  {
+    "code": "ICN",
+    "name": "Incheon",
+    "city": "Seoul",
+    "country": "South Korea",
+    "type": "airport"
+  },
+  {
+    "code": "BKK",
+    "name": "Suvarnabhumi",
+    "city": "Bangkok",
+    "country": "Thailand",
+    "type": "airport"
+  },
+  {
+    "code": "KUL",
+    "name": "Kuala Lumpur Intl",
+    "city": "Kuala Lumpur",
+    "country": "Malaysia",
+    "type": "airport"
+  },
+  {
+    "code": "DEL",
+    "name": "Indira Gandhi",
+    "city": "Delhi",
+    "country": "India",
+    "type": "airport"
+  },
+  {
+    "code": "BOM",
+    "name": "Chhatrapati Shivaji",
+    "city": "Mumbai",
+    "country": "India",
+    "type": "airport"
+  },
+  {
+    "code": "BLR",
+    "name": "Kempegowda",
+    "city": "Bangalore",
+    "country": "India",
+    "type": "airport"
+  },
+  {
+    "code": "MAA",
+    "name": "Chennai",
+    "city": "Chennai",
+    "country": "India",
+    "type": "airport"
+  },
+  {
+    "code": "CCU",
+    "name": "Kolkata",
+    "city": "Kolkata",
+    "country": "India",
+    "type": "airport"
+  },
+  {
+    "code": "HYD",
+    "name": "Rajiv Gandhi",
+    "city": "Hyderabad",
+    "country": "India",
+    "type": "airport"
+  },
+  {
+    "code": "ISB",
+    "name": "Islamabad Intl",
+    "city": "Islamabad",
+    "country": "Pakistan",
+    "type": "airport"
+  },
+  {
+    "code": "KHI",
+    "name": "Jinnah Intl",
+    "city": "Karachi",
+    "country": "Pakistan",
+    "type": "airport"
+  },
+  {
+    "code": "LHE",
+    "name": "Allama Iqbal",
+    "city": "Lahore",
+    "country": "Pakistan",
+    "type": "city"
+  },
+  {
+    "code": "SYD",
+    "name": "Kingsford Smith",
+    "city": "Sydney",
+    "country": "Australia",
+    "type": "airport"
+  },
+  {
+    "code": "MEL",
+    "name": "Tullamarine",
+    "city": "Melbourne",
+    "country": "Australia",
+    "type": "airport"
+  },
+  {
+    "code": "BNE",
+    "name": "Brisbane",
+    "city": "Brisbane",
+    "country": "Australia",
+    "type": "airport"
+  },
+  {
+    "code": "YYZ",
+    "name": "Pearson",
+    "city": "Toronto",
+    "country": "Canada",
+    "type": "airport"
+  },
+  {
+    "code": "YVR",
+    "name": "Vancouver",
+    "city": "Vancouver",
+    "country": "Canada",
+    "type": "airport"
+  },
+  {
+    "code": "YUL",
+    "name": "Trudeau",
+    "city": "Montreal",
+    "country": "Canada",
+    "type": "airport"
+  },
+  {
+    "code": "GRU",
+    "name": "Guarulhos",
+    "city": "Sao Paulo",
+    "country": "Brazil",
+    "type": "airport"
+  },
+  {
+    "code": "GIG",
+    "name": "Galeao",
+    "city": "Rio de Janeiro",
+    "country": "Brazil",
+    "type": "airport"
+  },
+  {
+    "code": "JNB",
+    "name": "O.R. Tambo",
+    "city": "Johannesburg",
+    "country": "South Africa",
+    "type": "airport"
+  },
+  {
+    "code": "CPT",
+    "name": "Cape Town",
+    "city": "Cape Town",
+    "country": "South Africa",
+    "type": "airport"
+  },
+  {
+    "code": "CAI",
+    "name": "Cairo Intl",
+    "city": "Cairo",
+    "country": "Egypt",
+    "type": "airport"
+  },
+  {
+    "code": "NBO",
+    "name": "Jomo Kenyatta",
+    "city": "Nairobi",
+    "country": "Kenya",
+    "type": "airport"
+  },
+  {
+    "code": "PEK",
+    "name": "Capital",
+    "city": "Beijing",
+    "country": "China",
+    "type": "airport"
+  },
+  {
+    "code": "PVG",
+    "name": "Pudong",
+    "city": "Shanghai",
+    "country": "China",
+    "type": "airport"
+  },
+  {
+    "code": "CAN",
+    "name": "Baiyun",
+    "city": "Guangzhou",
+    "country": "China",
+    "type": "airport"
+  },
+  {
+    "code": "ZRH",
+    "name": "Zurich",
+    "city": "Zurich",
+    "country": "Switzerland",
+    "type": "airport"
+  },
+  {
+    "code": "VIE",
+    "name": "Vienna",
+    "city": "Vienna",
+    "country": "Austria",
+    "type": "airport"
+  },
+  {
+    "code": "BRU",
+    "name": "Brussels",
+    "city": "Brussels",
+    "country": "Belgium",
+    "type": "airport"
+  },
+  {
+    "code": "CPH",
+    "name": "Copenhagen",
+    "city": "Copenhagen",
+    "country": "Denmark",
+    "type": "airport"
+  },
+  {
+    "code": "OSL",
+    "name": "Gardermoen",
+    "city": "Oslo",
+    "country": "Norway",
+    "type": "airport"
+  },
+  {
+    "code": "ARN",
+    "name": "Arlanda",
+    "city": "Stockholm",
+    "country": "Sweden",
+    "type": "airport"
+  },
+  {
+    "code": "HEL",
+    "name": "Helsinki",
+    "city": "Helsinki",
+    "country": "Finland",
+    "type": "airport"
+  },
+  {
+    "code": "DUB",
+    "name": "Dublin",
+    "city": "Dublin",
+    "country": "Ireland",
+    "type": "airport"
+  },
+  {
+    "code": "LIS",
+    "name": "Lisbon",
+    "city": "Lisbon",
+    "country": "Portugal",
+    "type": "airport"
+  },
+  {
+    "code": "ATH",
+    "name": "Eleftherios Venizelos",
+    "city": "Athens",
+    "country": "Greece",
+    "type": "airport"
+  },
+  {
+    "code": "WAW",
+    "name": "Chopin",
+    "city": "Warsaw",
+    "country": "Poland",
+    "type": "airport"
+  },
+  {
+    "code": "PRG",
+    "name": "Vaclav Havel",
+    "city": "Prague",
+    "country": "Czech Republic",
+    "type": "airport"
+  },
+  {
+    "code": "RUH",
+    "name": "King Khalid",
+    "city": "Riyadh",
+    "country": "Saudi Arabia",
+    "type": "airport"
+  },
+  {
+    "code": "JED",
+    "name": "King Abdulaziz",
+    "city": "Jeddah",
+    "country": "Saudi Arabia",
+    "type": "airport"
+  },
+  {
+    "code": "MCT",
+    "name": "Muscat",
+    "city": "Muscat",
+    "country": "Oman",
+    "type": "airport"
+  },
+  {
+    "code": "BAH",
+    "name": "Bahrain",
+    "city": "Manama",
+    "country": "Bahrain",
+    "type": "airport"
+  },
+  {
+    "code": "KWI",
+    "name": "Kuwait",
+    "city": "Kuwait City",
+    "country": "Kuwait",
+    "type": "airport"
+  },
+  {
+    "code": "MEX",
+    "name": "Benito Juarez",
+    "city": "Mexico City",
+    "country": "Mexico",
+    "type": "airport"
+  },
+  {
+    "code": "CUN",
+    "name": "Cancun",
+    "city": "Cancun",
+    "country": "Mexico",
+    "type": "airport"
+  },
+  {
+    "code": "AKL",
+    "name": "Auckland",
+    "city": "Auckland",
+    "country": "New Zealand",
+    "type": "airport"
+  },
+  {
+    "code": "MNL",
+    "name": "Ninoy Aquino",
+    "city": "Manila",
+    "country": "Philippines",
+    "type": "airport"
+  },
+  {
+    "code": "SGN",
+    "name": "Tan Son Nhat",
+    "city": "Ho Chi Minh City",
+    "country": "Vietnam",
+    "type": "airport"
+  },
+  {
+    "code": "HAN",
+    "name": "Noi Bai",
+    "city": "Hanoi",
+    "country": "Vietnam",
+    "type": "airport"
+  },
+  {
+    "code": "CGK",
+    "name": "Soekarno-Hatta",
+    "city": "Jakarta",
+    "country": "Indonesia",
+    "type": "airport"
+  },
+  {
+    "code": "DPS",
+    "name": "Ngurah Rai",
+    "city": "Bali",
+    "country": "Indonesia",
+    "type": "airport"
+  },
+  {
+    "code": "TPE",
+    "name": "Taoyuan",
+    "city": "Taipei",
+    "country": "Taiwan",
+    "type": "airport"
+  },
+  {
+    "code": "KTM",
+    "name": "Tribhuvan",
+    "city": "Kathmandu",
+    "country": "Nepal",
+    "type": "airport"
+  },
+  {
+    "code": "CMB",
+    "name": "Bandaranaike",
+    "city": "Colombo",
+    "country": "Sri Lanka",
+    "type": "airport"
+  },
+  {
+    "code": "DAC",
+    "name": "Hazrat Shahjalal",
+    "city": "Dhaka",
+    "country": "Bangladesh",
+    "type": "airport"
+  }
+]

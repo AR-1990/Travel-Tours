@@ -4,46 +4,20 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="card-modern mb-4">
-        <h3 class="h4 mb-3">Create Agent (Super Admin)</h3>
-        <form method="POST" action="{{ route('admin.tenants.store') }}" class="row g-3">
-            @csrf
-            <div class="col-md-4">
-                <input type="text" name="tenant_name" class="form-control" placeholder="Agent Name" required>
-            </div>
-            <div class="col-md-4">
-                <input type="email" name="tenant_email" class="form-control" placeholder="Agent Email">
-            </div>
-            <div class="col-md-4">
-                <input type="text" name="tenant_phone" class="form-control" placeholder="Agent Phone">
-            </div>
-            <div class="col-md-3">
-                <input type="text" name="admin_first_name" class="form-control" placeholder="Admin First Name" required>
-            </div>
-            <div class="col-md-3">
-                <input type="text" name="admin_last_name" class="form-control" placeholder="Admin Last Name" required>
-            </div>
-            <div class="col-md-3">
-                <input type="email" name="admin_email" class="form-control" placeholder="Admin Email" required>
-            </div>
-            <div class="col-md-3">
-                <input type="password" name="admin_password" class="form-control" placeholder="Admin Password" required>
-            </div>
-            <div class="col-12">
-                <button class="btn btn-primary">Create Agent</button>
-            </div>
-        </form>
-    </div>
+    @include('admin.tenants._agency-create-form')
 
     <div class="card-modern">
-        <h3 class="h4 mb-3">Agent Requests</h3>
+        <h3 class="h4 mb-3">Agent requests &amp; agencies</h3>
         <div class="table-responsive">
             <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>Name</th>
+                        <th>Agency code</th>
+                        <th>Agent code</th>
+                        <th>Office type</th>
                         <th>Email</th>
-                        <th>Sub Agents</th>
+                        <th>Sub agents</th>
                         <th>Status</th>
                         <th>Active</th>
                         <th>Action</th>
@@ -53,28 +27,43 @@
                     @forelse($tenants as $tenant)
                         <tr>
                             <td>{{ $tenant->name }}</td>
+                            <td><code>{{ $tenant->agency_code }}</code></td>
+                            <td><code>{{ $tenant->agent_code }}</code></td>
+                            <td>{{ str_replace('_', ' ', $tenant->office_type ?? 'b2b_agent') }}</td>
                             <td>{{ $tenant->email }}</td>
                             <td>{{ $tenant->sub_agents_count }}</td>
                             <td><span class="badge bg-{{ $tenant->status === 'approved' ? 'success' : ($tenant->status === 'rejected' ? 'danger' : 'warning') }}">{{ ucfirst($tenant->status) }}</span></td>
                             <td>{{ $tenant->is_active ? 'Yes' : 'No' }}</td>
-                            <td class="d-flex gap-2">
+                            <td class="d-flex flex-wrap gap-2">
                                 <a href="{{ route('admin.tenants.show', $tenant->id) }}" class="btn btn-sm btn-primary">Details</a>
                                 @if($tenant->status === 'pending' || $tenant->status === 'rejected')
-                                    <form method="POST" action="{{ route('admin.tenants.approve', $tenant->id) }}">
+                                    <form method="POST" action="{{ route('admin.tenants.approve', $tenant->id) }}"
+                                        data-swal-confirm
+                                        data-swal-title="Approve this agency?"
+                                        data-swal-text="The agency and its admins will be activated."
+                                        data-swal-icon="question"
+                                        data-swal-confirm-text="Yes, approve"
+                                        data-swal-confirm-color="#198754">
                                         @csrf
-                                        <button class="btn btn-sm btn-success">Approve</button>
+                                        <button class="btn btn-sm btn-success" type="submit">Approve</button>
                                     </form>
                                 @endif
                                 @if($tenant->status !== 'rejected')
-                                    <form method="POST" action="{{ route('admin.tenants.reject', $tenant->id) }}">
+                                    <form method="POST" action="{{ route('admin.tenants.reject', $tenant->id) }}"
+                                        data-swal-confirm
+                                        data-swal-title="Reject this agency?"
+                                        data-swal-text="The agency will be marked rejected and deactivated."
+                                        data-swal-icon="warning"
+                                        data-swal-confirm-text="Yes, reject"
+                                        data-swal-confirm-color="#dc3545">
                                         @csrf
-                                        <button class="btn btn-sm btn-danger">Reject</button>
+                                        <button class="btn btn-sm btn-danger" type="submit">Reject</button>
                                     </form>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6">No tenants found.</td></tr>
+                        <tr><td colspan="9">No tenants found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

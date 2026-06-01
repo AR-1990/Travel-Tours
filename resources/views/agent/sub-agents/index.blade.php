@@ -52,13 +52,31 @@
                                 </td>
                                 <td class="d-flex gap-2">
                                     @if(method_exists($agent, 'trashed') && $agent->trashed())
-                                        <form action="{{ route('agent.managers.restore', $agent->id) }}" method="POST">
+                                        <form action="{{ route('agent.managers.restore', $agent->id) }}" method="POST"
+                                            data-swal-confirm
+                                            data-swal-title="Restore this sub-agent?"
+                                            data-swal-text="They will be able to sign in again."
+                                            data-swal-icon="question"
+                                            data-swal-confirm-text="Yes, restore"
+                                            data-swal-confirm-color="#198754">
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-success">Restore</button>
                                         </form>
                                     @else
-                                        <a href="{{ route('agent.managers.edit', $agent->id) }}" class="btn btn-sm btn-primary">Edit</a>
-                                        <form action="{{ route('agent.managers.destroy', $agent->id) }}" method="POST" onsubmit="return confirm('Delete this sub-agent?')">
+                                        <a href="{{ route('agent.managers.edit', $agent->id) }}" class="btn btn-sm btn-primary"
+                                            data-swal-confirm
+                                            data-swal-title="Edit this sub-agent?"
+                                            data-swal-text="You will open the edit form."
+                                            data-swal-icon="question"
+                                            data-swal-confirm-text="Continue"
+                                            data-swal-confirm-color="#0d6efd">Edit</a>
+                                        <form action="{{ route('agent.managers.destroy', $agent->id) }}" method="POST"
+                                            data-swal-confirm
+                                            data-swal-title="Delete this sub-agent?"
+                                            data-swal-text="This account will be soft-deleted."
+                                            data-swal-icon="warning"
+                                            data-swal-confirm-text="Yes, delete"
+                                            data-swal-confirm-color="#dc3545">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>

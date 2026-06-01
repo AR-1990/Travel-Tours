@@ -58,11 +58,23 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <a href="{{ route($panelPrefix . '.roles.edit', $role->id) }}" class="btn btn-sm btn-primary flex-fill">
+                        <a href="{{ route($panelPrefix . '.roles.edit', $role->id) }}" class="btn btn-sm btn-primary flex-fill"
+                            data-swal-confirm
+                            data-swal-title="Edit this role?"
+                            data-swal-text="You will open the role editor."
+                            data-swal-icon="question"
+                            data-swal-confirm-text="Continue"
+                            data-swal-confirm-color="#0d6efd">
                             <i class="fas fa-edit me-1"></i>Edit
                         </a>
                         @if($role->id != 1)
-                            <form action="{{ route($panelPrefix . '.roles.destroy', $role->id) }}" method="POST" class="flex-fill" onsubmit="return confirm('Are you sure you want to delete this role?');">
+                            <form action="{{ route($panelPrefix . '.roles.destroy', $role->id) }}" method="POST" class="flex-fill"
+                                data-swal-confirm
+                                data-swal-title="Delete this role?"
+                                data-swal-text="Users assigned only to this role may lose access until reassigned."
+                                data-swal-icon="warning"
+                                data-swal-confirm-text="Yes, delete"
+                                data-swal-confirm-color="#dc3545">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-danger w-100">

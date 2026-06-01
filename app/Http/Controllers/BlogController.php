@@ -2,23 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\BlogService;
+use App\Models\Content\Blog;
 
 class BlogController extends Controller
 {
-    public function __construct(protected BlogService $blogService)
-    {
-    }
-
     public function index()
     {
-        $blogs = $this->blogService->getPaginatedBlogs();
+        $blogs = Blog::latest()->get();
 
-        return view('pages.blogs.index', compact('blogs'));
+        return view('frontend.blogs.index', compact('blogs'));
     }
 
     public function show(string $slug)
     {
-        return view('pages.blogs.show', $this->blogService->getBlogDetailData($slug));
+        $blog = Blog::where('slug', $slug)->firstOrFail();
+
+        return view('frontend.blogs.show', compact('blog'));
     }
 }

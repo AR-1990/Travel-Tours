@@ -3067,72 +3067,45 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-6 col-lg-4">
-                        <div class="blog-item wow fadeInUp" data-wow-duration="1s" data-wow-delay=".25s">
-                            <span class="blog-date">August 25, 2025</span>
-                            <div class="blog-item-img">
-                                <img src="assets/img/blog/01.jpg" alt="Thumb">
-                            </div>
-                            <div class="blog-item-info">
-                                <div class="blog-item-meta">
-                                    <ul>
-                                        <li><a href="#"><i class="far fa-user-circle"></i> By Alicia Davis</a></li>
-                                        <li><a href="#"><i class="far fa-comments"></i> 25.5k Comments</a></li>
-                                    </ul>
+                    @forelse(($recentBlogs ?? collect()) as $blog)
+                        <div class="col-md-6 col-lg-4">
+                            <div class="blog-item wow fadeInUp" data-wow-duration="1s" data-wow-delay="{{ ['.25s', '.5s', '.75s'][$loop->index % 3] }}">
+                                <span class="blog-date">{{ $blog->updated_at?->format('F d, Y') }}</span>
+                                <div class="blog-item-img">
+                                    @if($blog->image)
+                                        <img src="{{ asset('storage/'.$blog->image) }}" alt="{{ $blog->title }}">
+                                    @else
+                                        <img src="{{ asset('assets/img/blog/0'.(($loop->iteration % 3) + 1).'.jpg') }}" alt="{{ $blog->title }}">
+                                    @endif
                                 </div>
-                                <h4 class="blog-title">
-                                    <a href="blog-single">There are many variations available For majority in some injected
-                                        humour</a>
-                                </h4>
-                                <a class="theme-btn mt-3" href="blog-single">Read More <i
-                                        class="fas fa-arrow-circle-right"></i></a>
+                                <div class="blog-item-info">
+                                    <div class="blog-item-meta">
+                                        <ul>
+                                            <li><a href="{{ route('blogs.show', $blog->slug) }}"><i class="far fa-newspaper"></i> Article</a></li>
+                                            <li><i class="far fa-clock"></i> {{ $blog->updated_at?->diffForHumans() }}</li>
+                                        </ul>
+                                    </div>
+                                    <h4 class="blog-title">
+                                        <a href="{{ route('blogs.show', $blog->slug) }}">{{ $blog->title }}</a>
+                                    </h4>
+                                    <a class="theme-btn mt-3" href="{{ route('blogs.show', $blog->slug) }}">Read More <i class="fas fa-arrow-circle-right"></i></a>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="blog-item wow fadeInUp" data-wow-duration="1s" data-wow-delay=".50s">
-                            <span class="blog-date">August 27, 2025</span>
-                            <div class="blog-item-img">
-                                <img src="assets/img/blog/02.jpg" alt="Thumb">
-                            </div>
-                            <div class="blog-item-info">
-                                <div class="blog-item-meta">
-                                    <ul>
-                                        <li><a href="#"><i class="far fa-user-circle"></i> By Alicia Davis</a></li>
-                                        <li><a href="#"><i class="far fa-comments"></i> 25.5k Comments</a></li>
-                                    </ul>
-                                </div>
-                                <h4 class="blog-title">
-                                    <a href="blog-single">Established fact that reader distract will by the readable content</a>
-                                </h4>
-                                <a class="theme-btn mt-3" href="blog-single">Read More <i
-                                        class="fas fa-arrow-circle-right"></i></a>
-                            </div>
+                    @empty
+                        <div class="col-12 text-center py-4">
+                            <p class="text-muted mb-3">No blog posts published yet.</p>
+                            <a href="{{ route('blogs.index') }}" class="theme-btn">Blog</a>
                         </div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="blog-item wow fadeInUp" data-wow-duration="1s" data-wow-delay=".75s">
-                            <span class="blog-date">August 30, 2025</span>
-                            <div class="blog-item-img">
-                                <img src="assets/img/blog/03.jpg" alt="Thumb">
-                            </div>
-                            <div class="blog-item-info">
-                                <div class="blog-item-meta">
-                                    <ul>
-                                        <li><a href="#"><i class="far fa-user-circle"></i> By Alicia Davis</a></li>
-                                        <li><a href="#"><i class="far fa-comments"></i> 25.5k Comments</a></li>
-                                    </ul>
-                                </div>
-                                <h4 class="blog-title">
-                                    <a href="blog-single">Contrary to popular belief simply text random roots piece of
-                                        classical</a>
-                                </h4>
-                                <a class="theme-btn mt-3" href="blog-single">Read More <i
-                                        class="fas fa-arrow-circle-right"></i></a>
-                            </div>
-                        </div>
-                    </div>
+                    @endforelse
                 </div>
+                @if(($recentBlogs ?? collect())->isNotEmpty())
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <a href="{{ route('blogs.index') }}" class="theme-btn">View all posts</a>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
         <!-- blog area end -->

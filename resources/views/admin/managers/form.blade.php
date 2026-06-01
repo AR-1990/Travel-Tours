@@ -137,7 +137,13 @@
                             </div>
                         @endif
 
-                        <form method="POST" action="{{ isset($manager) ? route($panelPrefix . '.managers.update', $manager->id) : route($panelPrefix . '.managers.store') }}">
+                        <form method="POST" action="{{ isset($manager) ? route($panelPrefix . '.managers.update', $manager->id) : route($panelPrefix . '.managers.store') }}" enctype="multipart/form-data"
+                            data-swal-confirm
+                            data-swal-title="{{ isset($manager) ? 'Save sub-agent changes?' : 'Create this sub-agent?' }}"
+                            data-swal-text="{{ isset($manager) ? 'Updates will apply immediately.' : 'A new sub-agent account will be created.' }}"
+                            data-swal-icon="question"
+                            data-swal-confirm-text="{{ isset($manager) ? 'Yes, save' : 'Yes, create' }}"
+                            data-swal-confirm-color="#0d6efd">
                             @csrf
                             @if(isset($manager))
                                 @method('PUT')
@@ -177,11 +183,52 @@
                                         value="{{ old('email', $manager->email ?? '') }}" required>
                                 </div>
                                 <div class="col-md-6">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="username" name="username" pattern="[a-zA-Z0-9._-]+"
+                                        value="{{ old('username', $manager->username ?? '') }}" placeholder="Leave blank to auto-generate from email">
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="phone" class="form-label">Mobile</label>
+                                    <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone', $manager->phone ?? '') }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="country" class="form-label">Country</label>
+                                    <input type="text" class="form-control" id="country" name="country" value="{{ old('country', $manager->country ?? '') }}">
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
                                     <label for="password" class="form-label">Password {!! !isset($manager) ? '<span class="text-danger">*</span>' : '<small class="text-muted">(Leave blank to keep current)</small>' !!}</label>
                                     <input type="password" class="form-control" id="password" name="password" 
                                         {{ !isset($manager) ? 'required' : '' }} minlength="8">
                                     @if(isset($manager))
                                         <small class="text-muted">Leave blank if you don't want to change the password</small>
+                                    @endif
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="password_confirmation" class="form-label">Confirm password {!! !isset($manager) ? '<span class="text-danger">*</span>' : '' !!}</label>
+                                    <input type="password" class="form-control" id="password_confirmation" name="password_confirmation"
+                                        {{ !isset($manager) ? 'required' : '' }} minlength="8">
+                                </div>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Profile picture</label>
+                                    <input type="file" name="photo" class="form-control" accept=".jpg,.jpeg,.png,.webp">
+                                    @if(isset($manager) && $manager->photo)
+                                        <small class="text-muted">Current: <a href="{{ asset('storage/' . $manager->photo) }}" target="_blank">view</a></small>
+                                    @endif
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Agent document</label>
+                                    <input type="file" name="agent_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                                    @if(isset($manager) && $manager->agent_document)
+                                        <small class="text-muted">Current: <a href="{{ asset('storage/' . $manager->agent_document) }}" target="_blank">view</a></small>
                                     @endif
                                 </div>
                             </div>

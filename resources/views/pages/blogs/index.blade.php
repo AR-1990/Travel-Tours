@@ -1,121 +1,67 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Explore the latest travel insights, destination ideas, and booking tips from Travel Tours.">
-    <meta name="keywords" content="travel blog, tours, destinations, travel tips">
-    <title>Travel Tours | Our Blog</title>
+@extends('layouts.main')
 
-    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/logo/favicon.png') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/all-fontawesome.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/animate.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/magnific-popup.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/owl.carousel.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/nice-select.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/jquery-ui.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/jquery.timepicker.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
-</head>
-<body>
-    <div class="preloader">
-        <div class="loader">
-            @for ($i = 1; $i <= 20; $i++)
-                <span style="--i:{{ $i }};"></span>
-            @endfor
-            <div class="loader-plane"></div>
+@section('title', 'Blogs - Travel Tours')
+
+@section('content')
+<div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-4xl font-bold text-gray-900">Travel Tours Blogs</h1>
+                <p class="text-gray-600 mt-2">Latest updates, travel tips, and platform news.</p>
+            </div>
+            <a href="{{ route('home') }}" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                Back to Home
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @forelse($blogs as $blog)
+                <a href="{{ route('blogs.show', $blog->slug) }}" class="block bg-white rounded-xl shadow border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow blog-card h-full">
+                    @if($blog->image)
+                        <img src="{{ asset('storage/' . $blog->image) }}" alt="{{ $blog->title }}" class="w-full h-48 object-cover">
+                    @else
+                        <div class="w-full h-48 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+                    @endif
+                    <div class="p-5 blog-card-body">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-2 blog-card-title">{{ $blog->title }}</h2>
+                        <p class="text-sm text-gray-500 mb-3">{{ $blog->updated_at?->format('M d, Y') }}</p>
+                        <p class="text-gray-600 blog-card-excerpt">
+                            {{ \Illuminate\Support\Str::limit(strip_tags($blog->description), 140) }}
+                        </p>
+                    </div>
+                </a>
+            @empty
+                <div class="col-span-3 text-center py-16 bg-white rounded-xl border border-gray-100">
+                    <p class="text-gray-500 text-lg">No blogs available yet.</p>
+                </div>
+            @endforelse
         </div>
     </div>
+</div>
+@endsection
 
-    @include('frontend.layout.header')
-
-    <main class="main">
-        <div class="site-breadcrumb" style="background: url('{{ asset('assets/img/breadcrumb/01.jpg') }}')">
-            <div class="container">
-                <h2 class="breadcrumb-title">Our Blog</h2>
-                <ul class="breadcrumb-menu">
-                    <li><a href="{{ route('home') }}">Home</a></li>
-                    <li class="active">Our Blog</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="blog-area py-120">
-            <div class="container">
-                <div class="row">
-                    <div class="col-lg-6 mx-auto wow fadeInDown" data-wow-duration="1s" data-wow-delay=".25s">
-                        <div class="site-heading text-center">
-                            <span class="site-title-tagline"><i class="far fa-plane"></i> Our Blog</span>
-                            <h2 class="site-title">Travel Stories, Tips And Booking Insights</h2>
-                            <p>Fresh destination ideas, travel planning advice, and curated articles powered directly from your blog database.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    @forelse ($blogs as $blog)
-                        <div class="col-md-6 col-lg-4">
-                            <div class="blog-item wow fadeInUp" data-wow-duration="1s" data-wow-delay=".{{ (($loop->index % 3) + 1) * 25 }}s">
-                                <span class="blog-date">{{ optional($blog->created_at)->format('F d, Y') }}</span>
-                                <div class="blog-item-img">
-                                    <a href="{{ route('blogs.show', $blog->slug) }}">
-                                        <img src="{{ $blog->image_url }}" alt="{{ $blog->title }}">
-                                    </a>
-                                </div>
-                                <div class="blog-item-info">
-                                    <div class="blog-item-meta">
-                                        <ul>
-                                            <li><a href="{{ route('blogs.show', $blog->slug) }}"><i class="far fa-user-circle"></i> By Travel Tours Team</a></li>
-                                            <li><a href="{{ route('blogs.show', $blog->slug) }}"><i class="far fa-folder-open"></i> Travel Insights</a></li>
-                                        </ul>
-                                    </div>
-                                    <h4 class="blog-title">
-                                        <a href="{{ route('blogs.show', $blog->slug) }}">{{ $blog->title }}</a>
-                                    </h4>
-                                    <p>{{ $blog->excerpt }}</p>
-                                    <a class="theme-btn mt-3" href="{{ route('blogs.show', $blog->slug) }}">
-                                        Read More <i class="fas fa-arrow-circle-right"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="col-12">
-                            <div class="alert alert-info text-center">No blogs are available right now. Seed or create blogs to show them here.</div>
-                        </div>
-                    @endforelse
-                </div>
-
-                @if ($blogs->hasPages())
-                    <div class="pagination-area">
-                        {{ $blogs->links('vendor.pagination.bootstrap-5') }}
-                    </div>
-                @endif
-            </div>
-        </div>
-    </main>
-
-    @include('frontend.layout.footer')
-
-    <a href="#" id="scroll-top"><i class="far fa-angle-up"></i></a>
-
-    <script src="{{ asset('assets/js/jquery-3.7.1.min.js') }}"></script>
-    <script src="{{ asset('assets/js/modernizr.min.js') }}"></script>
-    <script src="{{ asset('assets/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ asset('assets/js/imagesloaded.pkgd.min.js') }}"></script>
-    <script src="{{ asset('assets/js/jquery.magnific-popup.min.js') }}"></script>
-    <script src="{{ asset('assets/js/isotope.pkgd.min.js') }}"></script>
-    <script src="{{ asset('assets/js/jquery.appear.min.js') }}"></script>
-    <script src="{{ asset('assets/js/jquery.easing.min.js') }}"></script>
-    <script src="{{ asset('assets/js/owl.carousel.min.js') }}"></script>
-    <script src="{{ asset('assets/js/counter-up.js') }}"></script>
-    <script src="{{ asset('assets/js/masonry.pkgd.min.js') }}"></script>
-    <script src="{{ asset('assets/js/jquery.nice-select.min.js') }}"></script>
-    <script src="{{ asset('assets/js/jquery-ui.min.js') }}"></script>
-    <script src="{{ asset('assets/js/jquery.timepicker.min.js') }}"></script>
-    <script src="{{ asset('assets/js/wow.min.js') }}"></script>
-    <script src="{{ asset('assets/js/main.js') }}"></script>
-</body>
-</html>
+@section('styles')
+<style>
+    .blog-card {
+        display: flex;
+        flex-direction: column;
+    }
+    .blog-card-body {
+        flex: 1;
+        min-width: 0;
+    }
+    .blog-card-title,
+    .blog-card-excerpt {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .blog-card-excerpt {
+        line-clamp: 3;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+@endsection

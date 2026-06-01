@@ -93,6 +93,29 @@
         </div>
     </div>
 
+    @php
+        $flightsRoute = $isSuperAdmin ? 'admin.flights.index' : ($isTenantAdmin ? 'agent.flights.index' : ($isSubAgent && $currentUser->hasPermission('flights.search') ? 'subagent.flights.index' : null));
+    @endphp
+    @if($flightsRoute)
+    <div class="row mt-2 g-3">
+        <div class="col-lg-8">
+            <div class="card-modern overflow-hidden p-0">
+                <div class="p-4" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: #fff;">
+                    <h3 class="h5 mb-2"><i class="fas fa-plane me-2"></i>Flights & GDS</h3>
+                    <p class="small mb-0 opacity-90">Shop, price, book, ticket — all Travelport air APIs in one place.</p>
+                </div>
+                <div class="p-4">
+                    <a href="{{ route($flightsRoute) }}" class="btn btn-primary">Open air APIs</a>
+                    <a href="{{ route(str_replace('.index', '.search', $flightsRoute)) }}" class="btn btn-outline-primary ms-2">Low Fare Search</a>
+                    @if($isSuperAdmin)
+                        <a href="{{ route('admin.integrations.edit', ['slug' => 'travelport']) }}" class="btn btn-outline-secondary ms-2">API settings</a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Welcome Section -->
     <div class="row mt-4">
         <div class="col-12">
@@ -112,9 +135,9 @@
                     @if($isSuperAdmin)
                         Manage agent approvals, agent creation, and system-wide users.
                     @elseif($isTenantAdmin)
-                        Manage your agent sub agents and role/permission categories.
+                        Manage sub agents, search flights, and configure roles for your agency.
                     @elseif($isSubAgent)
-                        Access your assigned modules and operations based on your permissions.
+                        Access flights, bookings, and other modules based on your permissions.
                     @else
                         Manage users, roles, permissions, and more from this dashboard.
                     @endif

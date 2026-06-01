@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Models\Users\User;
+use App\Mail\EmailVerificationMail;
 use App\Models\System\Role;
+use App\Models\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use App\Mail\EmailVerificationMail;
 
 class UserController extends Controller
 {
@@ -34,6 +34,7 @@ class UserController extends Controller
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
+
         return view('auth.register');
     }
 
@@ -46,13 +47,19 @@ class UserController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'username' => 'nullable|string|max:50|regex:/^[a-zA-Z0-9._-]+$/|unique:users,username',
             'password' => 'required|string|min:8|confirmed',
         ]);
+
+        $username = $request->filled('username')
+            ? $request->username
+            : User::generateUniqueUsernameFromEmail($request->email);
 
         $user = User::create([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
+            'username' => $username,
             'password' => Hash::make($request->password),
             'role_id' => Role::where('slug', 'public-user')->value('id'),
             'user_type' => 'public',
@@ -93,8 +100,10 @@ class UserController extends Controller
             if ($user->canAccessAdminPanel()) {
                 return redirect()->route($this->dashboardRouteForUser($user));
             }
+
             return redirect()->route('dashboard');
         }
+
         return view('auth.login');
     }
 
@@ -104,11 +113,13 @@ class UserController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'login' => 'required|string',
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($request->only('email', 'password'))) {
+        $credentials = User::credentialsFromLogin($request->input('login'), $request->input('password'));
+
+        if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
             $user = Auth::user();
@@ -125,7 +136,7 @@ class UserController extends Controller
                 };
 
                 return back()->withErrors([
-                    'email' => 'Use your dedicated login portal: ' . $loginUrl,
+                    'login' => 'Use your dedicated login portal: '.$loginUrl,
                 ]);
             }
 
@@ -133,7 +144,7 @@ class UserController extends Controller
         }
 
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
+            'login' => 'The provided credentials do not match our records.',
         ]);
     }
 
@@ -144,7 +155,6 @@ class UserController extends Controller
     {
         $user = Auth::user();
         /** @var \App\Models\Users\User $user */
-        
         if ($user->canAccessAdminPanel()) {
             return redirect()->route($this->dashboardRouteForUser($user));
         }
@@ -158,6 +168,7 @@ class UserController extends Controller
     public function profile()
     {
         $user = Auth::user();
+
         return view('user.profile', compact('user'));
     }
 
@@ -168,11 +179,10 @@ class UserController extends Controller
     {
         $user = Auth::user();
         /** @var \App\Models\Users\User $user */
-
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
         ]);
 
         $user->update($request->only(['first_name', 'last_name', 'email']));
@@ -186,6 +196,7 @@ class UserController extends Controller
     public function settings()
     {
         $user = Auth::user();
+
         return view('user.settings', compact('user'));
     }
 
@@ -196,7 +207,6 @@ class UserController extends Controller
     {
         $user = Auth::user();
         /** @var \App\Models\Users\User $user */
-
         $request->validate([
             'password' => 'nullable|string|min:8|confirmed',
         ]);

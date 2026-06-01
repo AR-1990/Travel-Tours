@@ -111,13 +111,30 @@
             }
         }
     </style>
+    @stack('styles')
 </head>
 <body>
+    @php
+        $user = auth()->user();
+        if ($user) {
+            $user->load(['userPermissions', 'role']);
+        }
+        $isSuperAdmin = $user && $user->user_type === 'super_admin';
+        $dashboardRoute = 'admin.dashboard';
+        $panelPrefix = 'admin';
+        if ($user && $user->user_type === 'tenant_admin') {
+            $dashboardRoute = 'agent.dashboard';
+            $panelPrefix = 'agent';
+        } elseif ($user && $user->user_type === 'sub_agent') {
+            $dashboardRoute = 'subagent.dashboard';
+            $panelPrefix = 'subagent';
+        }
+    @endphp
     <div class="header">
         <div class="container-fluid">
             <div class="header-flex">
-                <a href="{{ route('admin.dashboard') }}" class="logo">
-                    <i class="fas fa-shield-alt me-2"></i>Admin Panel
+                <a href="{{ route($dashboardRoute ?? 'admin.dashboard') }}" class="logo">
+                    <i class="fas fa-shield-alt me-2"></i>{{ config('app.name', 'Travel Tours') }}
                 </a>
                 <div class="profile_dropdown">
                     <div class="dropdown">
@@ -136,33 +153,27 @@
     <div class="admin-panel d-flex">
         <aside id="dashboardSidebar" class="sidebar position-fixed" style="width: var(--sidebar-width); top: var(--header-height); height: calc(100vh - var(--header-height)); overflow-y: auto; padding: 1.5rem 0;">
             <ul class="sidebar-menu list-unstyled mb-0">
-                @php
-                    $user = auth()->user();
-                    if ($user) {
-                        $user->load(['userPermissions', 'role']);
-                    }
-                    $isSuperAdmin = $user && $user->user_type === 'super_admin';
-                    $dashboardRoute = 'admin.dashboard';
-                    $panelPrefix = 'admin';
-                    if ($user && $user->user_type === 'tenant_admin') {
-                        $dashboardRoute = 'agent.dashboard';
-                        $panelPrefix = 'agent';
-                    } elseif ($user && $user->user_type === 'sub_agent') {
-                        $dashboardRoute = 'subagent.dashboard';
-                        $panelPrefix = 'subagent';
-                    }
-                @endphp
-
                 <li>
                     <a href="{{ route($dashboardRoute) }}" class="{{ request()->routeIs('admin.dashboard') || request()->routeIs('agent.dashboard') || request()->routeIs('subagent.dashboard') ? 'active' : '' }}">
                         <svg fill="currentColor" viewBox="0 0 24 24">
                             <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
                         </svg>
-                        <span class="menu-text">{{ $isSuperAdmin ? 'Super Admin' : 'Dashboard' }}</span>
+                        <span class="menu-text">Dashboard</span>
                     </a>
                 </li>
 
+                @if($isSuperAdmin || ($user && ($user->user_type === 'tenant_admin' || $user->hasPermission('flights.search'))))
+                <li class="sidebar-section-label">Travel</li>
+                <li>
+                    <a href="{{ route($isSuperAdmin ? 'admin.flights.search' : $panelPrefix . '.flights.search') }}" class="{{ request()->routeIs('admin.flights*') || request()->routeIs('agent.flights*') || request()->routeIs('subagent.flights*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                        <span class="menu-text">Flights</span>
+                    </a>
+                </li>
+                @endif
+
                 @if($isSuperAdmin)
+                <li class="sidebar-section-label">Platform</li>
                 <li>
                     <a href="{{ route('admin.tenants.index') }}" class="{{ request()->routeIs('admin.tenants*') ? 'active' : '' }}">
                         <svg fill="currentColor" viewBox="0 0 24 24">
@@ -180,9 +191,33 @@
                         <span class="menu-text">Blogs</span>
                     </a>
                 </li>
+
+                <li>
+                    <a href="{{ route('admin.users') }}" class="{{ request()->routeIs('admin.users*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                        <span class="menu-text">Users</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ route('admin.debtor-types.index') }}" class="{{ request()->routeIs('admin.debtor-types*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+                        <span class="menu-text">Debtor types</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ route('admin.integrations.index') }}" class="{{ request()->routeIs('admin.integrations*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                        <span class="menu-text">Integrations</span>
+                    </a>
+                </li>
+
                 @endif
 
-                
+                @if(!$isSuperAdmin)
+                <li class="sidebar-section-label">Team</li>
+                @endif
 
                 @if($isSuperAdmin || ($user && $user->hasPermission('roles.view')))
                 <li>

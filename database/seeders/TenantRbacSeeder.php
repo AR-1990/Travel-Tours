@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\System\DebtorType;
 use App\Models\System\Permission;
 use App\Models\System\Role;
 use App\Models\System\Tenant;
@@ -43,6 +44,10 @@ class TenantRbacSeeder extends Seeder
             ['name' => 'Create Blogs', 'slug' => 'blogs.create', 'group' => 'blogs'],
             ['name' => 'Edit Blogs', 'slug' => 'blogs.edit', 'group' => 'blogs'],
             ['name' => 'Delete Blogs', 'slug' => 'blogs.delete', 'group' => 'blogs'],
+
+            // Flights (Travelport)
+            ['name' => 'Search Flights', 'slug' => 'flights.search', 'group' => 'flights'],
+            ['name' => 'Book Flights', 'slug' => 'flights.book', 'group' => 'flights'],
 
             // Sales
             ['name' => 'Confirm Bookings', 'slug' => 'booking.confirm', 'group' => 'sales'],
@@ -93,6 +98,8 @@ class TenantRbacSeeder extends Seeder
             ]
         );
 
+        $cashDebtorId = DebtorType::where('slug', 'cash')->value('id');
+
         $tenant = Tenant::updateOrCreate(
             ['slug' => 'demo-travel-tenant'],
             [
@@ -102,6 +109,9 @@ class TenantRbacSeeder extends Seeder
                 'is_active' => true,
                 'status' => 'approved',
                 'approved_at' => now(),
+                'debtor_type_id' => $cashDebtorId,
+                'office_type' => Tenant::OFFICE_B2B,
+                'currency' => 'USD',
             ]
         );
 
@@ -158,6 +168,8 @@ class TenantRbacSeeder extends Seeder
         ])->values());
         $salesRole->permissions()->sync($permissionIds->only([
             'dashboard.view',
+            'flights.search',
+            'flights.book',
             'booking.confirm',
             'booking.message',
             'booking.alerts',
@@ -178,6 +190,7 @@ class TenantRbacSeeder extends Seeder
                 'first_name' => 'Super',
                 'last_name' => 'Admin',
                 'slug' => Str::slug('Super Admin'),
+                'username' => 'superadmin',
                 'password' => Hash::make('password123'),
                 'role_id' => $superAdminRole->id,
                 'tenant_id' => null,
@@ -191,6 +204,7 @@ class TenantRbacSeeder extends Seeder
         $tenant->update([
             'approved_by' => $superAdmin->id,
             'approval_notes' => 'Seeded as approved demo tenant.',
+            'assigned_by' => $superAdmin->id,
         ]);
 
         $tenantAdmin = User::updateOrCreate(
@@ -199,6 +213,7 @@ class TenantRbacSeeder extends Seeder
                 'first_name' => 'Tenant',
                 'last_name' => 'Admin',
                 'slug' => Str::slug('Tenant Admin'),
+                'username' => 'tenantadmin',
                 'password' => Hash::make('password123'),
                 'role_id' => $tenantAdminRole->id,
                 'tenant_id' => $tenant->id,
@@ -215,6 +230,7 @@ class TenantRbacSeeder extends Seeder
                 'first_name' => 'Finance',
                 'last_name' => 'Agent',
                 'slug' => Str::slug('Finance Agent'),
+                'username' => 'financeagent',
                 'password' => Hash::make('password123'),
                 'role_id' => $financeRole->id,
                 'tenant_id' => $tenant->id,
@@ -231,6 +247,7 @@ class TenantRbacSeeder extends Seeder
                 'first_name' => 'Sales',
                 'last_name' => 'Agent',
                 'slug' => Str::slug('Sales Agent'),
+                'username' => 'salesagent',
                 'password' => Hash::make('password123'),
                 'role_id' => $salesRole->id,
                 'tenant_id' => $tenant->id,
@@ -247,6 +264,7 @@ class TenantRbacSeeder extends Seeder
                 'first_name' => 'Operations',
                 'last_name' => 'Agent',
                 'slug' => Str::slug('Operations Agent'),
+                'username' => 'operationsagent',
                 'password' => Hash::make('password123'),
                 'role_id' => $operationsRole->id,
                 'tenant_id' => $tenant->id,
@@ -269,6 +287,9 @@ class TenantRbacSeeder extends Seeder
                 'approved_at' => null,
                 'approved_by' => null,
                 'approval_notes' => 'Created from tenant-signup flow and awaiting review.',
+                'debtor_type_id' => $cashDebtorId,
+                'office_type' => Tenant::OFFICE_B2B,
+                'currency' => 'USD',
             ]
         );
 
@@ -288,6 +309,7 @@ class TenantRbacSeeder extends Seeder
                 'first_name' => 'Pending',
                 'last_name' => 'Admin',
                 'slug' => Str::slug('Pending Tenant Admin'),
+                'username' => 'pendingtenantadmin',
                 'password' => Hash::make('password123'),
                 'role_id' => $pendingTenantAdminRole->id,
                 'tenant_id' => $pendingTenant->id,

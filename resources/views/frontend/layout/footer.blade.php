@@ -4,7 +4,7 @@
                 <div class="row footer-widget-wrapper pt-100 pb-70">
                     <div class="col-md-6 col-lg-3">
                         <div class="footer-widget-box about-us">
-                            <a href="#" class="footer-logo">
+                            <a href="{{ route('home') }}" class="footer-logo">
                                 <img src="{{ asset('assets/img/logo/logo.png') }}" alt="">
                             </a>
                             <p class="mb-4">
@@ -39,7 +39,7 @@
                                 <li><a href="#"><i class="fas fa-angle-double-right"></i> Affiliate Program</a></li>
                                 <li><a href="#"><i class="fas fa-angle-double-right"></i> Advertising With Us</a></li>
                                 <li><a href="#"><i class="fas fa-angle-double-right"></i> Careers</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Our Blog</a></li>
+                                <li><a href="{{ route('blogs.index') }}"><i class="fas fa-angle-double-right"></i> Our Blog</a></li>
 
                             </ul>
                         </div>

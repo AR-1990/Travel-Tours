@@ -403,23 +403,41 @@
                                         @if(method_exists($manager, 'trashed') && $manager->trashed())
                                             @if($canRestore)
                                             <form action="{{ route($panelPrefix . '.managers.restore', $manager->id) }}" method="POST"
-                                                style="display:inline-block;" class="restore-manager-form">
+                                                style="display:inline-block;" class="restore-manager-form"
+                                                data-swal-confirm
+                                                data-swal-title="Restore this sub-agent?"
+                                                data-swal-text="They will be active again and can sign in."
+                                                data-swal-icon="question"
+                                                data-swal-confirm-text="Yes, restore"
+                                                data-swal-confirm-color="#198754">
                                                 @csrf
-                                                <button id="restoreBtn" type="submit" class="btn btn-success btn-sm" title="Restore">
+                                                <button type="submit" class="btn btn-success btn-sm" title="Restore">
                                                             <svg width="30px" height="30px" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M10 16.682l5.69 5.685 1.408-1.407-3.283-3.28h10.131c1.147 0 2.19.467 2.943 1.222a4.157 4.157 0 011.225 2.946 4.18 4.18 0 01-4.168 4.168h-5.628V28h5.522c3.387 0 6.16-2.77 6.16-6.157a6.117 6.117 0 00-1.81-4.343 6.143 6.143 0 00-4.35-1.805H13.815l3.283-3.285L15.69 11 10 16.682z" fill="#273572" fill-rule="nonzero"></path></svg>
                                                         </button>
                                             </form>
                                             @endif
                                         @else
                                             @if($canEdit)
-                                            <a id="edit" href="{{ route($panelPrefix . '.managers.edit', $manager->id) }}" class="btn btn-warning btn-sm"></a>
+                                            <a id="edit" href="{{ route($panelPrefix . '.managers.edit', $manager->id) }}" class="btn btn-warning btn-sm"
+                                                data-swal-confirm
+                                                data-swal-title="Edit this sub-agent?"
+                                                data-swal-text="You will open the edit form."
+                                                data-swal-icon="question"
+                                                data-swal-confirm-text="Continue"
+                                                data-swal-confirm-color="#ffc107"></a>
                                             @endif
                                             @if($canDelete)
                                             <form action="{{ route($panelPrefix . '.managers.destroy', $manager->id) }}" method="POST"
-                                                style="display:inline-block;" class="delete-manager-form">
+                                                style="display:inline-block;" class="delete-manager-form"
+                                                data-swal-confirm
+                                                data-swal-title="Delete this sub-agent?"
+                                                data-swal-text="This account will be soft-deleted."
+                                                data-swal-icon="warning"
+                                                data-swal-confirm-text="Yes, delete"
+                                                data-swal-confirm-color="#dc3545">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button id="delete" type="submit" class="btn btn-danger btn-sm"></button>
+                                                <button type="submit" class="btn btn-danger btn-sm"></button>
                                             </form>
                                             @endif
                                         @endif
@@ -442,56 +460,11 @@
 @endsection
 
 @section('scripts')
-<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 <script>
     $(document).ready(function() {
         $('#managersTable').DataTable();
-        
-        // Delete confirmation with SweetAlert
-        $('.delete-manager-form').on('submit', function(e) {
-            e.preventDefault();
-            const form = $(this);
-            
-            Swal.fire({
-                title: 'Are you sure?',
-                text: 'You want to delete this sub-agent? This action cannot be undone!',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.off('submit').submit();
-                }
-            });
-        });
-
-        // Restore confirmation with SweetAlert
-        $('.restore-manager-form').on('submit', function(e) {
-            e.preventDefault();
-            const form = $(this);
-            
-            Swal.fire({
-                title: 'Restore Sub-Agent?',
-                text: 'This sub-agent will be restored and become active again.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, restore it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.off('submit').submit();
-                }
-            });
-        });
-
-        
     });
 </script>
 @endsection

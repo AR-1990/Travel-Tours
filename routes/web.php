@@ -1,29 +1,34 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\Auth\PasswordResetController;
-use App\Http\Controllers\Auth\EmailVerificationController;
-use App\Http\Controllers\Auth\TenantRegistrationController;
-use App\Http\Controllers\User\UserController;
-use App\Http\Controllers\BlogController;
-use App\Http\Controllers\FrontController;
+use App\Http\Controllers\AirportLookupController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminUserController;
-use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\PermissionController;
-use App\Http\Controllers\Admin\ManagersController;
-use App\Http\Controllers\Admin\TenantController;
 use App\Http\Controllers\Admin\BlogController as AdminBlogController;
+use App\Http\Controllers\Admin\DebtorTypeController;
+use App\Http\Controllers\Admin\FlightController as AdminFlightController;
+use App\Http\Controllers\Admin\IntegrationsController;
+use App\Http\Controllers\Admin\ManagersController;
+use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\TenantController;
 use App\Http\Controllers\Agent\DashboardController as AgentDashboardController;
-use App\Http\Controllers\Agent\RoleController as AgentRoleController;
+use App\Http\Controllers\Agent\FlightController as AgentFlightController;
 use App\Http\Controllers\Agent\PermissionController as AgentPermissionController;
+use App\Http\Controllers\Agent\RoleController as AgentRoleController;
 use App\Http\Controllers\Agent\SubAgentController as AgentSubAgentController;
+use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\TenantRegistrationController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\SubAgent\DashboardController as SubAgentDashboardController;
-use App\Http\Controllers\SubAgent\RoleController as SubAgentRoleController;
+use App\Http\Controllers\SubAgent\FlightController as SubAgentFlightController;
 use App\Http\Controllers\SubAgent\PermissionController as SubAgentPermissionController;
+use App\Http\Controllers\SubAgent\RoleController as SubAgentRoleController;
 use App\Http\Controllers\SubAgent\SubAgentController as SubAgentManagementController;
+use App\Http\Controllers\User\UserController;
 use App\Http\Middleware\RoleMiddleware;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,8 +37,15 @@ use App\Http\Middleware\RoleMiddleware;
 */
 
 Route::get('/', function () {
-    return view('frontend.index');
+    $recentBlogs = \App\Models\Content\Blog::latest()->take(3)->get();
+
+    return view('frontend.index', compact('recentBlogs'));
 })->name('home');
+
+/** Marketing / platform hub (Tailwind) — use e.g. for links that need the simple landing */
+Route::get('/platform', function () {
+    return view('pages.home');
+})->name('platform.home');
 Route::get('/blogs', [BlogController::class, 'index'])->name('blogs.index');
 Route::get('/blogs/{slug}', [BlogController::class, 'show'])->name('blogs.show');
 
@@ -85,13 +97,20 @@ Route::middleware('guest')->group(function () {
 */
 
 Route::middleware('auth')->group(function () {
+    Route::prefix('api')->name('api.')->group(function () {
+        Route::get('/airports/search', [AirportLookupController::class, 'search'])->name('airports.search');
+        Route::get('/airports/{code}', [AirportLookupController::class, 'show'])
+            ->name('airports.show')
+            ->where('code', '[A-Za-z]{3}');
+    });
+
     // User Dashboard
     Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
-    
+
     // User Profile
     Route::get('/profile', [UserController::class, 'profile'])->name('profile');
     Route::post('/profile/update', [UserController::class, 'updateProfile'])->name('profile.update');
-    
+
     // User Settings
     Route::get('/settings', [UserController::class, 'settings'])->name('settings');
     Route::post('/settings/update', [UserController::class, 'updateSettings'])->name('settings.update');
@@ -103,7 +122,7 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', RoleMiddleware::class . ':1'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', RoleMiddleware::class.':1'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'adminDashboard'])->name('dashboard');
 
     // Users (currently blocked by controller policy)
@@ -155,9 +174,26 @@ Route::middleware(['auth', RoleMiddleware::class . ':1'])->prefix('admin')->name
     Route::get('/blogs/{id}/edit', [AdminBlogController::class, 'edit'])->name('blogs.edit');
     Route::put('/blogs/{id}', [AdminBlogController::class, 'update'])->name('blogs.update');
     Route::delete('/blogs/{id}', [AdminBlogController::class, 'destroy'])->name('blogs.destroy');
+
+    Route::get('/debtor-types', [DebtorTypeController::class, 'index'])->name('debtor-types.index');
+    Route::get('/debtor-types/create', [DebtorTypeController::class, 'create'])->name('debtor-types.create');
+    Route::post('/debtor-types', [DebtorTypeController::class, 'store'])->name('debtor-types.store');
+    Route::get('/debtor-types/{id}/edit', [DebtorTypeController::class, 'edit'])->name('debtor-types.edit');
+    Route::put('/debtor-types/{id}', [DebtorTypeController::class, 'update'])->name('debtor-types.update');
+    Route::delete('/debtor-types/{id}', [DebtorTypeController::class, 'destroy'])->name('debtor-types.destroy');
+
+    Route::get('/integrations', [IntegrationsController::class, 'index'])->name('integrations.index');
+    Route::get('/integrations/{slug}', [IntegrationsController::class, 'edit'])->name('integrations.edit')->where('slug', '[a-z0-9_-]+');
+    Route::put('/integrations/{slug}', [IntegrationsController::class, 'update'])->name('integrations.update')->where('slug', '[a-z0-9_-]+');
+    Route::post('/integrations/{slug}/ping', [IntegrationsController::class, 'ping'])->name('integrations.ping')->where('slug', '[a-z0-9_-]+');
+    Route::post('/integrations/{slug}/test-search', [IntegrationsController::class, 'testSearch'])->name('integrations.test-search')->where('slug', '[a-z0-9_-]+');
+
+    Route::get('/flights', [AdminFlightController::class, 'hub'])->name('flights.index');
+    Route::match(['get', 'post'], '/flights/search', [AdminFlightController::class, 'search'])->name('flights.search');
+    Route::match(['get', 'post'], '/flights/ops/{operation}', [AdminFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 
-Route::middleware(['auth', RoleMiddleware::class . ':1|2|3'])->prefix('agent')->name('agent.')->group(function () {
+Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('agent')->name('agent.')->group(function () {
     Route::get('/dashboard', [AgentDashboardController::class, 'adminDashboard'])->name('dashboard');
 
     Route::get('/roles', [AgentRoleController::class, 'index'])->name('roles');
@@ -184,9 +220,13 @@ Route::middleware(['auth', RoleMiddleware::class . ':1|2|3'])->prefix('agent')->
     Route::post('/sub-agents/{id}/permissions', [AgentSubAgentController::class, 'updatePermissions'])->name('managers.permissions');
     Route::delete('/sub-agents/{id}', [AgentSubAgentController::class, 'destroy'])->name('managers.destroy');
     Route::post('/sub-agents/{id}/restore', [AgentSubAgentController::class, 'restore'])->name('managers.restore');
+
+    Route::get('/flights', [AgentFlightController::class, 'hub'])->name('flights.index');
+    Route::match(['get', 'post'], '/flights/search', [AgentFlightController::class, 'search'])->name('flights.search');
+    Route::match(['get', 'post'], '/flights/ops/{operation}', [AgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 
-Route::middleware(['auth', RoleMiddleware::class . ':1|2|3'])->prefix('sub-agent')->name('subagent.')->group(function () {
+Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('sub-agent')->name('subagent.')->group(function () {
     Route::get('/dashboard', [SubAgentDashboardController::class, 'adminDashboard'])->name('dashboard');
 
     Route::get('/roles', [SubAgentRoleController::class, 'index'])->name('roles');
@@ -195,6 +235,10 @@ Route::middleware(['auth', RoleMiddleware::class . ':1|2|3'])->prefix('sub-agent
     Route::get('/permissions', [SubAgentPermissionController::class, 'index'])->name('permissions');
 
     Route::get('/sub-agents', [SubAgentManagementController::class, 'index'])->name('managers');
+
+    Route::get('/flights', [SubAgentFlightController::class, 'hub'])->name('flights.index');
+    Route::match(['get', 'post'], '/flights/search', [SubAgentFlightController::class, 'search'])->name('flights.search');
+    Route::match(['get', 'post'], '/flights/ops/{operation}', [SubAgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 
 /*
@@ -205,118 +249,14 @@ Route::middleware(['auth', RoleMiddleware::class . ':1|2|3'])->prefix('sub-agent
 
 Route::get('/logout', function () {
     Auth::logout();
+
     return redirect()->route('login.form');
 })->name('logout');
 
 Route::middleware('auth')->group(function () {
     Route::get('/admin/logout', function () {
         Auth::logout();
+
         return redirect()->route('admin.login');
     })->name('admin.logout');
 });
-
-/*
-|--------------------------------------------------------------------------
-| Front Routes
-|--------------------------------------------------------------------------
-*/
-Route::get('/home', [FrontController::class, 'index']);
-
-Route::get('/404', [FrontController::class, 'notFound']);
-Route::get('/about', [FrontController::class, 'about']);
-Route::get('/activity-add', [FrontController::class, 'activityAdd']);
-Route::get('/activity-booking', [FrontController::class, 'activityBooking']);
-Route::get('/activity-full-width', [FrontController::class, 'activityFullWidth']);
-Route::get('/activity-grid', [FrontController::class, 'activityGrid']);
-Route::get('/activity-list', [FrontController::class, 'activityList']);
-Route::get('/activity-search-result', [FrontController::class, 'activitySearchResult']);
-Route::get('/activity-single', [FrontController::class, 'activitySingle']);
-
-Route::get('/become-expert', [FrontController::class, 'becomeExpert']);
-// Route::get('/blog', [FrontController::class, 'blog']);
-// Route::get('/blog-single', [FrontController::class, 'blogSingle']);
-
-Route::get('/booking-confirm', [FrontController::class, 'bookingConfirm']);
-
-Route::get('/car-add', [FrontController::class, 'carAdd']);
-Route::get('/car-booking', [FrontController::class, 'carBooking']);
-Route::get('/car-full-width', [FrontController::class, 'carFullWidth']);
-Route::get('/car-grid', [FrontController::class, 'carGrid']);
-Route::get('/car-list', [FrontController::class, 'carList']);
-Route::get('/car-search-result', [FrontController::class, 'carSearchResult']);
-Route::get('/car-single', [FrontController::class, 'carSingle']);
-
-Route::get('/career', [FrontController::class, 'career']);
-Route::get('/career-single', [FrontController::class, 'careerSingle']);
-
-Route::get('/cart', [FrontController::class, 'cart']);
-Route::get('/checkout', [FrontController::class, 'checkout']);
-Route::get('/coming-soon', [FrontController::class, 'comingSoon']);
-Route::get('/contact', [FrontController::class, 'contact']);
-
-Route::get('/cruise-add', [FrontController::class, 'cruiseAdd']);
-Route::get('/cruise-booking', [FrontController::class, 'cruiseBooking']);
-Route::get('/cruise-full-width', [FrontController::class, 'cruiseFullWidth']);
-Route::get('/cruise-grid', [FrontController::class, 'cruiseGrid']);
-Route::get('/cruise-list', [FrontController::class, 'cruiseList']);
-Route::get('/cruise-search-result', [FrontController::class, 'cruiseSearchResult']);
-Route::get('/cruise-single', [FrontController::class, 'cruiseSingle']);
-
-// Route::get('/dashboard', [FrontController::class, 'dashboard']);
-Route::get('/destination', [FrontController::class, 'destination']);
-Route::get('/faq', [FrontController::class, 'faq']);
-
-Route::get('/flight-add', [FrontController::class, 'flightAdd']);
-Route::get('/flight-booking', [FrontController::class, 'flightBooking']);
-Route::get('/flight-full-width', [FrontController::class, 'flightFullWidth']);
-Route::get('/flight-grid', [FrontController::class, 'flightGrid']);
-Route::get('/flight-list', [FrontController::class, 'flightList']);
-Route::get('/flight-search-result', [FrontController::class, 'flightSearchResult']);
-Route::get('/flight-single', [FrontController::class, 'flightSingle']);
-
-// Route::get('/forgot-password', [FrontController::class, 'forgotPassword']);
-Route::get('/gallery', [FrontController::class, 'gallery']);
-
-Route::get('/hotel-add', [FrontController::class, 'hotelAdd']);
-Route::get('/hotel-booking', [FrontController::class, 'hotelBooking']);
-Route::get('/hotel-full-width', [FrontController::class, 'hotelFullWidth']);
-Route::get('/hotel-grid', [FrontController::class, 'hotelGrid']);
-Route::get('/hotel-list', [FrontController::class, 'hotelList']);
-Route::get('/hotel-room-add', [FrontController::class, 'hotelRoomAdd']);
-Route::get('/hotel-room-full-width', [FrontController::class, 'hotelRoomFullWidth']);
-Route::get('/hotel-room-grid', [FrontController::class, 'hotelRoomGrid']);
-Route::get('/hotel-room-list', [FrontController::class, 'hotelRoomList']);
-Route::get('/hotel-room-search-result', [FrontController::class, 'hotelRoomSearchResult']);
-Route::get('/hotel-room-single', [FrontController::class, 'hotelRoomSingle']);
-Route::get('/hotel-search-result', [FrontController::class, 'hotelSearchResult']);
-Route::get('/hotel-single', [FrontController::class, 'hotelSingle']);
-
-// Route::get('/login', [FrontController::class, 'login']);
-Route::get('/pricing', [FrontController::class, 'pricing']);
-Route::get('/privacy', [FrontController::class, 'privacy']);
-
-// Route::get('/profile', [FrontController::class, 'profile']);
-Route::get('/profile-booking-history', [FrontController::class, 'profileBookingHistory']);
-Route::get('/profile-booking', [FrontController::class, 'profileBooking']);
-Route::get('/profile-listing', [FrontController::class, 'profileListing']);
-Route::get('/profile-message', [FrontController::class, 'profileMessage']);
-Route::get('/profile-notification', [FrontController::class, 'profileNotification']);
-Route::get('/profile-setting', [FrontController::class, 'profileSetting']);
-Route::get('/profile-wallet', [FrontController::class, 'profileWallet']);
-Route::get('/profile-wishlist', [FrontController::class, 'profileWishlist']);
-
-// Route::get('/register', [FrontController::class, 'register']);
-Route::get('/service', [FrontController::class, 'service']);
-Route::get('/service-single', [FrontController::class, 'serviceSingle']);
-
-Route::get('/team', [FrontController::class, 'team']);
-Route::get('/terms', [FrontController::class, 'terms']);
-Route::get('/testimonial', [FrontController::class, 'testimonial']);
-
-Route::get('/tour-add', [FrontController::class, 'tourAdd']);
-Route::get('/tour-booking', [FrontController::class, 'tourBooking']);
-Route::get('/tour-full-width', [FrontController::class, 'tourFullWidth']);
-Route::get('/tour-grid', [FrontController::class, 'tourGrid']);
-Route::get('/tour-list', [FrontController::class, 'tourList']);
-Route::get('/tour-search-result', [FrontController::class, 'tourSearchResult']);
-Route::get('/tour-single', [FrontController::class, 'tourSingle']);

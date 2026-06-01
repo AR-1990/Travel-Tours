@@ -57,6 +57,14 @@
                         placeholder="john@example.com">
                 </div>
 
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username (optional)</label>
+                    <input type="text" id="username" name="username" value="{{ old('username') }}"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                        placeholder="Leave blank to auto-generate from email">
+                    <p class="text-xs text-gray-500 mt-1">You can sign in with email or username.</p>
+                </div>
+
                 <!-- Password -->
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>

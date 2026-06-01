@@ -3,19 +3,18 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Mail\EmailVerificationMail;
+use App\Mail\PasswordResetMail;
+use App\Models\System\Role;
 use App\Models\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use App\Mail\PasswordResetMail;
-use App\Mail\EmailVerificationMail;
-use App\Mail\WelcomeMail;
-use App\Models\System\Role;
 
 class AuthController extends Controller
 {
@@ -28,6 +27,7 @@ class AuthController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
+            'username' => 'nullable|string|max:50|regex:/^[a-zA-Z0-9._-]+$/|unique:users,username',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
@@ -35,14 +35,19 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
+
+        $username = $request->filled('username')
+            ? $request->username
+            : User::generateUniqueUsernameFromEmail($request->email);
 
         $user = User::create([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
+            'username' => $username,
             'password' => Hash::make($request->password),
             'role_id' => Role::where('slug', 'public-user')->value('id'),
             'user_type' => 'public',
@@ -74,7 +79,7 @@ class AuthController extends Controller
             'data' => [
                 'user' => $user,
                 'token' => $token,
-            ]
+            ],
         ], 201);
     }
 
@@ -84,26 +89,36 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
             'password' => 'required',
         ]);
+
+        if (! $request->filled('login') && ! $request->filled('email')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => ['login' => ['Provide login or email.']],
+            ], 422);
+        }
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        $login = $request->input('login', $request->input('email'));
+        $credentials = User::credentialsFromLogin($login, $request->input('password'));
+
+        if (! Auth::attempt($credentials)) {
             return response()->json([
                 'status' => false,
-                'message' => 'Invalid credentials'
+                'message' => 'Invalid credentials',
             ], 401);
         }
 
-        $user = User::where('email', $request->email)->firstOrFail();
+        $user = Auth::user();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -112,7 +127,7 @@ class AuthController extends Controller
             'data' => [
                 'user' => $user,
                 'token' => $token,
-            ]
+            ],
         ]);
     }
 
@@ -125,7 +140,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Logged out successfully'
+            'message' => 'Logged out successfully',
         ]);
     }
 
@@ -142,7 +157,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -155,20 +170,20 @@ class AuthController extends Controller
 
         try {
             Mail::to($request->email)->send(new PasswordResetMail($token));
-            
+
             return response()->json([
                 'status' => true,
-                'message' => 'Password reset link sent to your email'
+                'message' => 'Password reset link sent to your email',
             ]);
         } catch (\Exception $e) {
             Log::error('Password reset email failed', [
                 'email' => $request->email,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to send email. Please try again later.'
+                'message' => 'Failed to send email. Please try again later.',
             ], 500);
         }
     }

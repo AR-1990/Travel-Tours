@@ -51,10 +51,22 @@
                                 <td>{{ $permission->description ?? '-' }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
-                                        <a href="{{ route($panelPrefix . '.permissions.edit', $permission->id) }}" class="btn btn-sm btn-primary">
+                                        <a href="{{ route($panelPrefix . '.permissions.edit', $permission->id) }}" class="btn btn-sm btn-primary"
+                                            data-swal-confirm
+                                            data-swal-title="Edit this permission?"
+                                            data-swal-text="You will open the permission form."
+                                            data-swal-icon="question"
+                                            data-swal-confirm-text="Continue"
+                                            data-swal-confirm-color="#0d6efd">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route($panelPrefix . '.permissions.destroy', $permission->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this permission?');">
+                                        <form action="{{ route($panelPrefix . '.permissions.destroy', $permission->id) }}" method="POST"
+                                            data-swal-confirm
+                                            data-swal-title="Delete this permission?"
+                                            data-swal-text="This may affect roles that use it."
+                                            data-swal-icon="warning"
+                                            data-swal-confirm-text="Yes, delete"
+                                            data-swal-confirm-color="#dc3545">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-danger">

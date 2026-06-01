@@ -44,8 +44,10 @@ A multi-tenant Laravel travel platform with super admin, tenant onboarding/appro
 - ✅ Clean component structure
 - ✅ DataTables integration
 
-### 🔧 Utilities
-- ✅ Email service support (SMTP/Mailgun/Postmark/SES)
+### 🔧 Services Integration (Configured but Empty)
+- ✅ AWS S3 for file storage (structure ready)
+- ✅ Firebase for real-time features (structure ready)
+- ✅ Email service (SMTP/Mailgun/Postmark/SES)
 
 ## 📋 Requirements
 
@@ -53,6 +55,8 @@ A multi-tenant Laravel travel platform with super admin, tenant onboarding/appro
 - Composer
 - Node.js >= 18.x & NPM
 - MySQL/PostgreSQL/SQLite
+- (Optional) AWS S3 account
+- (Optional) Firebase account
 
 ## 🚀 Installation
 
@@ -186,6 +190,34 @@ Tenants can also create custom role categories and assign permissions.
 - **Blogs (Super Admin):** `/admin/blogs`
 
 ## 🔧 Configuration
+
+### AWS S3 (Optional)
+
+If you want to use S3 for file storage:
+
+1. Get your AWS credentials from AWS Console
+2. Update `.env`:
+
+```env
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=your_bucket_name
+```
+
+### Firebase (Optional)
+
+If you want to use Firebase:
+
+1. Download your Firebase service account JSON file
+2. Place it in `storage/app/firebase-credentials.json`
+3. Update `.env`:
+
+```env
+FIREBASE_CREDENTIALS=firebase-credentials.json
+FIREBASE_DATABASE_URL=https://your-project.firebaseio.com
+FIREBASE_PROJECT_ID=your-project-id
+```
 
 ### Email Service (Optional)
 
@@ -375,36 +407,29 @@ Travel-Tours/
 │   │   └── Commands/          # Custom artisan commands
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Admin/         # Super admin controllers
-│   │   │   ├── Agent/         # Agent admin controllers
-│   │   │   ├── SubAgent/      # Sub-agent controllers
+│   │   │   ├── Admin/         # Admin panel controllers
 │   │   │   ├── API/           # API controllers
 │   │   │   ├── Auth/          # Authentication controllers
-│   │   │   ├── User/          # Public user panel controllers
-│   │   │   └── BlogController.php  # Public blogs pages controller
+│   │   │   └── User/          # User panel controllers
 │   │   └── Middleware/        # Custom middleware
 │   └── Models/
-│       ├── Content/           # Blog model
-│       ├── System/            # Role, Permission, Tenant models
+│       ├── System/            # Role, Permission models
 │       └── Users/             # User model
 ├── database/
 │   ├── migrations/            # Database migrations
-│   └── seeders/               # RBAC and tenant seeders
+│   └── seeders/              # Database seeders
 ├── resources/
 │   ├── views/
-│   │   ├── admin/             # Admin/tenant management views
-│   │   ├── agent/             # Agent dashboard views
-│   │   ├── auth/              # Authentication views
-│   │   ├── layouts/           # Public layout templates
-│   │   ├── pages/             # Home + public blogs pages
-│   │   └── user/              # User panel views
+│   │   ├── admin/            # Admin panel views
+│   │   ├── auth/             # Authentication views
+│   │   ├── layouts/          # Layout templates
+│   │   └── user/             # User panel views
 │   └── css/
-│       └── app.css            # Tailwind CSS
+│       └── app.css           # Tailwind CSS
 ├── routes/
-│   ├── web.php                # Web routes
-│   └── api.php                # API routes
-├── README.md                  # Project docs
-└── .env.example               # Environment variables template
+│   ├── web.php               # Web routes
+│   └── api.php               # API routes
+└── .env.example              # Environment variables template
 ```
 
 ## 🎨 Color Theme
