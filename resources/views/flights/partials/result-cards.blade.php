@@ -5,7 +5,12 @@
     @endphp
     <div class="results-header">
         <div>
-            <h2 class="h5 mb-1">{{ $shown }} fare option{{ $shown !== 1 ? 's' : '' }} shown@if($total > $shown) <span class="text-muted fw-normal">of {{ $total }} returned</span>@endif</h2>
+            <h2 class="h5 mb-1">
+                {{ $shown }} fare option{{ $shown !== 1 ? 's' : '' }} shown
+                @if($total > $shown)
+                    <span class="text-muted fw-normal">of {{ $total }} returned</span>
+                @endif
+            </h2>
             @if(!empty($searchInput))
                 <p class="text-muted small mb-0">
                     {{ \App\Support\FlightDisplay::tripSummary(
