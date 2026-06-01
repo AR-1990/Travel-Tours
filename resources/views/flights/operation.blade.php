@@ -12,7 +12,7 @@
 
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">All APIs</a></li>
+            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flight APIs</a></li>
             <li class="breadcrumb-item active">{{ $currentOperation['label'] ?? $operationKey }}</li>
         </ol>
     </nav>
@@ -20,8 +20,9 @@
     <div class="flights-hero py-3">
         <h1 class="h4 mb-1">{{ $currentOperation['label'] ?? $operationKey }}</h1>
         <p class="small mb-0 opacity-90">{{ $currentOperation['description'] ?? '' }}</p>
-        <p class="small mb-0 mt-1"><code>{{ $currentOperation['request'] ?? '' }}</code> → <code>{{ $currentOperation['response'] ?? '' }}</code></p>
     </div>
+
+    @include('flights.partials.operation-help')
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
@@ -42,7 +43,7 @@
                 <button type="submit" class="btn btn-primary" @disabled(!$travelportReady)>
                     <i class="fas fa-paper-plane me-2"></i>Send request
                 </button>
-                <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="btn btn-outline-secondary">All APIs</a>
+                <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="btn btn-outline-secondary">Flight APIs</a>
             </div>
         </form>
     </div>
@@ -57,7 +58,9 @@
 
             @if($operationKey === 'low_fare_search' && !empty($searchResult['solutions']))
                 @include('flights.partials.result-cards')
-            @else
+            @elseif($operationKey === 'air_fare_display' && !empty($searchResult['solutions']))
+                @include('flights.partials.fare-display-results')
+            @elseif($searchResult['ok'])
                 <div class="card-modern p-4">
                     <p class="small text-muted mb-0">Response received. Expand raw output below for full XML.</p>
                 </div>

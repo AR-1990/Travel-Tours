@@ -118,7 +118,7 @@ XML;
     <air:LowFareSearchReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" SolutionResult="true" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
 {$legs}
-      <air:AirSearchModifiers>
+      <air:AirSearchModifiers MaxSolutions="50">
         <air:PreferredProviders><com:Provider Code="{$x['gds']}"/></air:PreferredProviders>
       </air:AirSearchModifiers>{$this->passengers($adults, $x)}
     </air:LowFareSearchReq>
@@ -157,16 +157,27 @@ XML;
         $x = $this->ctx($schemaVer, 'fare');
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
         $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
+        $departure = $this->date((string) ($params['departure_date'] ?? ''));
+        $returnDate = $this->date((string) ($params['return_date'] ?? ''));
+        $adults = max(1, min(9, (int) ($params['adults'] ?? 1)));
+
+        $modifiers = ' MaxResponses="50" BaseFareOnly="false" UnrestrictedFaresOnly="false"';
+        if ($departure !== '') {
+            $modifiers .= ' DepartureDate="'.$this->esc($departure).'"';
+        }
+        if ($returnDate !== '') {
+            $modifiers .= ' ReturnDate="'.$this->esc($returnDate).'"';
+        }
+
+        $passengers = '';
+        for ($i = 0; $i < $adults; $i++) {
+            $passengers .= "\n      <air:PassengerType Code=\"ADT\" PricePTCOnly=\"true\"/>";
+        }
 
         $body = <<<XML
-    <air:AirFareDisplayReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
-      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
-      <air:AirFareDisplayModifiers>
-        <air:AirRoute>
-          <air:CityOrAirport Code="{$origin}"/>
-          <air:CityOrAirport Code="{$destination}"/>
-        </air:AirRoute>
-      </air:AirFareDisplayModifiers>
+    <air:AirFareDisplayReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" Origin="{$origin}" Destination="{$destination}" ProviderCode="{$x['gds']}" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>{$passengers}
+      <air:AirFareDisplayModifiers{$modifiers}/>
     </air:AirFareDisplayReq>
 XML;
 
@@ -181,17 +192,27 @@ XML;
         $x = $this->ctx($schemaVer, 'tt');
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
         $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
-        $departure = $this->esc($this->date((string) ($params['departure_date'] ?? '')));
+        $startDate = $this->date((string) ($params['departure_date'] ?? ''));
+        $endDate = $this->date((string) ($params['return_date'] ?? ''));
+        if ($endDate === '' && $startDate !== '') {
+            $endTs = strtotime($startDate.' +27 days');
+            $endDate = $endTs ? date('Y-m-d', $endTs) : $startDate;
+        }
+        $departure = $this->esc($startDate);
+        $end = $this->esc($endDate);
 
         $body = <<<XML
     <air:FlightTimeTableReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
       <air:FlightTimeTableCriteria>
-        <air:GeneralTimeTable SearchExtraDays="false">
-          <air:DaysOfOperation/>
-          <air:FlightOriginPoint Code="{$origin}"/>
-          <air:FlightDestinationPoint Code="{$destination}"/>
-          <air:StartDate>{$departure}</air:StartDate>
+        <air:GeneralTimeTable StartDate="{$departure}" EndDate="{$end}" IncludeConnection="false">
+          <air:DaysOfOperation Sun="true" Mon="true" Tue="true" Wed="true" Thu="true" Fri="true" Sat="true"/>
+          <air:FlightOrigin>
+            <com:CityOrAirport Code="{$origin}"/>
+          </air:FlightOrigin>
+          <air:FlightDestination>
+            <com:CityOrAirport Code="{$destination}"/>
+          </air:FlightDestination>
         </air:GeneralTimeTable>
       </air:FlightTimeTableCriteria>
     </air:FlightTimeTableReq>
@@ -369,8 +390,19 @@ XML;
         return $this->envelope($body, $schemaVer);
     }
 
-    public static function extractFirstPricingSolution(string $lfsXml): ?string
+    public static function extractPricingSolution(string $lfsXml, ?string $solutionKey = null): ?string
     {
+        if ($solutionKey !== null && $solutionKey !== '') {
+            $escaped = preg_quote($solutionKey, '/');
+            if (preg_match(
+                '/<(?:[\w]+:)?AirPricingSolution\b[^>]*\bKey="'.$escaped.'"[^>]*>.*?<\/(?:[\w]+:)?AirPricingSolution>/s',
+                $lfsXml,
+                $m
+            )) {
+                return '      '.$m[0];
+            }
+        }
+
         if (preg_match('/<(?:[\w]+:)?AirPricingSolution\b[^>]*>.*?<\/(?:[\w]+:)?AirPricingSolution>/s', $lfsXml, $m)) {
             return '      '.$m[0];
         }

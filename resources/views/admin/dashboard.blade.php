@@ -102,7 +102,7 @@
             <div class="card-modern overflow-hidden p-0">
                 <div class="p-4" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: #fff;">
                     <h3 class="h5 mb-2"><i class="fas fa-plane me-2"></i>Flights & GDS</h3>
-                    <p class="small mb-0 opacity-90">Shop, price, book, ticket — all Travelport air APIs in one place.</p>
+                    <p class="small mb-0 opacity-90">Search, price, book, and ticket flights — flight APIs only, with clear guidance on each tool.</p>
                 </div>
                 <div class="p-4">
                     <a href="{{ route($flightsRoute) }}" class="btn btn-primary">Open air APIs</a>

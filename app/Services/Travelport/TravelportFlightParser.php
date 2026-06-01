@@ -6,104 +6,179 @@ use Illuminate\Support\Str;
 
 class TravelportFlightParser
 {
+    private const MAX_SOLUTIONS = 50;
+
     /**
-     * @return array{solutions: list<array<string, mixed>>, trace_id: ?string}
+     * @return array{solutions: list<array<string, mixed>>, trace_id: ?string, total_found: int}
      */
     public function parseLowFareSearch(string $xml): array
     {
-        $solutions = [];
-        $traceId = null;
-
         if (! Str::contains($xml, 'LowFareSearchRsp')) {
-            return ['solutions' => [], 'trace_id' => null];
+            return ['solutions' => [], 'trace_id' => null, 'total_found' => 0];
         }
 
+        $traceId = null;
         if (preg_match('/TraceId="([^"]+)"/', $xml, $m)) {
             $traceId = $m[1];
         }
 
-        if (! preg_match_all(
+        $segmentMap = $this->parseAirSegmentMap($xml);
+        $solutions = [];
+
+        if (preg_match_all(
             '/<(?:[\w]+:)?AirPricingSolution\b([^>]*)>(.*?)<\/(?:[\w]+:)?AirPricingSolution>/s',
             $xml,
             $blocks,
             PREG_SET_ORDER
         )) {
-            return ['solutions' => [], 'trace_id' => $traceId];
-        }
-
-        foreach ($blocks as $i => $block) {
-            $attrs = $block[1];
-            $inner = $block[2];
-
-            $solution = [
-                'index' => $i + 1,
-                'key' => $this->attr($attrs, 'Key'),
-                'total_price' => $this->attr($attrs, 'TotalPrice'),
-                'base_price' => $this->attr($attrs, 'BasePrice'),
-                'taxes' => $this->attr($attrs, 'Taxes'),
-                'segments' => $this->parseSegments($inner),
-            ];
-
-            if ($solution['segments'] !== []) {
-                $solutions[] = $solution;
+            foreach ($blocks as $i => $block) {
+                $solution = $this->parsePricingSolution($block[1], $block[2], $segmentMap, $i + 1);
+                if ($solution !== null) {
+                    $solutions[] = $solution;
+                }
             }
         }
 
-        if ($solutions === [] && preg_match_all(
-            '/<(?:[\w]+:)?FlightDetails\b([^>]*)\/>/s',
-            $xml,
-            $fdMatches,
+        $totalFound = count($solutions);
+        $solutions = $this->sortByPrice($solutions);
+        $solutions = array_slice($solutions, 0, self::MAX_SOLUTIONS);
+
+        foreach ($solutions as $idx => &$sol) {
+            $sol['index'] = $idx + 1;
+        }
+        unset($sol);
+
+        return [
+            'solutions' => $solutions,
+            'trace_id' => $traceId,
+            'total_found' => $totalFound,
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function parseAirSegmentMap(string $xml): array
+    {
+        $map = [];
+
+        if (! preg_match('/<(?:[\w]+:)?AirSegmentList>(.*?)<\/(?:[\w]+:)?AirSegmentList>/s', $xml, $list)) {
+            return $map;
+        }
+
+        if (! preg_match_all(
+            '/<(?:[\w]+:)?AirSegment\b([^>]*)(?:\/>|>.*?<\/(?:[\w]+:)?AirSegment>)/s',
+            $list[1],
+            $matches,
             PREG_SET_ORDER
         )) {
-            $segments = [];
-            foreach ($fdMatches as $fd) {
-                $segments[] = $this->flightDetailsSegment($fd[1]);
+            return $map;
+        }
+
+        foreach ($matches as $m) {
+            $seg = $this->airSegment($m[1]);
+            $key = $seg['key'] ?? null;
+            if ($key !== null) {
+                $map[$key] = $seg;
             }
-            if ($segments !== []) {
-                $solutions[] = [
-                    'index' => 1,
-                    'key' => null,
-                    'total_price' => null,
-                    'base_price' => null,
-                    'taxes' => null,
-                    'segments' => $segments,
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $segmentMap
+     * @return array<string, mixed>|null
+     */
+    private function parsePricingSolution(string $attrs, string $inner, array $segmentMap, int $index): ?array
+    {
+        $segmentKeys = [];
+        if (preg_match_all('/<(?:[\w]+:)?AirSegmentRef\b[^>]*Key="([^"]+)"/', $inner, $refs)) {
+            $segmentKeys = $refs[1];
+        }
+
+        $segments = [];
+        foreach ($segmentKeys as $key) {
+            if (isset($segmentMap[$key])) {
+                $segments[] = $segmentMap[$key];
+            }
+        }
+
+        if ($segments === []) {
+            return null;
+        }
+
+        $journeys = $this->parseJourneys($inner, $segmentMap);
+
+        return [
+            'index' => $index,
+            'key' => $this->attr($attrs, 'Key'),
+            'total_price' => $this->attr($attrs, 'TotalPrice'),
+            'base_price' => $this->attr($attrs, 'BasePrice'),
+            'taxes' => $this->attr($attrs, 'Taxes'),
+            'segments' => $segments,
+            'journeys' => $journeys,
+            'plating_carrier' => $this->attrFromInner($inner, 'PlatingCarrier'),
+        ];
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $segmentMap
+     * @return list<array{travel_time: ?string, segments: list<array<string, mixed>>}>
+     */
+    private function parseJourneys(string $inner, array $segmentMap): array
+    {
+        $journeys = [];
+
+        if (! preg_match_all(
+            '/<(?:[\w]+:)?Journey\b([^>]*)>(.*?)<\/(?:[\w]+:)?Journey>/s',
+            $inner,
+            $jBlocks,
+            PREG_SET_ORDER
+        )) {
+            return $journeys;
+        }
+
+        foreach ($jBlocks as $jb) {
+            $jSegs = [];
+            if (preg_match_all('/<(?:[\w]+:)?AirSegmentRef\b[^>]*Key="([^"]+)"/', $jb[2], $refs)) {
+                foreach ($refs[1] as $key) {
+                    if (isset($segmentMap[$key])) {
+                        $jSegs[] = $segmentMap[$key];
+                    }
+                }
+            }
+            if ($jSegs !== []) {
+                $journeys[] = [
+                    'travel_time' => $this->attr($jb[1], 'TravelTime'),
+                    'segments' => $jSegs,
                 ];
             }
         }
 
-        return ['solutions' => array_slice($solutions, 0, 25), 'trace_id' => $traceId];
+        return $journeys;
     }
 
     /**
+     * @param  list<array<string, mixed>>  $solutions
      * @return list<array<string, mixed>>
      */
-    private function parseSegments(string $xml): array
+    private function sortByPrice(array $solutions): array
     {
-        $segments = [];
+        usort($solutions, function ($a, $b) {
+            return $this->priceSortKey($a['total_price'] ?? '') <=> $this->priceSortKey($b['total_price'] ?? '');
+        });
 
-        if (preg_match_all(
-            '/<(?:[\w]+:)?AirSegment\b([^>]*)(?:\/>|>.*?<\/(?:[\w]+:)?AirSegment>)/s',
-            $xml,
-            $matches,
-            PREG_SET_ORDER
-        )) {
-            foreach ($matches as $m) {
-                $segments[] = $this->airSegment($m[1]);
-            }
+        return $solutions;
+    }
+
+    private function priceSortKey(string $raw): float
+    {
+        if (preg_match('/[\d.]+$/', $raw, $m)) {
+            return (float) $m[0];
         }
 
-        if ($segments === [] && preg_match_all(
-            '/<(?:[\w]+:)?FlightDetails\b([^>]*)\/>/s',
-            $xml,
-            $fdMatches,
-            PREG_SET_ORDER
-        )) {
-            foreach ($fdMatches as $fd) {
-                $segments[] = $this->flightDetailsSegment($fd[1]);
-            }
-        }
-
-        return $segments;
+        return PHP_FLOAT_MAX;
     }
 
     /**
@@ -112,6 +187,7 @@ class TravelportFlightParser
     private function airSegment(string $attrs): array
     {
         return [
+            'key' => $this->attr($attrs, 'Key'),
             'carrier' => $this->attr($attrs, 'Carrier'),
             'flight_number' => $this->attr($attrs, 'FlightNumber'),
             'origin' => $this->attr($attrs, 'Origin'),
@@ -124,25 +200,87 @@ class TravelportFlightParser
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{solutions: list<array<string, mixed>>, trace_id: ?string, total_found: int}
      */
-    private function flightDetailsSegment(string $attrs): array
+    public function parseFareDisplay(string $xml): array
     {
+        if (! Str::contains($xml, 'AirFareDisplayRsp')) {
+            return ['solutions' => [], 'trace_id' => null, 'total_found' => 0];
+        }
+
+        $traceId = null;
+        if (preg_match('/TraceId="([^"]+)"/', $xml, $m)) {
+            $traceId = $m[1];
+        }
+
+        $fares = [];
+        if (preg_match_all(
+            '/<(?:[\w]+:)?FareDisplay\b([^>]*)(?:\/>|>(.*?)<\/(?:[\w]+:)?FareDisplay>)/s',
+            $xml,
+            $blocks,
+            PREG_SET_ORDER
+        )) {
+            foreach ($blocks as $i => $block) {
+                $attrs = $block[1];
+                $carrier = $this->attr($attrs, 'Carrier');
+                $fareBasis = $this->attr($attrs, 'FareBasis');
+                $amount = $this->attr($attrs, 'Amount');
+                $tripType = $this->attr($attrs, 'TripType');
+
+                if ($carrier === null && $amount === null) {
+                    continue;
+                }
+
+                $fares[] = [
+                    'key' => (string) ($i + 1),
+                    'plating_carrier' => $carrier,
+                    'fare_basis' => $fareBasis,
+                    'total_price' => $amount,
+                    'trip_type' => $tripType,
+                    'origin' => $this->attr($attrs, 'Origin'),
+                    'destination' => $this->attr($attrs, 'Destination'),
+                ];
+            }
+        }
+
+        usort($fares, function (array $a, array $b): int {
+            $pa = $this->numericAmount((string) ($a['total_price'] ?? ''));
+            $pb = $this->numericAmount((string) ($b['total_price'] ?? ''));
+
+            return $pa <=> $pb;
+        });
+
+        $total = count($fares);
+        $capped = array_slice($fares, 0, self::MAX_SOLUTIONS);
+
         return [
-            'carrier' => $this->attr($attrs, 'Carrier'),
-            'flight_number' => $this->attr($attrs, 'FlightNumber'),
-            'origin' => $this->attr($attrs, 'Origin'),
-            'destination' => $this->attr($attrs, 'Destination'),
-            'departure' => $this->attr($attrs, 'DepartureTime'),
-            'arrival' => $this->attr($attrs, 'ArrivalTime'),
-            'equipment' => $this->attr($attrs, 'Equipment'),
-            'class_of_service' => null,
+            'solutions' => $capped,
+            'trace_id' => $traceId,
+            'total_found' => $total,
         ];
+    }
+
+    private function numericAmount(string $amount): float
+    {
+        if (preg_match('/[\d.]+/', $amount, $m)) {
+            return (float) $m[0];
+        }
+
+        return PHP_FLOAT_MAX;
     }
 
     private function attr(string $attrString, string $name): ?string
     {
         if (preg_match('/\b'.preg_quote($name, '/').'="([^"]*)"/', $attrString, $m)) {
+            return $m[1];
+        }
+
+        return null;
+    }
+
+    private function attrFromInner(string $inner, string $name): ?string
+    {
+        if (preg_match('/\b'.preg_quote($name, '/').'="([^"]*)"/', $inner, $m)) {
             return $m[1];
         }
 

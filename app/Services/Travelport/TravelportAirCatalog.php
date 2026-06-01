@@ -25,6 +25,20 @@ class TravelportAirCatalog
     }
 
     /**
+     * Flight-only operations shown in the UI (excludes catalog / non-air services).
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function flightOperations(): array
+    {
+        return array_filter(
+            self::operations(),
+            fn (array $op): bool => in_array($op['service'] ?? '', ['air', 'universal_record'], true)
+                && ($op['status'] ?? '') !== 'catalog'
+        );
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public static function get(string $key): ?array
@@ -50,13 +64,14 @@ class TravelportAirCatalog
                 'key' => $slug,
                 'group' => $slug,
                 'group_label' => $meta['label'] ?? $slug,
+                'group_description' => $meta['description'] ?? '',
                 'group_icon' => $meta['icon'] ?? 'fa-plane',
                 'order' => $meta['order'] ?? 99,
                 'operations' => [],
             ];
         }
 
-        foreach (self::operations() as $key => $op) {
+        foreach (self::flightOperations() as $key => $op) {
             $group = $op['group'] ?? 'shop';
             if (! isset($bucket[$group])) {
                 $bucket[$group] = [
@@ -73,6 +88,6 @@ class TravelportAirCatalog
 
         uasort($bucket, fn ($a, $b) => ($a['order'] ?? 99) <=> ($b['order'] ?? 99));
 
-        return array_values($bucket);
+        return array_values(array_filter($bucket, fn (array $g): bool => $g['operations'] !== []));
     }
 }

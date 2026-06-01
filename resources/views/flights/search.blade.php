@@ -12,14 +12,14 @@
 
     <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0 small">
-            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">All APIs</a></li>
+            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flight APIs</a></li>
             <li class="breadcrumb-item active">Low Fare Search</li>
         </ol>
     </nav>
 
     <div class="flights-hero">
         <h1><i class="fas fa-plane-departure me-2"></i>Low Fare Search</h1>
-        <p>Compare published fares — then use <a href="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'air_price']) }}" class="text-white text-decoration-underline">Air Price</a> and other APIs from the <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="text-white text-decoration-underline">API hub</a>.</p>
+        <p class="mb-0">Compare live bookable fares for your route. After you pick an option, use <a href="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'air_price']) }}" class="text-white text-decoration-underline">Air Price</a> or browse more tools on <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="text-white text-decoration-underline">Flight APIs</a>.</p>
     </div>
 
     @if($hasPricingContext)
@@ -41,12 +41,17 @@
     @endif
 
     @include('flights.partials.status')
+
+    @if(!empty($currentOperation))
+        @include('flights.partials.operation-help')
+    @endif
+
     @include('flights.partials.search-form')
 
     @if($searchResult)
         <section class="mb-4" aria-label="Search results">
             @if($searchResult['ok'])
-                <span class="status-pill ok mb-3"><i class="fas fa-check"></i> {{ $searchResult['message'] }}</span>
+                <span class="status-pill ok mb-3 d-inline-flex"><i class="fas fa-check"></i> {{ $searchResult['message'] }}</span>
             @else
                 <span class="status-pill err mb-3"><i class="fas fa-times"></i> {{ $searchResult['message'] }}</span>
             @endif

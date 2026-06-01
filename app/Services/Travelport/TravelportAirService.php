@@ -33,6 +33,7 @@ class TravelportAirService extends TravelportSoapClient
             'http_status' => $result['http_status'],
             'message' => $result['message'],
             'solutions' => $result['solutions'] ?? [],
+            'total_found' => $result['total_found'] ?? count($result['solutions'] ?? []),
             'trace_id' => $result['trace_id'],
             'response_excerpt' => $result['response_excerpt'],
             'endpoint' => $result['endpoint'],
@@ -61,8 +62,9 @@ class TravelportAirService extends TravelportSoapClient
         }
 
         if ($operation === 'air_price') {
+            $solutionKey = (string) ($params['solution_key'] ?? '');
             $params['_pricing_solution_xml'] = $params['_pricing_solution_xml']
-                ?? TravelportAirXmlBuilder::extractFirstPricingSolution((string) session('travelport.last_lfs_xml', ''));
+                ?? TravelportAirXmlBuilder::extractPricingSolution((string) session('travelport.last_lfs_xml', ''), $solutionKey !== '' ? $solutionKey : null);
             if ($params['_pricing_solution_xml'] === null || $params['_pricing_solution_xml'] === '') {
                 return $this->failResult($operation, 'Run Low Fare Search first (same session) or pricing solution is missing from the last response.', $this->airServiceUrl());
             }
@@ -99,20 +101,31 @@ class TravelportAirService extends TravelportSoapClient
                 session(['travelport.last_lfs_xml' => $http['body']]);
             }
 
-            $parsed = $operation === 'low_fare_search'
-                ? (new TravelportFlightParser)->parseLowFareSearch($http['body'])
-                : ['solutions' => [], 'trace_id' => $this->extractTraceId($http['body'])];
+            $parser = new TravelportFlightParser;
+            $parsed = match ($operation) {
+                'low_fare_search' => $parser->parseLowFareSearch($http['body']),
+                'air_fare_display' => $parser->parseFareDisplay($http['body']),
+                default => ['solutions' => [], 'trace_id' => $this->extractTraceId($http['body']), 'total_found' => 0],
+            };
 
             $count = count($parsed['solutions']);
-            $message = $operation === 'low_fare_search'
-                ? ($count > 0 ? "Found {$count} fare option(s)." : 'Search completed — see response for details.')
-                : ($meta['label'] ?? $operation).' completed successfully.';
+            $totalFound = (int) ($parsed['total_found'] ?? $count);
+            $message = match ($operation) {
+                'low_fare_search' => $count > 0
+                    ? "Showing {$count} of {$totalFound} fare option(s) (sorted by price)."
+                    : 'Search completed — see response for details.',
+                'air_fare_display' => $count > 0
+                    ? "Showing {$count} of {$totalFound} published fare(s) (sorted by amount)."
+                    : 'Fare display completed — no fares in response (check dates or market).',
+                default => ($meta['label'] ?? $operation).' completed successfully.',
+            };
 
             return [
                 'ok' => true,
                 'http_status' => $http['http_status'],
                 'message' => $message.' (v'.$ver.')',
                 'solutions' => $parsed['solutions'],
+                'total_found' => $totalFound,
                 'trace_id' => $parsed['trace_id'],
                 'response_excerpt' => $http['response_excerpt'],
                 'endpoint' => $endpoint,
@@ -190,6 +203,6 @@ class TravelportAirService extends TravelportSoapClient
 
     public function hasStoredPricingContext(): bool
     {
-        return TravelportAirXmlBuilder::extractFirstPricingSolution((string) session('travelport.last_lfs_xml', '')) !== null;
+        return TravelportAirXmlBuilder::extractPricingSolution((string) session('travelport.last_lfs_xml', '')) !== null;
     }
 }

@@ -12,7 +12,7 @@
         <i class="fas fa-home me-1"></i> Dashboard
     </a>
     <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="{{ $isIndexActive ? 'active' : '' }}">
-        <i class="fas fa-th-large me-1"></i> All APIs
+        <i class="fas fa-th-large me-1"></i> Flight APIs
     </a>
     <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="{{ $isSearchActive ? 'active' : '' }}">
         <i class="fas fa-search me-1"></i> Low Fare Search

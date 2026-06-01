@@ -152,7 +152,7 @@
         <hr class="my-4">
 
         <h2 class="h6 mb-2">Test air search</h2>
-        <p class="text-muted small mb-2">Requires <strong>target branch</strong>. Full API hub: <a href="{{ route('admin.flights.index') }}">Flights → All APIs</a>.</p>
+        <p class="text-muted small mb-2">Requires <strong>target branch</strong>. Open <a href="{{ route('admin.flights.index') }}">Flights → Flight APIs</a> for shopping and booking tools.</p>
         <form action="{{ route('admin.integrations.test-search', ['slug' => 'travelport']) }}" method="POST" class="row g-2 align-items-end">
             @csrf
             <div class="col-auto">

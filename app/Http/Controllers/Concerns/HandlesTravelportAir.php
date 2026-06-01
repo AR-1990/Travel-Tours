@@ -149,6 +149,7 @@ trait HandlesTravelportAir
             'flight_number' => $request->input('flight_number'),
             'departure_time' => $request->input('departure_time'),
             'fare_basis' => $request->input('fare_basis'),
+            'solution_key' => $request->input('solution_key'),
         ];
 
         return array_filter($common, fn ($v) => $v !== null && $v !== '');
