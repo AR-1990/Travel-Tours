@@ -38,17 +38,17 @@
     <div class="row g-3">
         <div class="col-md-2">
             <label class="form-label">Carrier</label>
-            <input type="text" name="carrier" class="form-control text-uppercase" maxlength="3" value="{{ $input['carrier'] ?? 'BA' }}" required>
+            <input type="text" name="carrier" class="form-control text-uppercase" maxlength="3" value="{{ $input['carrier'] ?? '' }}" placeholder="auto from last search">
         </div>
         <div class="col-md-2">
             <label class="form-label">Flight #</label>
-            <input type="text" name="flight_number" class="form-control" value="{{ $input['flight_number'] ?? '' }}" required>
+            <input type="text" name="flight_number" class="form-control" value="{{ $input['flight_number'] ?? '' }}" placeholder="auto from last search">
         </div>
         @include('flights.partials.fields.route', ['input' => $input, 'showReturn' => false, 'showAdults' => false])
         <div class="col-md-4">
             <label class="form-label">Departure (ISO)</label>
-            <input type="text" name="departure_time" class="form-control" placeholder="2026-08-01T10:00:00.000+01:00" value="{{ $input['departure_time'] ?? '' }}" required>
-            <div class="form-text">Or use date only: 2026-08-01</div>
+            <input type="text" name="departure_time" class="form-control" placeholder="auto from last search or 2026-08-01T10:00:00.000+01:00" value="{{ $input['departure_time'] ?? '' }}">
+            <div class="form-text">Leave blank to auto-fill from latest Low Fare Search.</div>
         </div>
     </div>
 @endif

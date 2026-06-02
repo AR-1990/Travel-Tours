@@ -33,6 +33,103 @@
         color: #fff;
         border-color: transparent;
     }
+    /* Same loader as landing page — centered, no full-screen background */
+    .flights-preloader.preloader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        background: transparent !important;
+        pointer-events: none;
+    }
+    .flights-preloader.d-none {
+        display: none !important;
+    }
+    .flights-preloader .loader {
+        position: relative;
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: #24bdc7;
+        box-shadow: 0 12px 32px rgba(36, 189, 199, 0.35);
+    }
+    .flights-preloader .loader span {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform: rotate(calc(18deg * var(--i)));
+    }
+    .flights-preloader .loader span::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 10px;
+        height: 10px;
+        background: #fff;
+        border-radius: 50%;
+        transform: scale(0);
+        animation: flights-home-loader-dot 2s linear infinite;
+        animation-delay: calc(0.1s * var(--i));
+    }
+    @keyframes flights-home-loader-dot {
+        0% { transform: scale(0); }
+        10% { transform: scale(1.2); }
+        80%, 100% { transform: scale(0); }
+    }
+    .flights-preloader .loader-plane {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        animation: flights-home-loader-rotating 2s linear infinite;
+        animation-delay: -1s;
+    }
+    @keyframes flights-home-loader-rotating {
+        0% { transform: rotate(10deg); }
+        100% { transform: rotate(370deg); }
+    }
+    .flights-preloader .loader-plane::before {
+        content: '\f072';
+        position: absolute;
+        font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free", "Font Awesome 5 Free";
+        font-weight: 300;
+        top: 53px;
+        left: 58px;
+        color: #fff;
+        font-size: 38px;
+        transform: rotate(135deg);
+    }
+    .flights-ajax-busy .flights-page {
+        cursor: progress;
+    }
+    .flights-page form button[type="submit"] {
+        position: relative;
+    }
+    .flights-btn-loading {
+        opacity: 0.95;
+        pointer-events: none;
+    }
+    .flights-btn-loading::after {
+        content: '';
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        margin-left: 0.5rem;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: flights-btn-spin 0.7s linear infinite;
+        vertical-align: -2px;
+    }
+    @keyframes flights-btn-spin {
+        to { transform: rotate(360deg); }
+    }
     .flight-results-pagination .pagination {
         justify-content: center;
         margin-bottom: 0;

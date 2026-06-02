@@ -25,7 +25,7 @@ class TravelportAirCatalog
     }
 
     /**
-     * Flight-only operations shown in the UI (excludes catalog / non-air services).
+     * Flight flow operations shown in the UI.
      *
      * @return array<string, array<string, mixed>>
      */
@@ -33,8 +33,7 @@ class TravelportAirCatalog
     {
         return array_filter(
             self::operations(),
-            fn (array $op): bool => in_array($op['service'] ?? '', ['air', 'universal_record'], true)
-                && ($op['status'] ?? '') !== 'catalog'
+            fn (array $op): bool => in_array($op['service'] ?? '', ['air', 'universal_record', 'flight'], true)
         );
     }
 

@@ -95,11 +95,12 @@ XML;
     /**
      * @param  array<string, mixed>  $params
      */
-    private function passengers(int $adults, array $x): string
+    private function passengers(int $adults, array $x, bool $withKeys = false): string
     {
         $xml = '';
         for ($i = 0; $i < max(1, min(9, $adults)); $i++) {
-            $xml .= "\n      <com:SearchPassenger Code=\"ADT\"/>";
+            $keyAttr = $withKeys ? ' Key="PAX'.($i + 1).'"' : '';
+            $xml .= "\n      <com:SearchPassenger{$keyAttr} Code=\"ADT\"/>";
         }
 
         return $xml;
@@ -228,18 +229,47 @@ XML;
     {
         $x = $this->ctx($schemaVer, 'price');
         $solutionXml = (string) ($params['_pricing_solution_xml'] ?? '');
+        $lfsXml = (string) ($params['_lfs_xml'] ?? '');
         $adults = (int) ($params['adults'] ?? 1);
 
         if ($solutionXml === '') {
             return '';
         }
 
+        $segmentRefs = self::extractSegmentRefsFromPricingSolution($solutionXml);
+        $bookingInfo = self::extractBookingInfoFromPricingSolution($solutionXml);
+        $itinerarySegments = $segmentRefs !== [] ? self::extractSegmentsByKey($lfsXml, $segmentRefs) : [];
+
+        $airItineraryXml = '';
+        $airPricingCommandXml = '';
+        if ($itinerarySegments !== []) {
+            $airItineraryXml = "\n      <air:AirItinerary>\n".implode("\n", array_map(fn ($seg) => '        '.$seg, $itinerarySegments))."\n      </air:AirItinerary>";
+            $mods = [];
+            if ($bookingInfo !== []) {
+                foreach ($bookingInfo as $bi) {
+                    $segRef = $this->esc($bi['segment_ref'] ?? '');
+                    $bCode = $this->esc($bi['booking_code'] ?? '');
+                    if ($segRef === '') {
+                        continue;
+                    }
+                    if ($bCode !== '') {
+                        $mods[] = "        <air:AirSegmentPricingModifiers AirSegmentRef=\"{$segRef}\">\n          <air:PermittedBookingCodes>\n            <air:BookingCode Code=\"{$bCode}\"/>\n          </air:PermittedBookingCodes>\n        </air:AirSegmentPricingModifiers>";
+                    } else {
+                        $mods[] = '        <air:AirSegmentPricingModifiers AirSegmentRef="'.$segRef.'"/>';
+                    }
+                }
+            } else {
+                $mods = array_map(fn ($key) => '        <air:AirSegmentPricingModifiers AirSegmentRef="'.$this->esc($key).'"/>', $segmentRefs);
+            }
+            $airPricingCommandXml = "\n      <air:AirPricingCommand>\n".implode("\n", $mods)."\n      </air:AirPricingCommand>";
+        }
+
         $body = <<<XML
     <air:AirPriceReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
-{$solutionXml}
-      <air:AirPricingCommand/>
-{$this->passengers($adults, $x)}
+{$airItineraryXml}
+{$this->passengers($adults, $x, true)}
+{$airPricingCommandXml}
     </air:AirPriceReq>
 XML;
 
@@ -252,14 +282,19 @@ XML;
     public function airFareRules(array $params, int $schemaVer): string
     {
         $x = $this->ctx($schemaVer, 'rules');
-        $fareBasis = $this->esc((string) ($params['fare_basis'] ?? ''));
-        $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
-        $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
+        $fareRuleKey = (string) ($params['_fare_rule_key_xml'] ?? '');
+
+        if ($fareRuleKey === '') {
+            $fareBasis = $this->esc((string) ($params['fare_basis'] ?? ''));
+            $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
+            $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
+            $fareRuleKey = '      <air:FareRuleLookup FareBasis="'.$fareBasis.'" Origin="'.$origin.'" Destination="'.$destination.'" ProviderCode="'.$x['gds'].'"/>';
+        }
 
         $body = <<<XML
     <air:AirFareRulesReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
-      <air:AirFareRulesKey FareInfoRef="1" FareBasis="{$fareBasis}" Origin="{$origin}" Destination="{$destination}"/>
+{$fareRuleKey}
     </air:AirFareRulesReq>
 XML;
 
@@ -277,11 +312,13 @@ XML;
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
         $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
         $departure = $this->esc((string) ($params['departure_time'] ?? $params['departure_date'] ?? ''));
+        $segmentKey = $this->esc((string) ($params['segment_key'] ?? 'SEAT1'));
+        $classOfService = $this->esc((string) ($params['class_of_service'] ?? 'Y'));
 
         $body = <<<XML
-    <air:SeatMapReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
+    <air:SeatMapReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" ReturnSeatPricing="false" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
-      <air:AirSegment Carrier="{$carrier}" FlightNumber="{$flight}" Origin="{$origin}" Destination="{$destination}" DepartureTime="{$departure}" ProviderCode="{$x['gds']}"/>
+      <air:AirSegment Key="{$segmentKey}" Group="0" Carrier="{$carrier}" FlightNumber="{$flight}" Origin="{$origin}" Destination="{$destination}" DepartureTime="{$departure}" ClassOfService="{$classOfService}" ProviderCode="{$x['gds']}"/>
     </air:SeatMapReq>
 XML;
 
@@ -408,6 +445,108 @@ XML;
         }
 
         return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function extractSegmentRefsFromPricingSolution(string $pricingSolutionXml): array
+    {
+        if ($pricingSolutionXml === '') {
+            return [];
+        }
+
+        if (! preg_match_all('/<(?:[\w]+:)?AirSegmentRef\b[^>]*\bKey="([^"]+)"/', $pricingSolutionXml, $m)) {
+            return [];
+        }
+
+        return array_values(array_unique($m[1]));
+    }
+
+    /**
+     * @return list<array{segment_ref: string, booking_code: string}>
+     */
+    public static function extractBookingInfoFromPricingSolution(string $pricingSolutionXml): array
+    {
+        if ($pricingSolutionXml === '') {
+            return [];
+        }
+
+        if (! preg_match_all('/<(?:[\w]+:)?BookingInfo\b([^>]*)\/>/s', $pricingSolutionXml, $matches, PREG_SET_ORDER)) {
+            return [];
+        }
+
+        $list = [];
+        foreach ($matches as $m) {
+            $attrs = $m[1];
+            $segmentRef = '';
+            $bookingCode = '';
+            if (preg_match('/\bSegmentRef="([^"]+)"/', $attrs, $a)) {
+                $segmentRef = $a[1];
+            }
+            if (preg_match('/\bBookingCode="([^"]+)"/', $attrs, $a)) {
+                $bookingCode = $a[1];
+            }
+            if ($segmentRef !== '') {
+                $list[] = ['segment_ref' => $segmentRef, 'booking_code' => $bookingCode];
+            }
+        }
+
+        return $list;
+    }
+
+    /**
+     * @param  list<string>  $segmentKeys
+     * @return list<string>
+     */
+    public static function extractSegmentsByKey(string $lfsXml, array $segmentKeys): array
+    {
+        if ($lfsXml === '' || $segmentKeys === []) {
+            return [];
+        }
+
+        $segments = [];
+        foreach ($segmentKeys as $key) {
+            $escaped = preg_quote($key, '/');
+            if (preg_match('/<(?:[\w]+:)?AirSegment\b[^>]*\bKey="'.$escaped.'"[^>]*\/>/s', $lfsXml, $m)) {
+                $segments[] = self::normalizeSegmentForAirPrice($m[0]);
+                continue;
+            }
+
+            if (preg_match('/<(?:[\w]+:)?AirSegment\b[^>]*\bKey="'.$escaped.'"[^>]*>.*?<\/(?:[\w]+:)?AirSegment>/s', $lfsXml, $m)) {
+                $segments[] = self::normalizeSegmentForAirPrice($m[0]);
+            }
+        }
+
+        return $segments;
+    }
+
+    private static function normalizeSegmentForAirPrice(string $segmentXml): string
+    {
+        if (! preg_match('/<(?:[\w]+:)?AirSegment\b([^>]*)>/s', $segmentXml, $m)) {
+            return $segmentXml;
+        }
+
+        $attrs = $m[1];
+        $keep = [
+            'Key', 'Group', 'Carrier', 'FlightNumber', 'Origin', 'Destination',
+            'DepartureTime', 'ArrivalTime', 'ClassOfService', 'ProviderCode',
+        ];
+
+        $parts = [];
+        foreach ($keep as $name) {
+            if (preg_match('/\b'.preg_quote($name, '/').'="([^"]*)"/', $attrs, $a)) {
+                $parts[] = $name.'="'.htmlspecialchars($a[1], ENT_XML1 | ENT_QUOTES, 'UTF-8').'"';
+            }
+        }
+
+        if (! preg_match('/\bProviderCode="/', implode(' ', $parts))
+            && preg_match('/<(?:[\w]+:)?AirAvailInfo\b[^>]*\bProviderCode="([^"]+)"/', $segmentXml, $p)
+        ) {
+            $parts[] = 'ProviderCode="'.htmlspecialchars($p[1], ENT_XML1 | ENT_QUOTES, 'UTF-8').'"';
+        }
+
+        return '<air:AirSegment '.implode(' ', $parts).'/>';
     }
 
     private function esc(string $value): string

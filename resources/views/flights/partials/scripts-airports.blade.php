@@ -10,33 +10,44 @@
         o.setSelection(dc, dd);
         d.setSelection(oc, od);
     }
-    document.getElementById('swapAirports')?.addEventListener('click', swapPickers);
-    document.getElementById('swapAirportsMobile')?.addEventListener('click', swapPickers);
 
-    document.querySelectorAll('.popular-routes button[data-origin]').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const o = window.getAirportPicker('origin');
-            const d = window.getAirportPicker('destination');
-            if (o) o.setSelection(this.dataset.origin, this.dataset.oLabel || this.dataset.origin);
-            if (d) d.setSelection(this.dataset.destination, this.dataset.dLabel || this.dataset.destination);
-        });
-    });
+    window.initFlightUi = function initFlightUi() {
+        document.getElementById('swapAirports')?.addEventListener('click', swapPickers);
+        document.getElementById('swapAirportsMobile')?.addEventListener('click', swapPickers);
 
-    const form = document.getElementById('flightSearchForm');
-    if (form) {
-        const tripRadios = form.querySelectorAll('input[name="trip_type"]');
-        const returnWrap = document.getElementById('returnDateWrap');
-        const returnInput = document.getElementById('return_date');
-        function syncTripType() {
-            const round = form.querySelector('input[name="trip_type"]:checked')?.value === 'roundtrip';
-            if (returnWrap) returnWrap.style.display = round ? '' : 'none';
-            if (returnInput) {
-                if (!round) returnInput.value = '';
-                returnInput.required = round;
+        document.querySelectorAll('.popular-routes button[data-origin]').forEach(btn => {
+            if (btn.dataset.ajaxBound === '1') {
+                return;
             }
+            btn.dataset.ajaxBound = '1';
+            btn.addEventListener('click', function () {
+                const o = window.getAirportPicker('origin');
+                const d = window.getAirportPicker('destination');
+                if (o) o.setSelection(this.dataset.origin, this.dataset.oLabel || this.dataset.origin);
+                if (d) d.setSelection(this.dataset.destination, this.dataset.dLabel || this.dataset.destination);
+            });
+        });
+
+        const form = document.getElementById('flightSearchForm');
+        if (form) {
+            const tripRadios = form.querySelectorAll('input[name="trip_type"]');
+            const returnWrap = document.getElementById('returnDateWrap');
+            const returnInput = document.getElementById('return_date');
+            function syncTripType() {
+                const round = form.querySelector('input[name="trip_type"]:checked')?.value === 'roundtrip';
+                if (returnWrap) returnWrap.style.display = round ? '' : 'none';
+                if (returnInput) {
+                    if (!round) returnInput.value = '';
+                    returnInput.required = round;
+                }
+            }
+            tripRadios.forEach(r => r.addEventListener('change', syncTripType));
+            syncTripType();
         }
-        tripRadios.forEach(r => r.addEventListener('change', syncTripType));
-        syncTripType();
+    };
+
+    if (typeof window.initFlightUi === 'function') {
+        window.initFlightUi();
     }
 })();
 </script>

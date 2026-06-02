@@ -28,7 +28,7 @@ class SubAgentController extends \App\Http\Controllers\Admin\ManagersController
         $currentUser = Auth::user();
         $this->authorizeManagersAccess($currentUser, 'managers.create');
 
-        $roles = $this->roleOptionsForUser($currentUser);
+        $roles = $this->subAgentService->roleOptionsForTenant($currentUser);
 
         return view('agent.sub-agents.form', compact('roles'));
     }
@@ -40,7 +40,7 @@ class SubAgentController extends \App\Http\Controllers\Admin\ManagersController
 
         $manager = $this->baseSubAgentQuery($currentUser)->with(['role', 'userPermissions'])->findOrFail($id);
 
-        $roles = $this->roleOptionsForUser($currentUser);
+        $roles = $this->subAgentService->roleOptionsForTenant($currentUser);
 
         return view('agent.sub-agents.form', compact('manager', 'roles'));
     }

@@ -128,6 +128,9 @@
                     @if($isSuperAdmin)
                         <a href="{{ route('admin.integrations.edit', ['slug' => 'travelport']) }}" class="btn tavelo-btn-soft ms-2">API Settings</a>
                     @endif
+                    <p class="small text-muted mt-3 mb-0">
+                        <strong>Flow:</strong> Air Shop → Air Price → Air Book → Ticketing. Use Cancel / Modify / Retrieve for servicing after booking.
+                    </p>
                 </div>
             </div>
         </div>

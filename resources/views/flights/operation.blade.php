@@ -60,6 +60,8 @@
                 @include('flights.partials.result-cards')
             @elseif($operationKey === 'air_fare_display' && !empty($searchResult['solutions']))
                 @include('flights.partials.fare-display-results')
+            @elseif($operationKey === 'air_price')
+                @include('flights.partials.air-price-results')
             @elseif($searchResult['ok'])
                 <div class="card-modern p-4">
                     <p class="small text-muted mb-0">Response received. Expand raw output below for full XML.</p>
@@ -88,4 +90,5 @@
 
 @push('scripts')
     @include('flights.partials.scripts-airports')
+    @include('flights.partials.scripts-ajax')
 @endpush

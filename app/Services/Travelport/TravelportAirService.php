@@ -38,6 +38,7 @@ class TravelportAirService extends TravelportSoapClient
             'response_excerpt' => $result['response_excerpt'],
             'endpoint' => $result['endpoint'],
             'operation' => 'low_fare_search',
+            'schema_version' => $result['schema_version'] ?? null,
         ];
     }
 
@@ -63,10 +64,41 @@ class TravelportAirService extends TravelportSoapClient
 
         if ($operation === 'air_price') {
             $solutionKey = (string) ($params['solution_key'] ?? '');
+            $lastLfsXml = (string) session('travelport.last_lfs_xml', '');
+            $params['_lfs_xml'] = $lastLfsXml;
             $params['_pricing_solution_xml'] = $params['_pricing_solution_xml']
-                ?? TravelportAirXmlBuilder::extractPricingSolution((string) session('travelport.last_lfs_xml', ''), $solutionKey !== '' ? $solutionKey : null);
+                ?? TravelportAirXmlBuilder::extractPricingSolution($lastLfsXml, $solutionKey !== '' ? $solutionKey : null);
             if ($params['_pricing_solution_xml'] === null || $params['_pricing_solution_xml'] === '') {
                 return $this->failResult($operation, 'Run Low Fare Search first (same session) or pricing solution is missing from the last response.', $this->airServiceUrl());
+            }
+
+            $detected = $this->extractSchemaVersionFromXml($lastLfsXml);
+            if ($detected === null) {
+                $detected = $this->extractSchemaVersionFromXml((string) $params['_pricing_solution_xml']);
+            }
+            if ($detected !== null) {
+                $params['_preferred_schema_version'] = $detected;
+            }
+        }
+
+        if ($operation === 'air_fare_rules') {
+            $lastLfsXml = (string) session('travelport.last_lfs_xml', '');
+            $params['_fare_rule_key_xml'] = $this->extractFirstFareRuleKeyXml($lastLfsXml);
+            $detected = $this->extractSchemaVersionFromXml($lastLfsXml);
+            if ($detected !== null) {
+                $params['_preferred_schema_version'] = $detected;
+            }
+        }
+
+        if ($operation === 'seat_map' && ! isset($params['carrier'])) {
+            $lastLfsXml = (string) session('travelport.last_lfs_xml', '');
+            $seg = $this->extractFirstAirSegmentForSeatMap($lastLfsXml);
+            if ($seg !== null) {
+                $params = array_merge($seg, $params);
+            }
+            $detected = $this->extractSchemaVersionFromXml($lastLfsXml);
+            if ($detected !== null) {
+                $params['_preferred_schema_version'] = $detected;
             }
         }
 
@@ -75,7 +107,7 @@ class TravelportAirService extends TravelportSoapClient
         $builder = new TravelportAirXmlBuilder;
         $lastFail = null;
 
-        foreach ($this->schemaVersionsToTry() as $ver) {
+        foreach ($this->schemaVersionsToTry($params) as $ver) {
             $body = $builder->build($operation, $params, $ver);
             if ($body === null || $body === '') {
                 continue;
@@ -105,6 +137,7 @@ class TravelportAirService extends TravelportSoapClient
             $parsed = match ($operation) {
                 'low_fare_search' => $parser->parseLowFareSearch($http['body']),
                 'air_fare_display' => $parser->parseFareDisplay($http['body']),
+                'air_price' => $parser->parseAirPrice($http['body']),
                 default => ['solutions' => [], 'trace_id' => $this->extractTraceId($http['body']), 'total_found' => 0],
             };
 
@@ -117,6 +150,9 @@ class TravelportAirService extends TravelportSoapClient
                 'air_fare_display' => $count > 0
                     ? "Showing {$count} of {$totalFound} published fare(s) (sorted by amount)."
                     : 'Fare display completed — no fares in response (check dates or market).',
+                'air_price' => $count > 0
+                    ? 'Air Price completed successfully.'
+                    : 'Air Price completed successfully.',
                 default => ($meta['label'] ?? $operation).' completed successfully.',
             };
 
@@ -173,12 +209,111 @@ class TravelportAirService extends TravelportSoapClient
     /**
      * @return list<int>
      */
-    private function schemaVersionsToTry(): array
+    /**
+     * @param  array<string, mixed>  $params
+     * @return list<int>
+     */
+    private function schemaVersionsToTry(array $params = []): array
     {
         $preferred = $this->schemaVersion();
-        $candidates = [$preferred, 52, 50, 48, 37, 34, 33, 32];
+        $detected = (int) ($params['_preferred_schema_version'] ?? 0);
+        $candidates = [$preferred, 52, 51, 50, 48, 37, 34, 33, 32];
+        if ($detected >= 30 && $detected <= 99) {
+            array_unshift($candidates, $detected);
+        }
 
         return array_values(array_unique(array_filter($candidates, fn ($v) => $v >= 30 && $v <= 99)));
+    }
+
+    private function extractSchemaVersionFromXml(string $xml): ?int
+    {
+        if ($xml === '') {
+            return null;
+        }
+
+        if (preg_match('/schema\/air_v(\d+)_0/i', $xml, $m)) {
+            return (int) $m[1];
+        }
+
+        return null;
+    }
+
+    private function extractFirstFareRuleKeyXml(string $xml): string
+    {
+        if ($xml === '') {
+            return '';
+        }
+
+        if (preg_match('/<(?:[\w]+:)?FareRuleKey\b([^>]*)>(.*?)<\/(?:[\w]+:)?FareRuleKey>/s', $xml, $m)) {
+            $attrs = $m[1];
+            $value = trim($m[2]);
+            $provider = '';
+            $fareInfoRef = '';
+            if (preg_match('/\bProviderCode="([^"]+)"/', $attrs, $a)) {
+                $provider = $a[1];
+            }
+            if (preg_match('/\bFareInfoRef="([^"]+)"/', $attrs, $a)) {
+                $fareInfoRef = $a[1];
+            }
+
+            $attrXml = '';
+            if ($fareInfoRef !== '') {
+                $attrXml .= ' FareInfoRef="'.$this->xmlEscape($fareInfoRef).'"';
+            }
+            if ($provider !== '') {
+                $attrXml .= ' ProviderCode="'.$this->xmlEscape($provider).'"';
+            }
+
+            return '      <air:FareRuleKey'.$attrXml.'>'.$this->xmlEscape($value).'</air:FareRuleKey>';
+        }
+
+        return '';
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private function extractFirstAirSegmentForSeatMap(string $xml): ?array
+    {
+        if ($xml === '') {
+            return null;
+        }
+
+        if (! preg_match('/<(?:[\w]+:)?AirSegment\b([^>]*?)\/?>/s', $xml, $m)) {
+            return null;
+        }
+
+        $attrs = $m[1];
+        $carrier = $this->extractAttr($attrs, 'Carrier');
+        $flight = $this->extractAttr($attrs, 'FlightNumber');
+        $origin = $this->extractAttr($attrs, 'Origin');
+        $destination = $this->extractAttr($attrs, 'Destination');
+        $departure = $this->extractAttr($attrs, 'DepartureTime');
+        $segmentKey = $this->extractAttr($attrs, 'Key');
+        $classOfService = $this->extractAttr($attrs, 'ClassOfService');
+
+        if ($carrier === '' || $flight === '' || $origin === '' || $destination === '' || $departure === '') {
+            return null;
+        }
+
+        return [
+            'carrier' => $carrier,
+            'flight_number' => $flight,
+            'origin' => $origin,
+            'destination' => $destination,
+            'departure_time' => $departure,
+            'segment_key' => $segmentKey !== '' ? $segmentKey : 'SEAT1',
+            'class_of_service' => $classOfService,
+        ];
+    }
+
+    private function extractAttr(string $attrs, string $name): string
+    {
+        if (preg_match('/\b'.preg_quote($name, '/').'="([^"]+)"/', $attrs, $m)) {
+            return $m[1];
+        }
+
+        return '';
     }
 
     private function isSchemaVersionFault(string $message): bool

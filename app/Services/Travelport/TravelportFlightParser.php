@@ -260,6 +260,103 @@ class TravelportFlightParser
         ];
     }
 
+    /**
+     * @return array{solutions: list<array<string, mixed>>, trace_id: ?string, total_found: int}
+     */
+    public function parseAirPrice(string $xml): array
+    {
+        if (! Str::contains($xml, 'AirPriceRsp')) {
+            return ['solutions' => [], 'trace_id' => null, 'total_found' => 0];
+        }
+
+        $traceId = null;
+        if (preg_match('/TraceId="([^"]+)"/', $xml, $m)) {
+            $traceId = $m[1];
+        }
+
+        $segmentMap = $this->parseAirPriceSegmentMap($xml);
+        $solutions = [];
+
+        if (preg_match_all(
+            '/<(?:[\w]+:)?AirPricingSolution\b([^>]*)>(.*?)<\/(?:[\w]+:)?AirPricingSolution>/s',
+            $xml,
+            $blocks,
+            PREG_SET_ORDER
+        )) {
+            foreach ($blocks as $i => $block) {
+                $attrs = $block[1];
+                $inner = $block[2];
+                $segmentKeys = [];
+                if (preg_match_all('/<(?:[\w]+:)?AirSegmentRef\b[^>]*Key="([^"]+)"/', $inner, $refs)) {
+                    $segmentKeys = $refs[1];
+                }
+
+                $segments = [];
+                foreach ($segmentKeys as $key) {
+                    if (isset($segmentMap[$key])) {
+                        $segments[] = $segmentMap[$key];
+                    }
+                }
+
+                $fareBasis = null;
+                if (preg_match('/<(?:[\w]+:)?FareInfo\b[^>]*FareBasis="([^"]+)"/', $inner, $fb)) {
+                    $fareBasis = $fb[1];
+                }
+                $latestTicketing = null;
+                if (preg_match('/<(?:[\w]+:)?AirPricingInfo\b[^>]*LatestTicketingTime="([^"]+)"/', $inner, $lt)) {
+                    $latestTicketing = $lt[1];
+                }
+                $plating = $this->attrFromInner($inner, 'PlatingCarrier');
+
+                $solutions[] = [
+                    'index' => $i + 1,
+                    'key' => $this->attr($attrs, 'Key'),
+                    'total_price' => $this->attr($attrs, 'TotalPrice'),
+                    'base_price' => $this->attr($attrs, 'BasePrice'),
+                    'taxes' => $this->attr($attrs, 'Taxes'),
+                    'plating_carrier' => $plating,
+                    'fare_basis' => $fareBasis,
+                    'latest_ticketing_time' => $latestTicketing,
+                    'segments' => $segments,
+                ];
+            }
+        }
+
+        $solutions = $this->sortByPrice($solutions);
+        $total = count($solutions);
+
+        return [
+            'solutions' => array_slice($solutions, 0, self::MAX_SOLUTIONS),
+            'trace_id' => $traceId,
+            'total_found' => $total,
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function parseAirPriceSegmentMap(string $xml): array
+    {
+        $map = [];
+        if (! preg_match('/<(?:[\w]+:)?AirItinerary>(.*?)<\/(?:[\w]+:)?AirItinerary>/s', $xml, $itinerary)) {
+            return $map;
+        }
+
+        if (! preg_match_all('/<(?:[\w]+:)?AirSegment\b([^>]*)(?:\/>|>.*?<\/(?:[\w]+:)?AirSegment>)/s', $itinerary[1], $matches, PREG_SET_ORDER)) {
+            return $map;
+        }
+
+        foreach ($matches as $m) {
+            $seg = $this->airSegment($m[1]);
+            $key = $seg['key'] ?? null;
+            if ($key !== null) {
+                $map[$key] = $seg;
+            }
+        }
+
+        return $map;
+    }
+
     private function numericAmount(string $amount): float
     {
         if (preg_match('/[\d.]+/', $amount, $m)) {

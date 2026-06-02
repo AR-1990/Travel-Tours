@@ -82,14 +82,5 @@
 
 @push('scripts')
     @include('flights.partials.scripts-airports')
-    <script>
-    document.getElementById('flightSearchForm')?.addEventListener('submit', function (e) {
-        const o = window.getAirportPicker('origin');
-        const d = window.getAirportPicker('destination');
-        if (!o?.getCode() || !d?.getCode()) {
-            e.preventDefault();
-            alert('Please pick both places from the suggestions list.');
-        }
-    });
-    </script>
+    @include('flights.partials.scripts-ajax')
 @endpush

@@ -178,6 +178,8 @@ trait HandlesTravelportAir
             'carrier' => $request->input('carrier'),
             'flight_number' => $request->input('flight_number'),
             'departure_time' => $request->input('departure_time'),
+            'segment_key' => $request->input('segment_key'),
+            'class_of_service' => $request->input('class_of_service'),
             'fare_basis' => $request->input('fare_basis'),
             'solution_key' => $request->input('solution_key'),
         ];
