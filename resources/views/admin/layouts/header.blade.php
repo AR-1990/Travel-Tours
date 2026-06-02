@@ -3,114 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Admin Panel') - {{ config('app.name') }}</title>
+    <title>@yield('title', 'Admin Dashboard') - Tavelo</title>
+    <link rel="icon" type="image/png" href="{{ asset('assets/img/logo/favicon.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     @vite(['resources/css/app.css'])
-    <style>
-        :root {
-            --header-height: 72px;
-            --sidebar-width: 300px;
-        }
-        body {
-            background: #f8fafc;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            margin: 0;
-            overflow-x: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: #fff;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 1040;
-        }
-        .header-flex {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            min-height: var(--header-height);
-            padding: 0.75rem 1.5rem;
-        }
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #fff;
-            text-decoration: none;
-        }
-        .profile_dropdown img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.3);
-        }
-        .sidebar {
-            background: #fff;
-            border-right: 1px solid #e5e7eb;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
-        }
-        .sidebar-menu li a {
-            color: #4b5563;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            margin: 0.25rem 1rem;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-        }
-        .sidebar-menu li a:hover,
-        .sidebar-menu li a.active {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: #fff;
-        }
-        .sidebar-menu svg {
-            width: 20px;
-            height: 20px;
-            margin-right: 0.75rem;
-        }
-        .main-content {
-            margin-left: var(--sidebar-width);
-            padding: 2rem;
-            min-height: calc(100vh - var(--header-height));
-            width: calc(100% - var(--sidebar-width));
-        }
-        .card-modern {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            transition: all 0.3s;
-        }
-        .card-modern:hover {
-            border-color: #6366f1;
-            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.15);
-            transform: translateY(-2px);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            border: none;
-        }
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        }
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s;
-            }
-            .sidebar.open {
-                transform: translateX(0);
-            }
-            .main-content {
-                margin-left: 0;
-                width: 100%;
-                padding: 1.25rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('assets/css/admin-theme.css') }}">
     @stack('styles')
 </head>
 <body>
@@ -134,7 +34,7 @@
         <div class="container-fluid">
             <div class="header-flex">
                 <a href="{{ route($dashboardRoute ?? 'admin.dashboard') }}" class="logo">
-                    <i class="fas fa-shield-alt me-2"></i>{{ config('app.name', 'Travel Tours') }}
+                    <img src="{{ asset('assets/img/logo/logo.png') }}" alt="Logo">
                 </a>
                 <div class="profile_dropdown">
                     <div class="dropdown">
@@ -151,7 +51,7 @@
         </div>
     </div>
     <div class="admin-panel d-flex">
-        <aside id="dashboardSidebar" class="sidebar position-fixed" style="width: var(--sidebar-width); top: var(--header-height); height: calc(100vh - var(--header-height)); overflow-y: auto; padding: 1.5rem 0;">
+        <aside id="dashboardSidebar" class="sidebar admin-sidebar position-fixed">
             <ul class="sidebar-menu list-unstyled mb-0">
                 <li>
                     <a href="{{ route($dashboardRoute) }}" class="{{ request()->routeIs('admin.dashboard') || request()->routeIs('agent.dashboard') || request()->routeIs('subagent.dashboard') ? 'active' : '' }}">
