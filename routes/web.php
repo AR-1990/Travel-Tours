@@ -38,9 +38,17 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     $recentBlogs = \App\Models\Content\Blog::latest()->take(3)->get();
+    $airportOptions = collect(\App\Support\AirportDirectory::popular())
+        ->mapWithKeys(fn (array $row): array => [(string) $row['code'] => (string) ($row['label'] ?? $row['code'])])
+        ->all();
 
-    return view('frontend.index', compact('recentBlogs'));
+    $stored = session('public.flight_search');
+    $flightSearchInput = is_array($stored) ? ($stored['input'] ?? []) : [];
+
+    return view('frontend.index', compact('recentBlogs', 'airportOptions', 'flightSearchInput'));
 })->name('home');
+Route::post('/search/flights', [\App\Http\Controllers\FrontController::class, 'flightSearch'])->name('frontend.flights.search');
+Route::get('/flights/results', [\App\Http\Controllers\FrontController::class, 'flightResults'])->name('frontend.flights.results');
 
 /** Marketing / platform hub (Tailwind) — use e.g. for links that need the simple landing */
 Route::get('/platform', function () {

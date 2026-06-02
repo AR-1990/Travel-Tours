@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Content\Blog;
+use App\Services\Travelport\TravelportAirService;
+use App\Support\AirportDirectory;
 use Illuminate\Http\Request;
 
 class FrontController extends Controller
@@ -112,4 +115,118 @@ class FrontController extends Controller
     public function tourSingle() { return view('tour-single'); }
 
     public function welcome() { return view('welcome'); }
+
+    public function flightSearch(Request $request, TravelportAirService $air)
+    {
+        $tripType = $this->normalizeTripType((string) $request->input('trip_type', 'oneway'));
+        $departureDate = $this->normalizeDate((string) $request->input('departure_date', (string) $request->input('journey-date')));
+        $returnDateRaw = (string) $request->input('return_date', (string) $request->input('return-date'));
+        $returnDate = $tripType === 'roundtrip' ? $this->normalizeDate($returnDateRaw) : null;
+
+        $origin = $this->resolveAirportCode((string) $request->input('origin', (string) $request->input('from-destination')));
+        $destination = $this->resolveAirportCode((string) $request->input('destination', (string) $request->input('to-destination')));
+        $adults = max(1, min(9, (int) $request->input('adults', (int) $request->input('adult', 1))));
+
+        if ($origin === null || $destination === null || $departureDate === null) {
+            return redirect()->route('home')->with('error', 'Please provide valid origin, destination, and journey date.');
+        }
+
+        if ($tripType === 'roundtrip' && $returnDate === null) {
+            return redirect()->route('home')->with('error', 'Return date is required for round-way flights.');
+        }
+
+        $searchResult = $air->lowFareSearch([
+            'origin' => $origin,
+            'destination' => $destination,
+            'departure_date' => $departureDate,
+            'return_date' => $returnDate,
+            'adults' => $adults,
+        ]);
+
+        session([
+            'public.flight_search' => [
+                'input' => [
+                    'origin' => $origin,
+                    'destination' => $destination,
+                    'departure_date' => $departureDate,
+                    'return_date' => $returnDate,
+                    'adults' => $adults,
+                    'trip_type' => $tripType,
+                ],
+                'result' => $searchResult,
+            ],
+        ]);
+
+        return redirect()
+            ->route('frontend.flights.results')
+            ->with($searchResult['ok'] ? 'success' : 'error', $searchResult['message'] ?? 'Search complete.');
+    }
+
+    public function flightResults()
+    {
+        $stored = session('public.flight_search');
+        if (! is_array($stored) || ! isset($stored['result'])) {
+            return redirect()->route('home')->with('error', 'Please run a flight search first.');
+        }
+
+        $airportOptions = collect(AirportDirectory::popular())
+            ->mapWithKeys(fn (array $row): array => [(string) $row['code'] => (string) ($row['label'] ?? $row['code'])])
+            ->all();
+
+        return view('frontend.flight-results', [
+            'flightSearchInput' => $stored['input'] ?? [],
+            'flightSearchResult' => $stored['result'],
+            'airportOptions' => $airportOptions,
+        ]);
+    }
+
+    private function normalizeTripType(string $tripType): string
+    {
+        $value = strtolower(trim($tripType));
+
+        return in_array($value, ['roundtrip', 'round-way', 'round_way'], true) ? 'roundtrip' : 'oneway';
+    }
+
+    private function normalizeDate(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        foreach (['Y-m-d', 'n/j/Y', 'm/d/Y'] as $format) {
+            $dt = \DateTime::createFromFormat($format, $value);
+            if ($dt instanceof \DateTime) {
+                return $dt->format('Y-m-d');
+            }
+        }
+
+        $ts = strtotime($value);
+
+        return $ts ? date('Y-m-d', $ts) : null;
+    }
+
+    private function resolveAirportCode(string $value): ?string
+    {
+        $value = strtoupper(trim($value));
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/\b([A-Z]{3})\b/', $value, $m)) {
+            return $m[1];
+        }
+
+        $known = [
+            'NEW YORK' => 'JFK',
+            'LOS ANGELES' => 'LAX',
+            'LONDON' => 'LHR',
+            'DUBAI' => 'DXB',
+            'KARACHI' => 'KHI',
+            'LAHORE' => 'LHE',
+            'ISLAMABAD' => 'ISB',
+        ];
+
+        return $known[$value] ?? null;
+    }
 }

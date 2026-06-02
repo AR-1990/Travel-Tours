@@ -1,0 +1,92 @@
+/* Homepage — flights active; other tabs visible but disabled */
+
+.home-flight-search-only .search-nav .nav-link-disabled {
+    opacity: 0.55;
+    cursor: not-allowed !important;
+    pointer-events: none;
+    user-select: none;
+}
+
+.home-flight-search-only .search-nav .home-flights-tab .nav-link.active {
+    pointer-events: none;
+    cursor: default;
+}
+
+.home-flight-search .flight-multicity-item {
+    display: none !important;
+}
+
+.home-flight-search .form-group select.home-airport-select {
+    display: block;
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 19px;
+    font-weight: 500;
+    color: var(--color-dark, #0f172a);
+    padding: 5px 28px 5px 0;
+    margin: 0;
+    line-height: 1.4;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2324bdc7' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 2px center;
+}
+
+.home-flight-search .form-group select.home-airport-select:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.home-flight-search .home-airport-hint {
+    margin: 0;
+    font-size: 15px;
+    color: var(--color-dark, #334155);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#home-flight-results {
+    scroll-margin-top: 100px;
+}
+
+.home-flight-results {
+    background: #f4f8f9;
+}
+
+.home-flight-results .flight-booking-item {
+    margin-bottom: 1.25rem;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.flight-airline-img .flight-airline-code {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: rgba(36, 189, 199, 0.15);
+    color: #24bdc7;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.home-flight-results .results-meta {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.home-flight-results .theme-btn.disabled {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.home-flight-alert {
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
