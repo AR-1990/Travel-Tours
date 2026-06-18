@@ -52,7 +52,7 @@
         width: 90px;
         height: 90px;
         border-radius: 50%;
-        background: #24bdc7;
+        background: #053750;
         box-shadow: 0 12px 32px rgba(36, 189, 199, 0.35);
     }
     .flights-preloader .loader span {
