@@ -20,6 +20,7 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TenantRegistrationController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\PublicFlightController;
 use App\Http\Controllers\SubAgent\DashboardController as SubAgentDashboardController;
 use App\Http\Controllers\SubAgent\FlightController as SubAgentFlightController;
 use App\Http\Controllers\SubAgent\PermissionController as SubAgentPermissionController;
@@ -47,8 +48,13 @@ Route::get('/', function () {
 
     return view('frontend.index', compact('recentBlogs', 'airportOptions', 'flightSearchInput'));
 })->name('home');
-Route::post('/search/flights', [\App\Http\Controllers\FrontController::class, 'flightSearch'])->name('frontend.flights.search');
-Route::get('/flights/results', [\App\Http\Controllers\FrontController::class, 'flightResults'])->name('frontend.flights.results');
+Route::get('/flights', [PublicFlightController::class, 'flightHub'])->name('frontend.flights.hub');
+Route::post('/search/flights', [PublicFlightController::class, 'flightSearch'])->name('frontend.flights.search');
+Route::get('/flights/results', [PublicFlightController::class, 'flightResults'])->name('frontend.flights.results');
+Route::post('/flights/price', [PublicFlightController::class, 'flightPrice'])->name('frontend.flights.price');
+Route::get('/flights/price', [PublicFlightController::class, 'flightPriceShow'])->name('frontend.flights.price.show');
+Route::match(['get', 'post'], '/flights/operations/{operation}', [PublicFlightController::class, 'flightOperation'])
+    ->name('frontend.flights.operation');
 
 /** Marketing / platform hub (Tailwind) — use e.g. for links that need the simple landing */
 Route::get('/platform', function () {

@@ -71,7 +71,7 @@ return [
             'service' => 'air',
             'request' => 'LowFareSearchAsynchReq',
             'response' => 'LowFareSearchAsynchRsp',
-            'status' => 'catalog',
+            'status' => 'ready',
         ],
         'availability_search' => [
             'label' => 'Availability Search',
@@ -131,7 +131,7 @@ return [
             'service' => 'flight',
             'request' => 'FlightDetailsReq',
             'response' => 'FlightDetailsRsp',
-            'status' => 'catalog',
+            'status' => 'ready',
         ],
         'flight_information' => [
             'label' => 'Flight Information',
@@ -141,7 +141,7 @@ return [
             'service' => 'flight',
             'request' => 'FlightInformationReq',
             'response' => 'FlightInformationRsp',
-            'status' => 'catalog',
+            'status' => 'ready',
         ],
         'air_reprice' => [
             'label' => 'Air Reprice',
@@ -151,7 +151,7 @@ return [
             'service' => 'air',
             'request' => 'AirRepriceReq',
             'response' => 'AirRepriceRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_create_reservation' => [
             'label' => 'Create Reservation',
@@ -161,7 +161,7 @@ return [
             'service' => 'universal_record',
             'request' => 'AirCreateReservationReq',
             'response' => 'AirCreateReservationRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'universal_record_retrieve' => [
             'label' => 'Retrieve PNR',
@@ -191,7 +191,7 @@ return [
             'service' => 'air',
             'request' => 'AirTicketingReq',
             'response' => 'AirTicketingRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_retrieve_document' => [
             'label' => 'Retrieve Ticket',
@@ -201,7 +201,7 @@ return [
             'service' => 'air',
             'request' => 'AirRetrieveDocumentReq',
             'response' => 'AirRetrieveDocumentRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_void_ticket' => [
             'label' => 'Void Ticket',
@@ -211,7 +211,7 @@ return [
             'service' => 'air',
             'request' => 'AirVoidTicketReq',
             'response' => 'AirVoidTicketRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_refund_quote' => [
             'label' => 'Refund Quote',
@@ -221,7 +221,7 @@ return [
             'service' => 'air',
             'request' => 'AirRefundQuoteReq',
             'response' => 'AirRefundQuoteRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_refund' => [
             'label' => 'Refund Ticket',
@@ -231,7 +231,7 @@ return [
             'service' => 'air',
             'request' => 'AirRefundReq',
             'response' => 'AirRefundRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_cancel' => [
             'label' => 'Cancel Segments',
@@ -241,7 +241,7 @@ return [
             'service' => 'air',
             'request' => 'AirCancelReq',
             'response' => 'AirCancelRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_exchange_quote' => [
             'label' => 'Exchange Quote',
@@ -251,7 +251,7 @@ return [
             'service' => 'air',
             'request' => 'AirExchangeQuoteReq',
             'response' => 'AirExchangeQuoteRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_exchange' => [
             'label' => 'Exchange',
@@ -261,7 +261,7 @@ return [
             'service' => 'air',
             'request' => 'AirExchangeReq',
             'response' => 'AirExchangeRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_exchange_ticketing' => [
             'label' => 'Exchange Ticketing',
@@ -271,7 +271,7 @@ return [
             'service' => 'air',
             'request' => 'AirExchangeTicketingReq',
             'response' => 'AirExchangeTicketingRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'seat_map' => [
             'label' => 'Seat Map',
@@ -291,7 +291,7 @@ return [
             'service' => 'air',
             'request' => 'AirMerchandisingOfferAvailabilityReq',
             'response' => 'AirMerchandisingOfferAvailabilityRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'air_pre_pay' => [
             'label' => 'Pre-paid services',
@@ -301,7 +301,7 @@ return [
             'service' => 'air',
             'request' => 'AirPrePayReq',
             'response' => 'AirPrePayRsp',
-            'status' => 'beta',
+            'status' => 'ready',
         ],
         'universal_record_modify' => [
             'label' => 'Universal Record Modify',
@@ -311,7 +311,7 @@ return [
             'service' => 'universal_record',
             'request' => 'UniversalRecordModifyReq',
             'response' => 'UniversalRecordModifyRsp',
-            'status' => 'catalog',
+            'status' => 'ready',
         ],
     ],
 ];

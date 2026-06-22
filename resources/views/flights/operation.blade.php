@@ -62,6 +62,15 @@
                 @include('flights.partials.fare-display-results')
             @elseif($operationKey === 'air_price')
                 @include('flights.partials.air-price-results')
+            @elseif(!empty($searchResult['universal_locator']) || !empty($searchResult['air_reservation_locator']))
+                <div class="card-modern p-4">
+                    @if(!empty($searchResult['universal_locator']))
+                        <p class="mb-1"><strong>Universal Record:</strong> <code>{{ $searchResult['universal_locator'] }}</code></p>
+                    @endif
+                    @if(!empty($searchResult['air_reservation_locator']))
+                        <p class="mb-0"><strong>Air reservation:</strong> <code>{{ $searchResult['air_reservation_locator'] }}</code></p>
+                    @endif
+                </div>
             @elseif($searchResult['ok'])
                 <div class="card-modern p-4">
                     <p class="small text-muted mb-0">Response received. Expand raw output below for full XML.</p>

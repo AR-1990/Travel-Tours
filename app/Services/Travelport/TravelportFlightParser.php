@@ -333,6 +333,39 @@ class TravelportFlightParser
     }
 
     /**
+     * @return array{solutions: list<array<string, mixed>>, trace_id: ?string, total_found: int, universal_locator: ?string, air_reservation_locator: ?string}
+     */
+    public function parseLocators(string $xml): array
+    {
+        $traceId = null;
+        if (preg_match('/TraceId="([^"]+)"/', $xml, $m)) {
+            $traceId = $m[1];
+        }
+
+        $universal = null;
+        if (preg_match('/UniversalRecordLocatorCode="([^"]+)"/', $xml, $m)) {
+            $universal = $m[1];
+        } elseif (preg_match('/<(?:[\w]+:)?UniversalRecord\b[^>]*\bLocatorCode="([^"]+)"/', $xml, $m)) {
+            $universal = $m[1];
+        }
+
+        $air = null;
+        if (preg_match('/<(?:[\w]+:)?AirReservationLocatorCode>([^<]+)</', $xml, $m)) {
+            $air = trim($m[1]);
+        } elseif (preg_match('/AirReservationLocatorCode="([^"]+)"/', $xml, $m)) {
+            $air = $m[1];
+        }
+
+        return [
+            'solutions' => [],
+            'trace_id' => $traceId,
+            'total_found' => 0,
+            'universal_locator' => $universal,
+            'air_reservation_locator' => $air,
+        ];
+    }
+
+    /**
      * @return array<string, array<string, mixed>>
      */
     private function parseAirPriceSegmentMap(string $xml): array

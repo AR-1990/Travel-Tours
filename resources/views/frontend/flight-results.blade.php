@@ -26,6 +26,15 @@
 
     <div class="flight-booking flight-list pt-80 pb-120">
         <div class="container">
+            @include('frontend.partials.flight-workflow-steps', ['workflowStep' => 'search'])
+
+            @if(session('success'))
+                <div class="alert alert-success">{{ session('success') }}</div>
+            @endif
+            @if(session('error'))
+                <div class="alert alert-danger">{{ session('error') }}</div>
+            @endif
+
             <div class="row">
                 <div class="col-lg-12">
                     <div class="booking-sort mb-4">
@@ -52,7 +61,10 @@
                     @if(!empty($flightSearchResult['ok']) && !empty($flightSearchResult['solutions']))
                         <div class="row">
                             @foreach($flightSearchResult['solutions'] as $sol)
-                                @include('frontend.partials.flight-result-card', ['sol' => $sol])
+                                @include('frontend.partials.flight-result-card', [
+                                    'sol' => $sol,
+                                    'travelportReady' => $travelportReady ?? false,
+                                ])
                             @endforeach
                         </div>
                     @elseif(!empty($flightSearchResult['ok']))
@@ -88,6 +100,16 @@
     if (document.getElementById('flight-type2')?.checked) {
         $('.flight-search .search-form-return').show();
     }
+
+    document.querySelectorAll('.flight-price-form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            const btn = form.querySelector('.flight-price-btn');
+            if (btn && !btn.disabled) {
+                btn.classList.add('is-loading');
+                btn.disabled = true;
+            }
+        });
+    });
 })();
 </script>
 @endpush

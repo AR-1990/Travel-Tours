@@ -10,6 +10,8 @@ class TravelportAirService extends TravelportSoapClient
 
     private const UNIVERSAL_RECORD_SUFFIX = '/B2BGateway/connect/uAPI/UniversalRecordService';
 
+    private const FLIGHT_SERVICE_SUFFIX = '/B2BGateway/connect/uAPI/FlightService';
+
     public function airServiceUrl(): string
     {
         return $this->serviceUrl(self::AIR_SERVICE_SUFFIX);
@@ -18,6 +20,11 @@ class TravelportAirService extends TravelportSoapClient
     public function universalRecordServiceUrl(): string
     {
         return $this->serviceUrl(self::UNIVERSAL_RECORD_SUFFIX);
+    }
+
+    public function flightServiceUrl(): string
+    {
+        return $this->serviceUrl(self::FLIGHT_SERVICE_SUFFIX);
     }
 
     /**
@@ -102,6 +109,39 @@ class TravelportAirService extends TravelportSoapClient
             }
         }
 
+        if (in_array($operation, ['air_create_reservation', 'air_merchandising'], true)) {
+            $priceXml = (string) session('travelport.last_air_price_xml', '');
+            $solution = TravelportAirXmlBuilder::extractAirPricingSolutionFromPriceXml($priceXml);
+            if ($solution === null || $solution === '') {
+                return $this->failResult(
+                    $operation,
+                    'Run Air Price first in this session — booking needs the priced itinerary.',
+                    $this->endpointFor($meta)
+                );
+            }
+            $params['_air_pricing_solution_xml'] = $solution;
+            $detected = $this->extractSchemaVersionFromXml($priceXml);
+            if ($detected !== null) {
+                $params['_preferred_schema_version'] = $detected;
+            }
+        }
+
+        if (in_array($operation, ['flight_details', 'flight_information'], true)) {
+            $lastLfsXml = (string) session('travelport.last_lfs_xml', '');
+            if (empty($params['carrier'])) {
+                $seg = $this->extractFirstAirSegmentForSeatMap($lastLfsXml);
+                if ($seg !== null) {
+                    $params['carrier'] = $seg['carrier'] ?? '';
+                    $params['flight_number'] = $params['flight_number'] ?? ($seg['flight_number'] ?? '');
+                    $params['origin'] = $params['origin'] ?? ($seg['origin'] ?? '');
+                    $params['destination'] = $params['destination'] ?? ($seg['destination'] ?? '');
+                    if (empty($params['departure_date']) && ! empty($seg['departure_time'])) {
+                        $params['departure_date'] = substr((string) $seg['departure_time'], 0, 10);
+                    }
+                }
+            }
+        }
+
         $endpoint = $this->endpointFor($meta);
         $responseTag = (string) ($meta['response'] ?? '');
         $builder = new TravelportAirXmlBuilder;
@@ -133,13 +173,27 @@ class TravelportAirService extends TravelportSoapClient
                 session(['travelport.last_lfs_xml' => $http['body']]);
             }
 
+            if ($operation === 'air_price') {
+                session(['travelport.last_air_price_xml' => $http['body']]);
+            }
+
             $parser = new TravelportFlightParser;
             $parsed = match ($operation) {
                 'low_fare_search' => $parser->parseLowFareSearch($http['body']),
                 'air_fare_display' => $parser->parseFareDisplay($http['body']),
                 'air_price' => $parser->parseAirPrice($http['body']),
+                'air_create_reservation', 'universal_record_retrieve' => $parser->parseLocators($http['body']),
                 default => ['solutions' => [], 'trace_id' => $this->extractTraceId($http['body']), 'total_found' => 0],
             };
+
+            if ($operation === 'air_create_reservation' && ! empty($parsed['universal_locator'])) {
+                session([
+                    'travelport.last_booking' => [
+                        'universal_locator' => $parsed['universal_locator'],
+                        'air_reservation_locator' => $parsed['air_reservation_locator'] ?? '',
+                    ],
+                ]);
+            }
 
             $count = count($parsed['solutions']);
             $totalFound = (int) ($parsed['total_found'] ?? $count);
@@ -153,6 +207,9 @@ class TravelportAirService extends TravelportSoapClient
                 'air_price' => $count > 0
                     ? 'Air Price completed successfully.'
                     : 'Air Price completed successfully.',
+                'air_create_reservation' => ! empty($parsed['universal_locator'])
+                    ? 'Booking created. Universal Record: '.$parsed['universal_locator']
+                    : 'Create Reservation completed — see response for locator.',
                 default => ($meta['label'] ?? $operation).' completed successfully.',
             };
 
@@ -163,6 +220,8 @@ class TravelportAirService extends TravelportSoapClient
                 'solutions' => $parsed['solutions'],
                 'total_found' => $totalFound,
                 'trace_id' => $parsed['trace_id'],
+                'universal_locator' => $parsed['universal_locator'] ?? null,
+                'air_reservation_locator' => $parsed['air_reservation_locator'] ?? null,
                 'response_excerpt' => $http['response_excerpt'],
                 'endpoint' => $endpoint,
                 'operation' => $operation,
@@ -201,9 +260,11 @@ class TravelportAirService extends TravelportSoapClient
      */
     private function endpointFor(array $meta): string
     {
-        return ($meta['service'] ?? 'air') === 'universal_record'
-            ? $this->universalRecordServiceUrl()
-            : $this->airServiceUrl();
+        return match ($meta['service'] ?? 'air') {
+            'universal_record' => $this->universalRecordServiceUrl(),
+            'flight' => $this->flightServiceUrl(),
+            default => $this->airServiceUrl(),
+        };
     }
 
     /**

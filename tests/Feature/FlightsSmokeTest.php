@@ -77,17 +77,41 @@ class FlightsSmokeTest extends TestCase
             'carrier' => 'BA',
             'flight_number' => '117',
             'departure_time' => now()->addDays(30)->format('Y-m-d').'T10:00:00',
+            '_air_pricing_solution_xml' => '      <air:AirPricingSolution Key="s1" TotalPrice="GBP100"/>',
+            '_pricing_solution_xml' => '      <air:AirPricingSolution Key="s1"><air:AirSegmentRef Key="seg1"/></air:AirPricingSolution>',
+            '_lfs_xml' => '<air:LowFareSearchRsp xmlns:air="http://www.travelport.com/schema/air_v52_0"><air:AirPricingSolution Key="s1"><air:AirSegmentRef Key="seg1"/></air:AirPricingSolution><air:AirSegment Key="seg1" Carrier="BA" FlightNumber="117" Origin="LHR" Destination="JFK" DepartureTime="2026-08-01T10:00:00"/></air:LowFareSearchRsp>',
+            'passengers' => [[
+                'prefix' => 'Mr', 'first' => 'Test', 'last' => 'User',
+                'email' => 't@example.com', 'phone' => '555', 'dob' => '1990-01-01', 'gender' => 'M', 'type' => 'ADT',
+            ]],
         ];
 
         $readyOps = [
             'low_fare_search',
+            'low_fare_search_async',
             'availability_search',
             'air_fare_display',
             'flight_time_table',
+            'flight_details',
+            'flight_information',
             'air_fare_rules',
             'seat_map',
+            'air_reprice',
+            'air_create_reservation',
             'universal_record_retrieve',
             'universal_record_cancel',
+            'universal_record_modify',
+            'air_ticketing',
+            'air_retrieve_document',
+            'air_void_ticket',
+            'air_refund_quote',
+            'air_refund',
+            'air_cancel',
+            'air_exchange_quote',
+            'air_exchange',
+            'air_exchange_ticketing',
+            'air_merchandising',
+            'air_pre_pay',
         ];
 
         foreach ($readyOps as $key) {
@@ -106,6 +130,43 @@ class FlightsSmokeTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('admin.flights.operation', ['operation' => 'not_a_real_op']))
+            ->assertNotFound();
+    }
+
+    public function test_public_flight_results_redirects_without_session(): void
+    {
+        $this->get(route('frontend.flights.results'))
+            ->assertRedirect(route('home'));
+    }
+
+    public function test_public_flight_price_redirects_without_session(): void
+    {
+        $this->get(route('frontend.flights.price.show'))
+            ->assertRedirect(route('frontend.flights.results'));
+    }
+
+    public function test_public_flight_operation_pages_render(): void
+    {
+        $ops = array_keys(\App\Services\Travelport\TravelportAirCatalog::operations());
+        foreach ($ops as $operation) {
+            if ($operation === 'low_fare_search') {
+                $this->get(route('frontend.flights.operation', ['operation' => $operation]))
+                    ->assertRedirect(route('home'));
+                continue;
+            }
+            $this->get(route('frontend.flights.operation', ['operation' => $operation]))
+                ->assertOk();
+        }
+    }
+
+    public function test_public_flight_hub_renders(): void
+    {
+        $this->get(route('frontend.flights.hub'))->assertOk();
+    }
+
+    public function test_public_unknown_flight_operation_returns_404(): void
+    {
+        $this->get(route('frontend.flights.operation', ['operation' => 'not_a_real_op']))
             ->assertNotFound();
     }
 

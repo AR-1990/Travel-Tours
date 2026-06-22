@@ -13,16 +13,31 @@ class TravelportAirXmlBuilder
     {
         return match ($operation) {
             'low_fare_search' => $this->lowFareSearch($params, $schemaVer),
+            'low_fare_search_async' => $this->lowFareSearchAsync($params, $schemaVer),
             'availability_search' => $this->availabilitySearch($params, $schemaVer),
             'air_fare_display' => $this->airFareDisplay($params, $schemaVer),
             'flight_time_table' => $this->flightTimeTable($params, $schemaVer),
+            'flight_details' => $this->flightDetails($params, $schemaVer),
+            'flight_information' => $this->flightInformation($params, $schemaVer),
             'air_price' => $this->airPrice($params, $schemaVer),
             'air_fare_rules' => $this->airFareRules($params, $schemaVer),
             'seat_map' => $this->seatMap($params, $schemaVer),
+            'air_reprice' => $this->airReprice($params, $schemaVer),
+            'air_create_reservation' => $this->airCreateReservation($params, $schemaVer),
             'universal_record_retrieve' => $this->universalRecordRetrieve($params, $schemaVer),
             'universal_record_cancel' => $this->universalRecordCancel($params, $schemaVer),
+            'universal_record_modify' => $this->universalRecordModify($params, $schemaVer),
             'air_ticketing' => $this->airTicketing($params, $schemaVer),
             'air_retrieve_document' => $this->airRetrieveDocument($params, $schemaVer),
+            'air_void_ticket' => $this->airVoidTicket($params, $schemaVer),
+            'air_refund_quote' => $this->airRefundQuote($params, $schemaVer),
+            'air_refund' => $this->airRefund($params, $schemaVer),
+            'air_cancel' => $this->airCancel($params, $schemaVer),
+            'air_exchange_quote' => $this->airExchangeQuote($params, $schemaVer),
+            'air_exchange' => $this->airExchange($params, $schemaVer),
+            'air_exchange_ticketing' => $this->airExchangeTicketing($params, $schemaVer),
+            'air_merchandising' => $this->airMerchandising($params, $schemaVer),
+            'air_pre_pay' => $this->airPrePay($params, $schemaVer),
             default => $this->genericAirRequest($operation, $params, $schemaVer),
         };
     }
@@ -55,6 +70,7 @@ XML;
             'air' => 'http://www.travelport.com/schema/air_v'.$schemaVer.'_0',
             'com' => 'http://www.travelport.com/schema/common_v'.$schemaVer.'_0',
             'univ' => 'http://www.travelport.com/schema/universal_v'.$schemaVer.'_0',
+            'flig' => 'http://www.travelport.com/schema/flight_v'.$schemaVer.'_0',
             'target' => $this->esc((string) ($c['target_branch'] ?? '')),
             'origin' => $this->esc((string) ($c['origin_application'] ?? 'UAPI')) ?: 'UAPI',
             'gds' => $this->esc((string) ($c['gds'] ?? '1G')) ?: '1G',
@@ -328,18 +344,351 @@ XML;
     /**
      * @param  array<string, mixed>  $params
      */
-    public function universalRecordRetrieve(array $params, int $schemaVer): string
+    public function lowFareSearchAsync(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'ur');
-        $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
+        $x = $this->ctx($schemaVer, 'lfsa');
+        $adults = (int) ($params['adults'] ?? 1);
+        $legs = $this->routeLegs($params, $schemaVer);
 
         $body = <<<XML
-    <univ:UniversalRecordRetrieveReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" UniversalLocatorCode="{$locator}" xmlns:univ="{$x['univ']}" xmlns:com="{$x['com']}">
+    <air:LowFareSearchAsynchReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" SolutionResult="true" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
-    </univ:UniversalRecordRetrieveReq>
+{$legs}
+{$this->passengers($adults, $x)}
+      <air:AirSearchModifiers>
+        <air:PreferredProviders>
+          <com:Provider Code="{$x['gds']}"/>
+        </air:PreferredProviders>
+      </air:AirSearchModifiers>
+    </air:LowFareSearchAsynchReq>
 XML;
 
         return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function flightDetails(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'fdet');
+        $carrier = $this->esc(strtoupper((string) ($params['carrier'] ?? '')));
+        $flight = $this->esc((string) ($params['flight_number'] ?? ''));
+        $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
+        $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
+        $departure = $this->esc($this->date((string) ($params['departure_date'] ?? '')));
+
+        $body = <<<XML
+    <flig:FlightDetailsReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:flig="{$x['flig']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+      <flig:FlightDetailsCriteria>
+        <flig:Carrier>{$carrier}</flig:Carrier>
+        <flig:FlightNumber>{$flight}</flig:FlightNumber>
+        <flig:Origin>{$origin}</flig:Origin>
+        <flig:Destination>{$destination}</flig:Destination>
+        <flig:DepartureDate>{$departure}</flig:DepartureDate>
+      </flig:FlightDetailsCriteria>
+    </flig:FlightDetailsReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function flightInformation(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'finfo');
+        $carrier = $this->esc(strtoupper((string) ($params['carrier'] ?? '')));
+        $flight = $this->esc((string) ($params['flight_number'] ?? ''));
+        $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
+        $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
+        $departure = $this->esc($this->date((string) ($params['departure_date'] ?? '')));
+
+        $body = <<<XML
+    <flig:FlightInformationReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:flig="{$x['flig']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+      <flig:FlightInfoCriteria>
+        <flig:Carrier>{$carrier}</flig:Carrier>
+        <flig:FlightNumber>{$flight}</flig:FlightNumber>
+        <flig:Origin>{$origin}</flig:Origin>
+        <flig:Destination>{$destination}</flig:Destination>
+        <flig:DepartureDate>{$departure}</flig:DepartureDate>
+      </flig:FlightInfoCriteria>
+    </flig:FlightInformationReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airReprice(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'repr');
+        $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
+
+        $body = <<<XML
+    <air:AirRepriceReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+      <air:AirReservationLocatorCode>{$locator}</air:AirReservationLocatorCode>
+    </air:AirRepriceReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airCreateReservation(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'book');
+        $solutionXml = (string) ($params['_air_pricing_solution_xml'] ?? '');
+        if ($solutionXml === '') {
+            return '';
+        }
+
+        $travelers = $this->bookingTravelersXml($params, $x);
+        $fop = $this->formOfPaymentXml($params, $x);
+
+        $body = <<<XML
+    <univ:AirCreateReservationReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:univ="{$x['univ']}" xmlns:com="{$x['com']}" xmlns:air="{$x['air']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+{$travelers}
+{$solutionXml}
+{$fop}
+      <com:ActionStatus Type="ACTIVE" ProviderCode="{$x['gds']}"/>
+    </univ:AirCreateReservationReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function universalRecordModify(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'urmod');
+        $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
+        $version = $this->esc((string) ($params['version'] ?? '0'));
+
+        $body = <<<XML
+    <univ:UniversalRecordModifyReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" Version="{$version}" UniversalLocatorCode="{$locator}" xmlns:univ="{$x['univ']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+      <univ:UniversalModifyCmd Key="mod1"/>
+    </univ:UniversalRecordModifyReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airCancel(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'acan');
+        $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
+
+        $body = <<<XML
+    <air:AirCancelReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+      <air:AirReservationLocatorCode>{$locator}</air:AirReservationLocatorCode>
+    </air:AirCancelReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airRefundQuote(array $params, int $schemaVer): string
+    {
+        return $this->locatorAirRequest('AirRefundQuoteReq', $params, $schemaVer, 'rfq');
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airRefund(array $params, int $schemaVer): string
+    {
+        return $this->locatorAirRequest('AirRefundReq', $params, $schemaVer, 'rfd');
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airVoidTicket(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'void');
+        $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
+        $ticket = $this->esc((string) ($params['ticket_number'] ?? ''));
+
+        $ticketXml = $ticket !== ''
+            ? "\n      <air:TicketNumber>{$ticket}</air:TicketNumber>"
+            : '';
+
+        $body = <<<XML
+    <air:AirVoidTicketReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+      <air:AirReservationLocatorCode>{$locator}</air:AirReservationLocatorCode>{$ticketXml}
+    </air:AirVoidTicketReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airExchangeQuote(array $params, int $schemaVer): string
+    {
+        return $this->locatorAirRequest('AirExchangeQuoteReq', $params, $schemaVer, 'exq');
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airExchange(array $params, int $schemaVer): string
+    {
+        return $this->locatorAirRequest('AirExchangeReq', $params, $schemaVer, 'exch');
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airExchangeTicketing(array $params, int $schemaVer): string
+    {
+        return $this->locatorAirRequest('AirExchangeTicketingReq', $params, $schemaVer, 'ext');
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airMerchandising(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'merch');
+        $solutionXml = (string) ($params['_air_pricing_solution_xml'] ?? '');
+
+        $body = <<<XML
+    <air:AirMerchandisingOfferAvailabilityReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+{$solutionXml}
+    </air:AirMerchandisingOfferAvailabilityReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function airPrePay(array $params, int $schemaVer): string
+    {
+        return $this->locatorAirRequest('AirPrePayReq', $params, $schemaVer, 'prep');
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private function locatorAirRequest(string $reqName, array $params, int $schemaVer, string $tracePrefix): string
+    {
+        $x = $this->ctx($schemaVer, $tracePrefix);
+        $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
+
+        $body = <<<XML
+    <air:{$reqName} TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+      <air:AirReservationLocatorCode>{$locator}</air:AirReservationLocatorCode>
+    </air:{$reqName}>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @param  array<string, string>  $x
+     */
+    private function bookingTravelersXml(array $params, array $x): string
+    {
+        $passengers = $params['passengers'] ?? [];
+        if (! is_array($passengers) || $passengers === []) {
+            $passengers = [[
+                'prefix' => 'Mr',
+                'first' => 'Test',
+                'last' => 'Traveler',
+                'email' => 'test@example.com',
+                'phone' => '5555555555',
+                'dob' => '1990-01-01',
+                'gender' => 'M',
+                'type' => 'ADT',
+            ]];
+        }
+
+        $xml = '';
+        foreach ($passengers as $i => $pax) {
+            if (! is_array($pax)) {
+                continue;
+            }
+            $key = 'BT'.($i + 1);
+            $prefix = $this->esc((string) ($pax['prefix'] ?? 'Mr'));
+            $first = $this->esc((string) ($pax['first'] ?? ''));
+            $last = $this->esc((string) ($pax['last'] ?? ''));
+            $email = $this->esc((string) ($pax['email'] ?? ''));
+            $phone = $this->esc((string) ($pax['phone'] ?? ''));
+            $dob = $this->esc((string) ($pax['dob'] ?? ''));
+            $gender = $this->esc((string) ($pax['gender'] ?? 'M'));
+            $type = $this->esc((string) ($pax['type'] ?? 'ADT'));
+
+            $dobAttr = $dob !== '' ? ' DOB="'.$dob.'"' : '';
+            $xml .= <<<XML
+
+      <com:BookingTraveler Key="{$key}" TravelerType="{$type}" Gender="{$gender}"{$dobAttr}>
+        <com:BookingTravelerName Prefix="{$prefix}" First="{$first}" Last="{$last}"/>
+        <com:PhoneNumber Number="{$phone}"/>
+        <com:Email EmailID="{$email}"/>
+      </com:BookingTraveler>
+XML;
+        }
+
+        return $xml;
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @param  array<string, string>  $x
+     */
+    private function formOfPaymentXml(array $params, array $x): string
+    {
+        $fop = strtoupper((string) ($params['form_of_payment'] ?? 'Cash'));
+        if ($fop === '' || $fop === 'CASH') {
+            return "\n      <com:FormOfPayment Type=\"Cash\"/>";
+        }
+
+        return "\n      <com:FormOfPayment Type=\"".$this->esc($fop).'"/>';
+    }
+
+    public static function extractAirPricingSolutionFromPriceXml(string $xml): ?string
+    {
+        if ($xml === '') {
+            return null;
+        }
+
+        if (! preg_match('/<(?:[\w]+:)?AirPricingSolution\b[^>]*>.*?<\/(?:[\w]+:)?AirPricingSolution>/s', $xml, $m)) {
+            return null;
+        }
+
+        $block = preg_replace('/<([\w]+):/', '<air:', $m[0]);
+        $block = preg_replace('/<\/([\w]+):/', '</air:', $block ?? $m[0]);
+        $block = preg_replace('/ xmlns:air="[^"]*"/', '', $block ?? $m[0]);
+
+        return '      '.($block ?? $m[0]);
     }
 
     /**
@@ -366,7 +715,7 @@ XML;
     public function airTicketing(array $params, int $schemaVer): string
     {
         $x = $this->ctx($schemaVer, 'tkt');
-        $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
+        $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
 
         $body = <<<XML
     <air:AirTicketingReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
@@ -384,13 +733,35 @@ XML;
     public function airRetrieveDocument(array $params, int $schemaVer): string
     {
         $x = $this->ctx($schemaVer, 'doc');
-        $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
+        $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
+        $ticket = $this->esc((string) ($params['ticket_number'] ?? ''));
+
+        $ticketXml = $ticket !== ''
+            ? "\n      <air:TicketNumber>{$ticket}</air:TicketNumber>"
+            : '';
 
         $body = <<<XML
     <air:AirRetrieveDocumentReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
-      <air:AirReservationLocatorCode>{$locator}</air:AirReservationLocatorCode>
+      <air:AirReservationLocatorCode>{$locator}</air:AirReservationLocatorCode>{$ticketXml}
     </air:AirRetrieveDocumentReq>
+XML;
+
+        return $this->envelope($body, $schemaVer);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function universalRecordRetrieve(array $params, int $schemaVer): string
+    {
+        $x = $this->ctx($schemaVer, 'ur');
+        $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
+
+        $body = <<<XML
+    <univ:UniversalRecordRetrieveReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" UniversalLocatorCode="{$locator}" xmlns:univ="{$x['univ']}" xmlns:com="{$x['com']}">
+      <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
+    </univ:UniversalRecordRetrieveReq>
 XML;
 
         return $this->envelope($body, $schemaVer);

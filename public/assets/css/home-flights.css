@@ -90,3 +90,70 @@
     border-radius: 12px;
     margin-bottom: 1rem;
 }
+
+.flight-workflow-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.flight-workflow-step {
+    position: relative;
+    font-size: 0.95rem;
+    color: #94a3b8;
+}
+
+.flight-workflow-step a,
+.flight-workflow-step span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+    color: inherit;
+}
+
+.flight-workflow-step.is-current span {
+    color: #053750;
+    font-weight: 600;
+}
+
+.flight-workflow-step.is-done a {
+    color: #24bdc7;
+}
+
+.flight-workflow-step:not(:last-child)::after {
+    content: "→";
+    margin-left: 1rem;
+    color: #cbd5e1;
+}
+
+.flight-price-btn.is-loading {
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+.flight-price-btn.is-loading i.fa-arrow-circle-right::before {
+    content: "\f110";
+    animation: home-flight-spin 0.8s linear infinite;
+}
+
+@keyframes home-flight-spin {
+    to { transform: rotate(360deg); }
+}
+
+.flight-next-actions .theme-btn {
+    margin-bottom: 0.5rem;
+}
+
+.flight-next-actions .theme-btn-outline {
+    background: transparent;
+    border: 1px solid #24bdc7;
+    color: #053750;
+}
+
+.flight-next-actions .theme-btn2 {
+    background: #053750;
+}

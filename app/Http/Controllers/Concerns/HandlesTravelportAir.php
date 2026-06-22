@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 
 trait HandlesTravelportAir
 {
+    use BuildsFlightOperationParams;
+
     abstract protected function flightsRoutePrefix(): string;
 
     abstract protected function panelLabel(): string;
@@ -109,8 +111,8 @@ trait HandlesTravelportAir
         ]);
 
         if ($request->isMethod('post')) {
-            $result = $air->execute($operation, $this->operationParams($request, $operation));
-            $input = $this->operationParams($request, $operation);
+            $result = $air->execute($operation, $this->flightOperationParams($request, $operation));
+            $input = $this->flightOperationParams($request, $operation);
 
             session([
                 'travelport.flight_operation' => [
@@ -162,28 +164,4 @@ trait HandlesTravelportAir
         ]);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    protected function operationParams(Request $request, string $operation): array
-    {
-        $common = [
-            'origin' => $request->input('origin'),
-            'destination' => $request->input('destination'),
-            'departure_date' => $request->input('departure_date'),
-            'return_date' => $request->input('return_date'),
-            'adults' => (int) $request->input('adults', 1),
-            'universal_locator' => $request->input('universal_locator'),
-            'version' => $request->input('version', '0'),
-            'carrier' => $request->input('carrier'),
-            'flight_number' => $request->input('flight_number'),
-            'departure_time' => $request->input('departure_time'),
-            'segment_key' => $request->input('segment_key'),
-            'class_of_service' => $request->input('class_of_service'),
-            'fare_basis' => $request->input('fare_basis'),
-            'solution_key' => $request->input('solution_key'),
-        ];
-
-        return array_filter($common, fn ($v) => $v !== null && $v !== '');
-    }
 }

@@ -59,7 +59,14 @@
                         <small class="d-block text-muted mt-1">Base {{ $sol['base_price'] }}</small>
                     @endif
                 </div>
-                <span class="theme-btn disabled">Book Now<i class="fas fa-arrow-circle-right"></i></span>
+                <form method="POST" action="{{ route('frontend.flights.price') }}" class="flight-price-form mt-2">
+                    @csrf
+                    <input type="hidden" name="solution_key" value="{{ $sol['key'] ?? '' }}">
+                    <button type="submit" class="theme-btn flight-price-btn"
+                            @disabled(!($travelportReady ?? false) || empty($sol['key']))>
+                        Price &amp; hold<i class="fas fa-arrow-circle-right"></i>
+                    </button>
+                </form>
             </div>
         </div>
     </div>
