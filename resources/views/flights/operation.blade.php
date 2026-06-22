@@ -68,8 +68,25 @@
                         <p class="mb-1"><strong>Universal Record:</strong> <code>{{ $searchResult['universal_locator'] }}</code></p>
                     @endif
                     @if(!empty($searchResult['air_reservation_locator']))
-                        <p class="mb-0"><strong>Air reservation:</strong> <code>{{ $searchResult['air_reservation_locator'] }}</code></p>
+                        <p class="mb-1"><strong>Air reservation:</strong> <code>{{ $searchResult['air_reservation_locator'] }}</code></p>
                     @endif
+                    @if($operationKey === 'air_create_reservation')
+                        <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'air_ticketing']) }}" class="mt-3">
+                            @csrf
+                            <input type="hidden" name="universal_locator" value="{{ $searchResult['universal_locator'] ?? '' }}">
+                            <input type="hidden" name="air_reservation_locator" value="{{ $searchResult['air_reservation_locator'] ?? '' }}">
+                            <button type="submit" class="btn btn-primary btn-sm">Issue ticket (next step)</button>
+                        </form>
+                    @endif
+                </div>
+            @elseif(!empty($searchResult['ticket_numbers']))
+                <div class="card-modern p-4">
+                    <p class="mb-1"><strong>Ticket numbers:</strong></p>
+                    <ul class="mb-0">
+                        @foreach($searchResult['ticket_numbers'] as $number)
+                            <li><code>{{ $number }}</code></li>
+                        @endforeach
+                    </ul>
                 </div>
             @elseif($searchResult['ok'])
                 <div class="card-modern p-4">

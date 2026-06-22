@@ -183,6 +183,10 @@ class TravelportAirService extends TravelportSoapClient
                 'air_fare_display' => $parser->parseFareDisplay($http['body']),
                 'air_price' => $parser->parseAirPrice($http['body']),
                 'air_create_reservation', 'universal_record_retrieve' => $parser->parseLocators($http['body']),
+                'air_retrieve_document' => array_merge(
+                    ['solutions' => [], 'trace_id' => $this->extractTraceId($http['body']), 'total_found' => 0],
+                    ['ticket_numbers' => $parser->parseTicketNumbers($http['body'])]
+                ),
                 default => ['solutions' => [], 'trace_id' => $this->extractTraceId($http['body']), 'total_found' => 0],
             };
 
@@ -210,6 +214,10 @@ class TravelportAirService extends TravelportSoapClient
                 'air_create_reservation' => ! empty($parsed['universal_locator'])
                     ? 'Booking created. Universal Record: '.$parsed['universal_locator']
                     : 'Create Reservation completed — see response for locator.',
+                'air_ticketing' => 'Ticket issue request completed.',
+                'air_retrieve_document' => ! empty($parsed['ticket_numbers'])
+                    ? 'Tickets: '.implode(', ', $parsed['ticket_numbers'])
+                    : 'Retrieve document completed.',
                 default => ($meta['label'] ?? $operation).' completed successfully.',
             };
 
@@ -222,6 +230,7 @@ class TravelportAirService extends TravelportSoapClient
                 'trace_id' => $parsed['trace_id'],
                 'universal_locator' => $parsed['universal_locator'] ?? null,
                 'air_reservation_locator' => $parsed['air_reservation_locator'] ?? null,
+                'ticket_numbers' => $parsed['ticket_numbers'] ?? [],
                 'response_excerpt' => $http['response_excerpt'],
                 'endpoint' => $endpoint,
                 'operation' => $operation,

@@ -455,7 +455,7 @@ XML;
         $fop = $this->formOfPaymentXml($params, $x);
 
         $body = <<<XML
-    <univ:AirCreateReservationReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:univ="{$x['univ']}" xmlns:com="{$x['com']}" xmlns:air="{$x['air']}">
+    <univ:AirCreateReservationReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" RetainReservation="Both" xmlns:univ="{$x['univ']}" xmlns:com="{$x['com']}" xmlns:air="{$x['air']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
 {$travelers}
 {$solutionXml}
@@ -636,7 +636,7 @@ XML;
             if (! is_array($pax)) {
                 continue;
             }
-            $key = 'BT'.($i + 1);
+            $key = (string) ($i + 1);
             $prefix = $this->esc((string) ($pax['prefix'] ?? 'Mr'));
             $first = $this->esc((string) ($pax['first'] ?? ''));
             $last = $this->esc((string) ($pax['last'] ?? ''));
@@ -684,11 +684,7 @@ XML;
             return null;
         }
 
-        $block = preg_replace('/<([\w]+):/', '<air:', $m[0]);
-        $block = preg_replace('/<\/([\w]+):/', '</air:', $block ?? $m[0]);
-        $block = preg_replace('/ xmlns:air="[^"]*"/', '', $block ?? $m[0]);
-
-        return '      '.($block ?? $m[0]);
+        return '      '.trim($m[0]);
     }
 
     /**

@@ -53,6 +53,10 @@ Route::post('/search/flights', [PublicFlightController::class, 'flightSearch'])-
 Route::get('/flights/results', [PublicFlightController::class, 'flightResults'])->name('frontend.flights.results');
 Route::post('/flights/price', [PublicFlightController::class, 'flightPrice'])->name('frontend.flights.price');
 Route::get('/flights/price', [PublicFlightController::class, 'flightPriceShow'])->name('frontend.flights.price.show');
+Route::get('/flights/book', [PublicFlightController::class, 'flightBookShow'])->name('frontend.flights.book');
+Route::post('/flights/book', [PublicFlightController::class, 'flightBookStore'])->name('frontend.flights.book.store');
+Route::get('/flights/confirmation', [PublicFlightController::class, 'flightConfirmation'])->name('frontend.flights.confirmation');
+Route::post('/flights/ticket', [PublicFlightController::class, 'flightTicketIssue'])->name('frontend.flights.ticket');
 Route::match(['get', 'post'], '/flights/operations/{operation}', [PublicFlightController::class, 'flightOperation'])
     ->name('frontend.flights.operation');
 

@@ -350,7 +350,9 @@ class TravelportFlightParser
         }
 
         $air = null;
-        if (preg_match('/<(?:[\w]+:)?AirReservationLocatorCode>([^<]+)</', $xml, $m)) {
+        if (preg_match('/<(?:[\w]+:)?ProviderReservationInfo\b[^>]*\bLocatorCode="([^"]+)"/', $xml, $m)) {
+            $air = $m[1];
+        } elseif (preg_match('/<(?:[\w]+:)?AirReservationLocatorCode>([^<]+)</', $xml, $m)) {
             $air = trim($m[1]);
         } elseif (preg_match('/AirReservationLocatorCode="([^"]+)"/', $xml, $m)) {
             $air = $m[1];
@@ -363,6 +365,31 @@ class TravelportFlightParser
             'universal_locator' => $universal,
             'air_reservation_locator' => $air,
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function parseTicketNumbers(string $xml): array
+    {
+        if ($xml === '') {
+            return [];
+        }
+
+        $numbers = [];
+        if (preg_match_all('/\bTicketNumber="([^"]+)"/', $xml, $m)) {
+            $numbers = array_merge($numbers, $m[1]);
+        }
+        if (preg_match_all('/<(?:[\w]+:)?TicketNumber>([^<]+)</', $xml, $m)) {
+            foreach ($m[1] as $num) {
+                $num = trim($num);
+                if ($num !== '') {
+                    $numbers[] = $num;
+                }
+            }
+        }
+
+        return array_values(array_unique($numbers));
     }
 
     /**

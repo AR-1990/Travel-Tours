@@ -154,6 +154,11 @@ class FlightsSmokeTest extends TestCase
                     ->assertRedirect(route('home'));
                 continue;
             }
+            if ($operation === 'air_create_reservation') {
+                $this->get(route('frontend.flights.operation', ['operation' => $operation]))
+                    ->assertRedirect(route('frontend.flights.book'));
+                continue;
+            }
             $this->get(route('frontend.flights.operation', ['operation' => $operation]))
                 ->assertOk();
         }
@@ -162,6 +167,21 @@ class FlightsSmokeTest extends TestCase
     public function test_public_flight_hub_renders(): void
     {
         $this->get(route('frontend.flights.hub'))->assertOk();
+    }
+
+    public function test_public_workflow_routes_redirect_without_session(): void
+    {
+        $this->get(route('frontend.flights.book'))->assertRedirect(route('frontend.flights.price.show'));
+        $this->get(route('frontend.flights.confirmation'))->assertRedirect(route('home'));
+        $this->post(route('frontend.flights.ticket'))->assertRedirect(route('frontend.flights.confirmation'));
+    }
+
+    public function test_parse_ticket_numbers(): void
+    {
+        $parser = new \App\Services\Travelport\TravelportFlightParser;
+        $xml = '<air:AirRetrieveDocumentRsp><air:ETR TicketNumber="1234567890123"/></air:AirRetrieveDocumentRsp>';
+        $numbers = $parser->parseTicketNumbers($xml);
+        $this->assertContains('1234567890123', $numbers);
     }
 
     public function test_public_unknown_flight_operation_returns_404(): void

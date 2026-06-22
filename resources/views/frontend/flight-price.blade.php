@@ -39,19 +39,16 @@
 
             @if(!empty($flightPriceResult['ok']))
                 <div class="flight-next-actions mt-4">
-                    <h3 class="h6 mb-3">Next steps</h3>
+                    <h3 class="h6 mb-3">Continue booking</h3>
                     <div class="d-flex flex-wrap gap-2">
-                        <a href="{{ route('frontend.flights.operation', ['operation' => 'air_fare_rules']) }}" class="theme-btn">
+                        <a href="{{ route('frontend.flights.book') }}" class="theme-btn theme-btn2">
+                            Continue to book<i class="fas fa-user"></i>
+                        </a>
+                        <a href="{{ route('frontend.flights.operation', ['operation' => 'air_fare_rules']) }}" class="theme-btn theme-btn-outline">
                             Fare rules<i class="fas fa-file-alt"></i>
                         </a>
                         <a href="{{ route('frontend.flights.operation', ['operation' => 'seat_map']) }}" class="theme-btn theme-btn-outline">
                             Seat map<i class="fas fa-chair"></i>
-                        </a>
-                        <a href="{{ route('frontend.flights.operation', ['operation' => 'air_create_reservation']) }}" class="theme-btn theme-btn2">
-                            Create booking<i class="fas fa-ticket-alt"></i>
-                        </a>
-                        <a href="{{ route('frontend.flights.hub') }}" class="theme-btn theme-btn-outline">
-                            All flight APIs<i class="fas fa-th"></i>
                         </a>
                     </div>
                 </div>
