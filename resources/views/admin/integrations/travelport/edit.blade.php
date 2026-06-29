@@ -49,6 +49,17 @@
                 <div class="form-text">When off, Travelport settings in the database are ignored (only <code>.env</code> applies) and Ping is blocked.</div>
             </div>
 
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-secret-toggle-all="show">
+                        <i class="fas fa-eye me-1"></i> Show all secrets
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-secret-toggle-all="hide">
+                        <i class="fas fa-eye-slash me-1"></i> Hide all secrets
+                    </button>
+                </div>
+            </div>
+
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Region <span class="text-danger">*</span></label>
@@ -73,13 +84,25 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">API username <span class="text-danger">*</span></label>
-                    <input type="text" name="travelport[username]" class="form-control" autocomplete="off" required
-                        value="{{ old('travelport.username', $travelport['username'] ?? '') }}">
+                    @include('admin.partials.secret-input', [
+                        'name' => 'travelport[username]',
+                        'id' => 'tp_username',
+                        'value' => old('travelport.username', $travelport['username'] ?? ''),
+                        'required' => true,
+                        'autocomplete' => 'off',
+                    ])
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">API password @if(!$passwordSet)<span class="text-danger">*</span>@endif</label>
-                    <input type="password" name="travelport[password]" class="form-control" autocomplete="new-password"
-                        placeholder="{{ $passwordSet ? 'Leave blank to keep current password' : 'Required unless set in .env' }}">
+                    @include('admin.partials.secret-input', [
+                        'name' => 'travelport[password]',
+                        'id' => 'tp_password',
+                        'value' => old('travelport.password', $travelport['password'] ?? ''),
+                        'required' => ! $passwordSet,
+                        'placeholder' => $passwordSet ? 'Saved password shown — edit to change' : 'Required unless set in .env',
+                        'autocomplete' => 'new-password',
+                    ])
+                    <div class="form-text">Stored encrypted in the database. Leave unchanged and save to keep the current password.</div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">GDS</label>
