@@ -75,6 +75,30 @@ XML;
         $this->assertStringContainsString('AirPricingSolution', $extracted);
     }
 
+    public function test_prepare_booking_pricing_solution_injects_segments_and_host_token(): void
+    {
+        $priceXml = <<<'XML'
+<air:AirPriceRsp xmlns:air="http://www.travelport.com/schema/air_v52_0">
+  <air:AirItinerary>
+    <air:AirSegment Key="seg1" Carrier="B6" FlightNumber="100" Origin="JFK" Destination="LAX"/>
+  </air:AirItinerary>
+  <air:AirPricingSolution Key="s1" TotalPrice="USD100">
+    <air:AirSegmentRef Key="seg1"/>
+    <air:AirPricingInfo Key="pi1">
+      <air:PassengerType Code="ADT" BookingTravelerRef="BT1"/>
+    </air:AirPricingInfo>
+  </air:AirPricingSolution>
+  <air:HostToken Key="ht1">TOKENVALUE</air:HostToken>
+</air:AirPriceRsp>
+XML;
+
+        $prepared = TravelportAirXmlBuilder::prepareAirPricingSolutionForBooking($priceXml);
+        $this->assertNotNull($prepared);
+        $this->assertStringContainsString('AirSegment', $prepared);
+        $this->assertStringContainsString('HostToken', $prepared);
+        $this->assertStringContainsString('BookingTravelerRef="1"', $prepared);
+    }
+
     public function test_air_create_reservation_includes_traveler_and_pricing(): void
     {
         $builder = new TravelportAirXmlBuilder;

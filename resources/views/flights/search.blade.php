@@ -19,12 +19,24 @@
 
     <div class="flights-hero">
         <h1><i class="fas fa-plane-departure me-2"></i>Low Fare Search</h1>
-        <p class="mb-0">Compare live bookable fares for your route. After you pick an option, use <a href="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'air_price']) }}" class="text-white text-decoration-underline">Air Price</a> or browse more tools on <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="text-white text-decoration-underline">Flight APIs</a>.</p>
+        <p class="mb-0">Compare live bookable fares for your route. Pick an option to price it, then continue through the guided booking flow.</p>
     </div>
 
     @if($hasPricingContext)
         <div class="alert alert-info border-0 shadow-sm py-2 small mb-3">
-            <i class="fas fa-check-circle me-1"></i> Last search saved — you can run <a href="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'air_price']) }}">Air Price</a> next.
+            <i class="fas fa-check-circle me-1"></i> Last search saved —
+            <a href="{{ route($flightsRoutePrefix . '.flights.price.show') }}">view priced fare</a>
+            @if($canBookFlights ?? false)
+                or <a href="{{ route($flightsRoutePrefix . '.flights.book') }}">continue to book</a>.
+            @endif
+        </div>
+    @endif
+
+    @if(session('travelport.flight_booking') || session('travelport.last_booking'))
+        <div class="alert alert-success border-0 shadow-sm py-2 small mb-3">
+            <i class="fas fa-ticket-alt me-1"></i>
+            Active booking in session —
+            <a href="{{ route($flightsRoutePrefix . '.flights.confirmation') }}">view confirmation</a>.
         </div>
     @endif
 

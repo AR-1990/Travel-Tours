@@ -90,7 +90,7 @@
                         @if($sol['base_price'])
                             <div class="small text-muted">Base {{ $sol['base_price'] }}</div>
                         @endif
-                        <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'air_price']) }}" class="mt-2">
+                        <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.price') }}" class="mt-2">
                             @csrf
                             <input type="hidden" name="solution_key" value="{{ $sol['key'] ?? '' }}">
                             <button type="submit" class="btn btn-primary btn-sm" @disabled(!$travelportReady || empty($sol['key']))>

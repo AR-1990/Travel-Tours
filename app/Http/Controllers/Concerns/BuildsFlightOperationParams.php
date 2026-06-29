@@ -29,12 +29,12 @@ trait BuildsFlightOperationParams
         if ($operation === 'air_create_reservation') {
             $params['passengers'] = [[
                 'prefix' => (string) ($params['passenger_prefix'] ?? 'Mr'),
-                'first' => (string) ($params['passenger_first'] ?? ''),
-                'last' => (string) ($params['passenger_last'] ?? ''),
-                'email' => (string) ($params['passenger_email'] ?? ''),
-                'phone' => (string) ($params['passenger_phone'] ?? ''),
-                'dob' => (string) ($params['passenger_dob'] ?? ''),
-                'gender' => (string) ($params['passenger_gender'] ?? 'M'),
+                'first' => trim((string) ($params['passenger_first'] ?? '')),
+                'last' => trim((string) ($params['passenger_last'] ?? '')),
+                'email' => trim((string) ($params['passenger_email'] ?? '')),
+                'phone' => $this->normalizePhone((string) ($params['passenger_phone'] ?? '')),
+                'dob' => $this->normalizeDob((string) ($params['passenger_dob'] ?? '')),
+                'gender' => strtoupper(substr((string) ($params['passenger_gender'] ?? 'M'), 0, 1)) === 'F' ? 'F' : 'M',
                 'type' => 'ADT',
             ]];
         }
@@ -87,5 +87,35 @@ trait BuildsFlightOperationParams
         }
 
         return $defaults;
+    }
+
+    private function normalizeDob(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return $value;
+        }
+
+        foreach (['m/d/Y', 'n/j/Y', 'd/m/Y', 'Y-m-d'] as $format) {
+            $dt = \DateTime::createFromFormat($format, $value);
+            if ($dt instanceof \DateTime) {
+                return $dt->format('Y-m-d');
+            }
+        }
+
+        $ts = strtotime($value);
+
+        return $ts ? date('Y-m-d', $ts) : $value;
+    }
+
+    private function normalizePhone(string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        return $digits !== '' ? $digits : $value;
     }
 }

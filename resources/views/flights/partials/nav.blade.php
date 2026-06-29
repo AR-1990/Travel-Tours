@@ -6,6 +6,7 @@
     };
     $isSearchActive = request()->routeIs($flightsRoutePrefix . '.flights.search');
     $isIndexActive = request()->routeIs($flightsRoutePrefix . '.flights.index');
+    $hasBooking = session('travelport.flight_booking') || session('travelport.last_booking');
 @endphp
 <nav class="flights-nav" aria-label="Flight section">
     <a href="{{ route($flightsDashboardRoute) }}" class="{{ request()->routeIs($flightsDashboardRoute) ? 'active' : '' }}">
@@ -17,6 +18,21 @@
     <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="{{ $isSearchActive ? 'active' : '' }}">
         <i class="fas fa-search me-1"></i> Low Fare Search
     </a>
+    @if(session('travelport.flight_price'))
+        <a href="{{ route($flightsRoutePrefix . '.flights.price.show') }}" class="{{ request()->routeIs($flightsRoutePrefix . '.flights.price*') ? 'active' : '' }}">
+            <i class="fas fa-tag me-1"></i> Price
+        </a>
+    @endif
+    @if(($canBookFlights ?? false) && session('travelport.flight_price'))
+        <a href="{{ route($flightsRoutePrefix . '.flights.book') }}" class="{{ request()->routeIs($flightsRoutePrefix . '.flights.book*') ? 'active' : '' }}">
+            <i class="fas fa-user me-1"></i> Book
+        </a>
+    @endif
+    @if($hasBooking)
+        <a href="{{ route($flightsRoutePrefix . '.flights.confirmation') }}" class="{{ request()->routeIs($flightsRoutePrefix . '.flights.confirmation') ? 'active' : '' }}">
+            <i class="fas fa-check-circle me-1"></i> Confirmation
+        </a>
+    @endif
     @if($flightsRoutePrefix === 'admin')
         <a href="{{ route('admin.integrations.edit', ['slug' => 'travelport']) }}" class="{{ request()->routeIs('admin.integrations*') ? 'active' : '' }}">
             <i class="fas fa-cog me-1"></i> API settings

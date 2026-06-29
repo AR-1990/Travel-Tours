@@ -21,6 +21,8 @@ class FlightsSmokeTest extends TestCase
 
         if ($operation === 'low_fare_search') {
             $response->assertRedirect(route('admin.flights.search'));
+        } elseif ($operation === 'air_create_reservation') {
+            $response->assertRedirect(route('admin.flights.book'));
         } else {
             $response->assertOk();
         }
@@ -172,8 +174,44 @@ class FlightsSmokeTest extends TestCase
     public function test_public_workflow_routes_redirect_without_session(): void
     {
         $this->get(route('frontend.flights.book'))->assertRedirect(route('frontend.flights.price.show'));
-        $this->get(route('frontend.flights.confirmation'))->assertRedirect(route('home'));
+        $this->get(route('frontend.flights.confirmation'))->assertRedirect(route('frontend.flights.results'));
         $this->post(route('frontend.flights.ticket'))->assertRedirect(route('frontend.flights.confirmation'));
+    }
+
+    public function test_panel_workflow_routes_redirect_without_session(): void
+    {
+        $user = User::where('email', 'superadmin@traveltours.com')->first();
+        if (! $user) {
+            $this->markTestSkipped('Run TenantRbacSeeder for demo users.');
+        }
+
+        $this->actingAs($user)->get(route('admin.flights.price.show'))
+            ->assertRedirect(route('admin.flights.search'));
+        $this->actingAs($user)->get(route('admin.flights.book'))
+            ->assertRedirect(route('admin.flights.price.show'));
+        $this->actingAs($user)->get(route('admin.flights.confirmation'))
+            ->assertRedirect(route('admin.flights.search'));
+    }
+
+    public function test_sub_agent_without_book_permission_cannot_access_book_page(): void
+    {
+        $salesAgent = User::where('email', 'sales.agent@traveltours.com')->first();
+        if (! $salesAgent) {
+            $this->markTestSkipped('Run TenantRbacSeeder for demo users.');
+        }
+
+        session([
+            'travelport.flight_price' => [
+                'result' => ['ok' => true, 'solutions' => [['total_price' => 'USD100']]],
+            ],
+            'travelport.last_air_price_xml' => '<air:AirPriceRsp/>',
+        ]);
+
+        if ($salesAgent->hasPermission('flights.book')) {
+            $this->actingAs($salesAgent)->get(route('subagent.flights.book'))->assertOk();
+        } else {
+            $this->actingAs($salesAgent)->get(route('subagent.flights.book'))->assertForbidden();
+        }
     }
 
     public function test_parse_ticket_numbers(): void

@@ -208,6 +208,12 @@ Route::middleware(['auth', RoleMiddleware::class.':1'])->prefix('admin')->name('
 
     Route::get('/flights', [AdminFlightController::class, 'hub'])->name('flights.index');
     Route::match(['get', 'post'], '/flights/search', [AdminFlightController::class, 'search'])->name('flights.search');
+    Route::post('/flights/price', [AdminFlightController::class, 'price'])->name('flights.price');
+    Route::get('/flights/price', [AdminFlightController::class, 'priceShow'])->name('flights.price.show');
+    Route::get('/flights/book', [AdminFlightController::class, 'bookShow'])->name('flights.book');
+    Route::post('/flights/book', [AdminFlightController::class, 'bookStore'])->name('flights.book.store');
+    Route::get('/flights/confirmation', [AdminFlightController::class, 'confirmation'])->name('flights.confirmation');
+    Route::post('/flights/ticket', [AdminFlightController::class, 'ticketIssue'])->name('flights.ticket');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AdminFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 
@@ -241,6 +247,12 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('agent')->na
 
     Route::get('/flights', [AgentFlightController::class, 'hub'])->name('flights.index');
     Route::match(['get', 'post'], '/flights/search', [AgentFlightController::class, 'search'])->name('flights.search');
+    Route::post('/flights/price', [AgentFlightController::class, 'price'])->name('flights.price');
+    Route::get('/flights/price', [AgentFlightController::class, 'priceShow'])->name('flights.price.show');
+    Route::get('/flights/book', [AgentFlightController::class, 'bookShow'])->name('flights.book');
+    Route::post('/flights/book', [AgentFlightController::class, 'bookStore'])->name('flights.book.store');
+    Route::get('/flights/confirmation', [AgentFlightController::class, 'confirmation'])->name('flights.confirmation');
+    Route::post('/flights/ticket', [AgentFlightController::class, 'ticketIssue'])->name('flights.ticket');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 
@@ -256,6 +268,12 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('sub-agent')
 
     Route::get('/flights', [SubAgentFlightController::class, 'hub'])->name('flights.index');
     Route::match(['get', 'post'], '/flights/search', [SubAgentFlightController::class, 'search'])->name('flights.search');
+    Route::post('/flights/price', [SubAgentFlightController::class, 'price'])->name('flights.price');
+    Route::get('/flights/price', [SubAgentFlightController::class, 'priceShow'])->name('flights.price.show');
+    Route::get('/flights/book', [SubAgentFlightController::class, 'bookShow'])->name('flights.book');
+    Route::post('/flights/book', [SubAgentFlightController::class, 'bookStore'])->name('flights.book.store');
+    Route::get('/flights/confirmation', [SubAgentFlightController::class, 'confirmation'])->name('flights.confirmation');
+    Route::post('/flights/ticket', [SubAgentFlightController::class, 'ticketIssue'])->name('flights.ticket');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [SubAgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 

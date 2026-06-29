@@ -645,14 +645,16 @@ XML;
             $dob = $this->esc((string) ($pax['dob'] ?? ''));
             $gender = $this->esc((string) ($pax['gender'] ?? 'M'));
             $type = $this->esc((string) ($pax['type'] ?? 'ADT'));
+            $age = $this->travelerAge($dob);
 
             $dobAttr = $dob !== '' ? ' DOB="'.$dob.'"' : '';
+            $ageAttr = $age !== null ? ' Age="'.$age.'"' : '';
             $xml .= <<<XML
 
-      <com:BookingTraveler Key="{$key}" TravelerType="{$type}" Gender="{$gender}"{$dobAttr}>
+      <com:BookingTraveler Key="{$key}" TravelerType="{$type}" Gender="{$gender}"{$dobAttr}{$ageAttr}>
         <com:BookingTravelerName Prefix="{$prefix}" First="{$first}" Last="{$last}"/>
-        <com:PhoneNumber Number="{$phone}"/>
-        <com:Email EmailID="{$email}"/>
+        <com:PhoneNumber Type="Mobile" Number="{$phone}"/>
+        <com:Email EmailID="{$email}" Type="Home"/>
       </com:BookingTraveler>
 XML;
         }
@@ -685,6 +687,92 @@ XML;
         }
 
         return '      '.trim($m[0]);
+    }
+
+    public static function prepareAirPricingSolutionForBooking(string $priceXml): ?string
+    {
+        $solution = self::extractAirPricingSolutionFromPriceXml($priceXml);
+        if ($solution === null) {
+            return null;
+        }
+
+        $solutionBody = trim($solution);
+
+        if (! preg_match('/<(?:[\w]+:)?AirSegment\b/', $solutionBody)) {
+            $segments = self::extractAirItinerarySegmentXml($priceXml);
+            if ($segments !== '') {
+                $solutionBody = preg_replace(
+                    '/(<(?:[\w]+:)?AirPricingSolution\b[^>]*>)/',
+                    '$1'."\n".$segments,
+                    $solutionBody,
+                    1
+                ) ?? $solutionBody;
+            }
+        }
+
+        if (! preg_match('/<(?:[\w]+:)?HostToken\b/', $solutionBody)) {
+            $hostTokens = self::extractHostTokenXml($priceXml);
+            if ($hostTokens !== '') {
+                $solutionBody = preg_replace_callback(
+                    '/<\/((?:[\w]+:)?)AirPricingSolution>/',
+                    static fn (array $m): string => "\n".$hostTokens."\n      </".$m[1].'AirPricingSolution>',
+                    $solutionBody,
+                    1
+                ) ?? $solutionBody;
+            }
+        }
+
+        $solutionBody = preg_replace(
+            '/\bBookingTravelerRef="[^"]*"/',
+            'BookingTravelerRef="1"',
+            $solutionBody
+        ) ?? $solutionBody;
+
+        return '      '.trim($solutionBody);
+    }
+
+  /**
+     * @return non-empty-string
+     */
+    private static function extractAirItinerarySegmentXml(string $xml): string
+    {
+        if (! preg_match('/<(?:[\w]+:)?AirItinerary>(.*?)<\/(?:[\w]+:)?AirItinerary>/s', $xml, $m)) {
+            return '';
+        }
+
+        if (! preg_match_all('/<(?:[\w]+:)?AirSegment\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?AirSegment>)/s', $m[1], $segments)) {
+            return '';
+        }
+
+        return '        '.implode("\n        ", $segments[0]);
+    }
+
+    /**
+     * @return non-empty-string
+     */
+    private static function extractHostTokenXml(string $xml): string
+    {
+        if (! preg_match_all('/<(?:[\w]+:)?HostToken\b[^>]*>.*?<\/(?:[\w]+:)?HostToken>/s', $xml, $matches)) {
+            return '';
+        }
+
+        return '        '.implode("\n        ", $matches[0]);
+    }
+
+    private function travelerAge(string $dob): ?int
+    {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
+            return null;
+        }
+
+        try {
+            $birth = new \DateTime($dob);
+            $now = new \DateTime('today');
+
+            return (int) $birth->diff($now)->y;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

@@ -25,6 +25,7 @@ trait RunsFlightWorkflow
                 'universal_locator' => $payload['universal_locator'],
                 'air_reservation_locator' => $payload['air_reservation_locator'],
             ],
+            'travelport.flight_booking' => $payload,
             'public.flight_booking' => $payload,
         ]);
     }
@@ -34,7 +35,7 @@ trait RunsFlightWorkflow
      */
     protected function bookingSession(): ?array
     {
-        $stored = session('public.flight_booking');
+        $stored = session('travelport.flight_booking') ?? session('public.flight_booking');
 
         return is_array($stored) ? $stored : null;
     }
@@ -90,6 +91,11 @@ trait RunsFlightWorkflow
         ]);
 
         session([
+            'travelport.flight_ticket' => [
+                'result' => $merged,
+                'ticket_numbers' => $merged['ticket_numbers'],
+                'ticketed_at' => now()->toIso8601String(),
+            ],
             'public.flight_ticket' => [
                 'result' => $merged,
                 'ticket_numbers' => $merged['ticket_numbers'],

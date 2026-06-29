@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 trait HandlesTravelportAir
 {
-    use BuildsFlightOperationParams;
+    use HandlesFlightWorkflow;
 
     abstract protected function flightsRoutePrefix(): string;
 
@@ -29,6 +29,7 @@ trait HandlesTravelportAir
             'panelLabel' => $this->panelLabel(),
             'operationGroups' => TravelportAirCatalog::groupedForUi(),
             'airportSearchUrl' => route('api.airports.search'),
+            'canBookFlights' => $this->userCanBookFlights(),
         ];
     }
 
@@ -56,6 +57,7 @@ trait HandlesTravelportAir
     public function search(Request $request, TravelportAirService $air)
     {
         $this->ensureFlightAccess();
+        $this->ensureFlightSearchPermission();
 
         $data = array_merge($this->travelportViewBase(), $this->flightSearchViewExtras(), [
             'currentOperation' => TravelportAirCatalog::get('low_fare_search'),
@@ -85,9 +87,52 @@ trait HandlesTravelportAir
             $data['searchResult'] = FlightResultsPaginator::apply($stored['result'], $request);
             $data['searchInput'] = $stored['input'] ?? [];
             $data['hasPricingContext'] = $air->hasStoredPricingContext();
+            $data['canBookFlights'] = $this->userCanBookFlights();
         }
 
         return view('flights.search', $data);
+    }
+
+    public function price(Request $request, TravelportAirService $air)
+    {
+        $this->ensureFlightAccess();
+
+        return $this->workflowPrice($request, $air);
+    }
+
+    public function priceShow()
+    {
+        $this->ensureFlightAccess();
+
+        return $this->workflowPriceShow();
+    }
+
+    public function bookShow()
+    {
+        $this->ensureFlightAccess();
+
+        return $this->workflowBookShow();
+    }
+
+    public function bookStore(Request $request, TravelportAirService $air)
+    {
+        $this->ensureFlightAccess();
+
+        return $this->workflowBookStore($request, $air);
+    }
+
+    public function confirmation()
+    {
+        $this->ensureFlightAccess();
+
+        return $this->workflowConfirmation();
+    }
+
+    public function ticketIssue(TravelportAirService $air)
+    {
+        $this->ensureFlightAccess();
+
+        return $this->workflowTicketIssue($air);
     }
 
     public function operation(Request $request, string $operation, TravelportAirService $air)
@@ -102,6 +147,16 @@ trait HandlesTravelportAir
             return redirect()->route($this->flightsRoutePrefix().'.flights.search');
         }
 
+        if ($operation === 'air_create_reservation' && $request->isMethod('get')) {
+            return redirect()->route($this->flightsRoutePrefix().'.flights.book');
+        }
+
+        if ($request->isMethod('post') && $operation === 'air_create_reservation') {
+            $this->ensureFlightBookPermission();
+        } elseif ($request->isMethod('post')) {
+            $this->ensureFlightSearchPermission();
+        }
+
         $meta = TravelportAirCatalog::get($operation);
         $data = array_merge($this->travelportViewBase(), $this->flightSearchViewExtras(), [
             'currentOperation' => $meta,
@@ -113,6 +168,14 @@ trait HandlesTravelportAir
         if ($request->isMethod('post')) {
             $result = $air->execute($operation, $this->flightOperationParams($request, $operation));
             $input = $this->flightOperationParams($request, $operation);
+
+            if ($operation === 'air_create_reservation' && ($result['ok'] ?? false)) {
+                $this->persistFlightBooking($result, $input);
+
+                return redirect()
+                    ->route($this->flightsRoutePrefix().'.flights.confirmation')
+                    ->with('success', $result['message'] ?? 'Booking created.');
+            }
 
             session([
                 'travelport.flight_operation' => [
@@ -132,6 +195,7 @@ trait HandlesTravelportAir
             $data['searchResult'] = FlightResultsPaginator::apply($stored['result'], $request);
             $data['searchInput'] = array_merge($request->all(), $stored['input'] ?? []);
             $data['hasPricingContext'] = $air->hasStoredPricingContext();
+            $data['canBookFlights'] = $this->userCanBookFlights();
         }
 
         return view('flights.operation', $data);

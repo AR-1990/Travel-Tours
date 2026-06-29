@@ -115,10 +115,20 @@ abstract class TravelportSoapClient
         $excerpt = Str::limit(preg_replace('/\s+/', ' ', $text), 8000);
 
         if (! $response->successful()) {
+            $fault = $this->extractSoapFaultMessage($text);
+            $message = $fault !== null ? 'SOAP fault: '.$fault : 'HTTP '.$status;
+            if ($fault === null && $text !== '') {
+                if (preg_match('/<title>([^<]+)<\/title>/i', $text, $m)) {
+                    $message .= ' — '.trim(html_entity_decode($m[1], ENT_XML1 | ENT_QUOTES, 'UTF-8'));
+                } elseif (preg_match('/"message"\s*:\s*"([^"]+)"/', $text, $m)) {
+                    $message .= ' — '.$m[1];
+                }
+            }
+
             return [
                 'ok' => false,
                 'http_status' => $status,
-                'message' => 'HTTP '.$status,
+                'message' => $message,
                 'body' => $text,
                 'response_excerpt' => $excerpt,
             ];

@@ -111,7 +111,7 @@ class TravelportAirService extends TravelportSoapClient
 
         if (in_array($operation, ['air_create_reservation', 'air_merchandising'], true)) {
             $priceXml = (string) session('travelport.last_air_price_xml', '');
-            $solution = TravelportAirXmlBuilder::extractAirPricingSolutionFromPriceXml($priceXml);
+            $solution = TravelportAirXmlBuilder::prepareAirPricingSolutionForBooking($priceXml);
             if ($solution === null || $solution === '') {
                 return $this->failResult(
                     $operation,
