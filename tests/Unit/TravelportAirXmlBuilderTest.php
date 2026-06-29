@@ -97,6 +97,37 @@ XML;
         $this->assertStringContainsString('AirSegment', $prepared);
         $this->assertStringContainsString('HostToken', $prepared);
         $this->assertStringContainsString('BookingTravelerRef="1"', $prepared);
+        $this->assertStringNotContainsString('common_v52_0:', $prepared);
+        $this->assertStringNotContainsString('AirSegmentRef', $prepared);
+    }
+
+    public function test_normalize_embedded_travelport_xml_rewrites_versioned_prefixes(): void
+    {
+        $normalized = TravelportAirXmlBuilder::normalizeEmbeddedTravelportXml(
+            '<common_v52_0:HostToken Key="x">abc</common_v52_0:HostToken>'
+        );
+        $this->assertStringContainsString('<com:HostToken', $normalized);
+        $this->assertStringNotContainsString('common_v52_0:', $normalized);
+    }
+
+    public function test_air_create_reservation_places_form_of_payment_before_pricing_solution(): void
+    {
+        $builder = new TravelportAirXmlBuilder;
+        $xml = $builder->build('air_create_reservation', [
+            '_air_pricing_solution_xml' => '      <air:AirPricingSolution Key="s1" TotalPrice="GBP100"/>',
+            'passengers' => [[
+                'prefix' => 'Mr', 'first' => 'John', 'last' => 'Smith',
+                'email' => 'john@example.com', 'phone' => '5551234567',
+                'dob' => '1990-05-01', 'gender' => 'M', 'type' => 'ADT',
+            ]],
+            'form_of_payment' => 'Cash',
+        ], 52);
+
+        $this->assertLessThan(
+            strpos($xml, 'AirPricingSolution'),
+            strpos($xml, 'FormOfPayment'),
+            'FormOfPayment should appear before AirPricingSolution'
+        );
     }
 
     public function test_air_create_reservation_includes_traveler_and_pricing(): void

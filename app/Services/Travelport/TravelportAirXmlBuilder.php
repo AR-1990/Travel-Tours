@@ -458,8 +458,8 @@ XML;
     <univ:AirCreateReservationReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" RetainReservation="Both" xmlns:univ="{$x['univ']}" xmlns:com="{$x['com']}" xmlns:air="{$x['air']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
 {$travelers}
-{$solutionXml}
 {$fop}
+{$solutionXml}
       <com:ActionStatus Type="ACTIVE" ProviderCode="{$x['gds']}"/>
     </univ:AirCreateReservationReq>
 XML;
@@ -710,6 +710,10 @@ XML;
             }
         }
 
+        // Booking requires full AirSegment elements — AirSegmentRef from Air Price must be removed.
+        $solutionBody = preg_replace('/<(?:[\w]+:)?AirSegmentRef\b[^>]*\/>/', '', $solutionBody) ?? $solutionBody;
+        $solutionBody = preg_replace('/<(?:[\w]+:)?AirSegmentRef\b[^>]*>.*?<\/(?:[\w]+:)?AirSegmentRef>/s', '', $solutionBody) ?? $solutionBody;
+
         if (! preg_match('/<(?:[\w]+:)?HostToken\b/', $solutionBody)) {
             $hostTokens = self::extractHostTokenXml($priceXml);
             if ($hostTokens !== '') {
@@ -728,7 +732,55 @@ XML;
             $solutionBody
         ) ?? $solutionBody;
 
+        $solutionBody = self::normalizeEmbeddedTravelportXml($solutionBody);
+        $solutionBody = self::stripBookingPayloadBloat($solutionBody);
+
         return '      '.trim($solutionBody);
+    }
+
+    /**
+     * Remove Air Price merchandising / optional-service noise not needed to book.
+     */
+    public static function stripBookingPayloadBloat(string $xml): string
+    {
+        if ($xml === '') {
+            return $xml;
+        }
+
+        $patterns = [
+            '/<(?:[\w]+:)?OptionalServices\b[^>]*>.*?<\/(?:[\w]+:)?OptionalServices>/s',
+            '/<(?:[\w]+:)?FlightDetails\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?FlightDetails>)/s',
+            '/<(?:[\w]+:)?Brand\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?Brand>)/s',
+            '/<(?:[\w]+:)?FareNote\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?FareNote>)/s',
+            '/<(?:[\w]+:)?SellMessage\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?SellMessage>)/s',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $xml = preg_replace($pattern, '', $xml) ?? $xml;
+        }
+
+        return $xml;
+    }
+
+    /**
+     * Price/LFS responses use versioned prefixes (e.g. common_v52_0:) that are not
+     * declared on AirCreateReservationReq — the gateway rejects those as malformed.
+     */
+    public static function normalizeEmbeddedTravelportXml(string $xml): string
+    {
+        if ($xml === '') {
+            return $xml;
+        }
+
+        $xml = preg_replace('/\bcommon_v\d+_\d+:/', 'com:', $xml) ?? $xml;
+        $xml = preg_replace('/\bair_v\d+_\d+:/', 'air:', $xml) ?? $xml;
+        $xml = preg_replace('/\buniversal_v\d+_\d+:/', 'univ:', $xml) ?? $xml;
+        $xml = preg_replace('/\s+xmlns:common_v\d+_\d+="[^"]*"/', '', $xml) ?? $xml;
+        $xml = preg_replace('/\s+xmlns:air_v\d+_\d+="[^"]*"/', '', $xml) ?? $xml;
+        $xml = preg_replace('/\s+xmlns:universal_v\d+_\d+="[^"]*"/', '', $xml) ?? $xml;
+        $xml = preg_replace('/\s+xmlns="http:\/\/www\.travelport\.com\/schema\/(?:air|common|universal)_v\d+_\d+"/', '', $xml) ?? $xml;
+
+        return $xml;
     }
 
   /**
@@ -744,7 +796,9 @@ XML;
             return '';
         }
 
-        return '        '.implode("\n        ", $segments[0]);
+        $joined = implode("\n        ", $segments[0]);
+
+        return '        '.self::normalizeEmbeddedTravelportXml($joined);
     }
 
     /**
@@ -756,7 +810,9 @@ XML;
             return '';
         }
 
-        return '        '.implode("\n        ", $matches[0]);
+        $joined = implode("\n        ", $matches[0]);
+
+        return '        '.self::normalizeEmbeddedTravelportXml($joined);
     }
 
     private function travelerAge(string $dob): ?int

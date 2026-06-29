@@ -123,6 +123,7 @@ class TravelportAirService extends TravelportSoapClient
             $detected = $this->extractSchemaVersionFromXml($priceXml);
             if ($detected !== null) {
                 $params['_preferred_schema_version'] = $detected;
+                $params['_booking_only_schema'] = true;
             }
         }
 
@@ -290,6 +291,10 @@ class TravelportAirService extends TravelportSoapClient
         $candidates = [$preferred, 52, 51, 50, 48, 37, 34, 33, 32];
         if ($detected >= 30 && $detected <= 99) {
             array_unshift($candidates, $detected);
+
+            if (($params['_booking_only_schema'] ?? false) === true) {
+                return [$detected];
+            }
         }
 
         return array_values(array_unique(array_filter($candidates, fn ($v) => $v >= 30 && $v <= 99)));
@@ -388,11 +393,20 @@ class TravelportAirService extends TravelportSoapClient
 
     private function isSchemaVersionFault(string $message): bool
     {
-        return Str::contains(Str::lower($message), [
+        $lower = Str::lower($message);
+
+        if (Str::contains($lower, [
+            'unmarshalling message body',
+            'unable to parse xml stream',
+            'airsegmentref',
+        ])) {
+            return false;
+        }
+
+        return Str::contains($lower, [
             'invalid version',
             'configured air_v',
-            'validation failed',
-            'marshal',
+            'unrecognized document version',
             'schema',
         ]);
     }

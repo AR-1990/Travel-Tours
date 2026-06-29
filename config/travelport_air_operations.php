@@ -158,7 +158,7 @@ return [
             'description' => 'Book flights and create a PNR for passengers.',
             'help' => 'Creates a Universal Record with air segments and travellers. You normally Air Price first, then pass passenger names and contact details. Full booking forms are being expanded.',
             'group' => 'book',
-            'service' => 'universal_record',
+            'service' => 'air',
             'request' => 'AirCreateReservationReq',
             'response' => 'AirCreateReservationRsp',
             'status' => 'ready',
