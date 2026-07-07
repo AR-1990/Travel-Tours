@@ -110,6 +110,13 @@ XML;
         $this->assertStringNotContainsString('common_v52_0:', $normalized);
     }
 
+    public function test_normalize_form_of_payment_type_uses_travelport_casing(): void
+    {
+        $this->assertSame('Cash', TravelportAirXmlBuilder::normalizeFormOfPaymentType('cash'));
+        $this->assertSame('Credit', TravelportAirXmlBuilder::normalizeFormOfPaymentType('CREDIT'));
+        $this->assertSame('Check', TravelportAirXmlBuilder::normalizeFormOfPaymentType('check'));
+    }
+
     public function test_air_create_reservation_places_form_of_payment_before_pricing_solution(): void
     {
         $builder = new TravelportAirXmlBuilder;
@@ -128,6 +135,15 @@ XML;
             strpos($xml, 'FormOfPayment'),
             'FormOfPayment should appear before AirPricingSolution'
         );
+        $this->assertStringContainsString('FormOfPayment Type="Credit"', $builder->build('air_create_reservation', [
+            '_air_pricing_solution_xml' => '      <air:AirPricingSolution Key="s1" TotalPrice="GBP100"/>',
+            'passengers' => [[
+                'prefix' => 'Mr', 'first' => 'John', 'last' => 'Smith',
+                'email' => 'john@example.com', 'phone' => '5551234567',
+                'dob' => '1990-05-01', 'gender' => 'M', 'type' => 'ADT',
+            ]],
+            'form_of_payment' => 'Credit',
+        ], 52));
     }
 
     public function test_air_create_reservation_includes_traveler_and_pricing(): void

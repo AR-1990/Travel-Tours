@@ -668,12 +668,38 @@ XML;
      */
     private function formOfPaymentXml(array $params, array $x): string
     {
-        $fop = strtoupper((string) ($params['form_of_payment'] ?? 'Cash'));
-        if ($fop === '' || $fop === 'CASH') {
-            return "\n      <com:FormOfPayment Type=\"Cash\"/>";
+        $type = self::normalizeFormOfPaymentType((string) ($params['form_of_payment'] ?? 'Cash'));
+
+        return "\n      <com:FormOfPayment Type=\"{$this->esc($type)}\"/>";
+    }
+
+    public static function normalizeFormOfPaymentType(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return 'Cash';
         }
 
-        return "\n      <com:FormOfPayment Type=\"".$this->esc($fop).'"/>';
+        $allowed = [
+            'Credit', 'Ticket', 'Cash', 'Check', 'Certificate', 'Debit', 'Invoice',
+            'Requisition', 'MiscFormOfPayment', 'UnitedNations', 'DirectPayment',
+            'AgentVoucher', 'AccountReceivable', 'AgentNonRefundable', 'AgencyPayment',
+            'DirectBill', 'OtherGuaranteeInfo', 'Voucher', 'MiscFormOfPaymentCash',
+            'MiscFormOfPaymentCredit', 'StateGovtTransferRequest', 'Agent',
+            'GovtTransferRequest', 'NonRefundable', 'Enett', 'BSPPayment', 'ARCPayment',
+            'MiscFormOfPaymentNonStandar', 'Cash_Payment', 'Check_Payment', 'MS_AK_Payment',
+            'MP_Payment', 'MC_Payment', 'In_Payment', 'Nonref_Payment', 'Government_Payment',
+            'Pseudo_Cash_Payment', 'Pay_Later_Payment', 'Exchange_Payment', 'CC_Payment',
+            'Credit_Override_Payment', 'Debit_Payment', 'Free_Payment', 'Credit_Payment',
+        ];
+
+        foreach ($allowed as $type) {
+            if (strcasecmp($value, $type) === 0) {
+                return $type;
+            }
+        }
+
+        return 'Cash';
     }
 
     public static function extractAirPricingSolutionFromPriceXml(string $xml): ?string
@@ -753,6 +779,7 @@ XML;
             '/<(?:[\w]+:)?Brand\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?Brand>)/s',
             '/<(?:[\w]+:)?FareNote\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?FareNote>)/s',
             '/<(?:[\w]+:)?SellMessage\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?SellMessage>)/s',
+            '/<(?:[\w]+:)?FormOfPayment\b[^>]*(?:\/>|>.*?<\/(?:[\w]+:)?FormOfPayment>)/s',
         ];
 
         foreach ($patterns as $pattern) {
