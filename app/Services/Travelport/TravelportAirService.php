@@ -2,6 +2,7 @@
 
 namespace App\Services\Travelport;
 
+use App\Support\TravelportUserMessage;
 use Illuminate\Support\Str;
 
 class TravelportAirService extends TravelportSoapClient
@@ -263,10 +264,13 @@ class TravelportAirService extends TravelportSoapClient
      */
     private function failResult(string $operation, string $message, string $endpoint, ?array $http = null): array
     {
+        $body = (string) ($http['body'] ?? $http['response_excerpt'] ?? '');
+
         return [
             'ok' => false,
             'http_status' => $http['http_status'] ?? null,
-            'message' => $message,
+            'message' => TravelportUserMessage::from($operation, $message, $body),
+            'technical_message' => $message,
             'solutions' => [],
             'trace_id' => null,
             'response_excerpt' => $http['response_excerpt'] ?? null,

@@ -24,12 +24,6 @@
             @if(session('error'))
                 <div class="alert alert-danger">
                     {{ session('error') }}
-                    @if(config('app.debug') && session('travelport_last_error_excerpt'))
-                        <details class="mt-2 small">
-                            <summary>Technical details</summary>
-                            <pre class="mt-2 mb-0 small bg-light p-2 rounded" style="max-height:200px;overflow:auto;">{{ session('travelport_last_error_excerpt') }}</pre>
-                        </details>
-                    @endif
                 </div>
             @endif
 

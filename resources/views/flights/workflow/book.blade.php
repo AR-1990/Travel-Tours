@@ -29,12 +29,12 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     @endif
-    @if(session('error'))
+            @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm">
             {{ session('error') }}
-            @if(config('app.debug') && session('travelport_last_error_excerpt'))
+            @if(($showDevPanel ?? false) && session('travelport_last_error_excerpt'))
                 <details class="mt-2 small">
-                    <summary>Technical details</summary>
+                    <summary>Technical details (admin)</summary>
                     <pre class="mt-2 mb-0 small bg-light p-2 rounded" style="max-height:200px;overflow:auto;">{{ session('travelport_last_error_excerpt') }}</pre>
                 </details>
             @endif

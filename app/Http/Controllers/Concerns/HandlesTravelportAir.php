@@ -30,6 +30,7 @@ trait HandlesTravelportAir
             'operationGroups' => TravelportAirCatalog::groupedForUi(),
             'airportSearchUrl' => route('api.airports.search'),
             'canBookFlights' => $this->userCanBookFlights(),
+            'showDevPanel' => auth()->user()?->user_type === 'super_admin',
         ];
     }
 
