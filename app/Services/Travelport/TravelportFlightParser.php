@@ -349,13 +349,26 @@ class TravelportFlightParser
             $universal = $m[1];
         }
 
+        // Ticketing/retrieve need the <air:AirReservation LocatorCode="..."> value,
+        // NOT the ProviderReservationInfo (GDS/host) locator.
         $air = null;
-        if (preg_match('/<(?:[\w]+:)?ProviderReservationInfo\b[^>]*\bLocatorCode="([^"]+)"/', $xml, $m)) {
+        if (preg_match('/<(?:[\w]+:)?AirReservation\b[^>]*\bLocatorCode="([^"]+)"/', $xml, $m)) {
             $air = $m[1];
         } elseif (preg_match('/<(?:[\w]+:)?AirReservationLocatorCode>([^<]+)</', $xml, $m)) {
             $air = trim($m[1]);
         } elseif (preg_match('/AirReservationLocatorCode="([^"]+)"/', $xml, $m)) {
             $air = $m[1];
+        }
+
+        // The GDS/host record locator (what you see in the airline system).
+        $provider = null;
+        if (preg_match('/<(?:[\w]+:)?ProviderReservationInfo\b[^>]*\bLocatorCode="([^"]+)"/', $xml, $m)) {
+            $provider = $m[1];
+        }
+
+        // Fall back to the provider locator only if no air reservation locator was found.
+        if ($air === null && $provider !== null) {
+            $air = $provider;
         }
 
         return [
@@ -364,6 +377,7 @@ class TravelportFlightParser
             'total_found' => 0,
             'universal_locator' => $universal,
             'air_reservation_locator' => $air,
+            'provider_locator' => $provider,
         ];
     }
 

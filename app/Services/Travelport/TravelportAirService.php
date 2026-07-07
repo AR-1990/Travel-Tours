@@ -170,6 +170,16 @@ class TravelportAirService extends TravelportSoapClient
                 continue;
             }
 
+            // AirTicketing can return a 200 AirTicketingRsp that actually failed to issue.
+            if ($operation === 'air_ticketing' && Str::contains($http['body'], 'TicketFailureInfo')) {
+                $reason = 'Ticketing failed at the airline host.';
+                if (preg_match('/<(?:[\w]+:)?TicketFailureInfo\b[^>]*\bMessage="([^"]+)"/', $http['body'], $tm)) {
+                    $reason = trim(html_entity_decode($tm[1], ENT_XML1 | ENT_QUOTES, 'UTF-8'));
+                }
+
+                return $this->failResult($operation, $reason.' (v'.$ver.')', $endpoint, $http);
+            }
+
             if ($operation === 'low_fare_search') {
                 session(['travelport.last_lfs_xml' => $http['body']]);
             }
