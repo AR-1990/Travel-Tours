@@ -12,7 +12,7 @@
 
     <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0 small">
-            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flight APIs</a></li>
+            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flights</a></li>
             <li class="breadcrumb-item active">Reservation</li>
         </ol>
     </nav>
@@ -54,7 +54,7 @@
             <i class="fas fa-search me-1"></i> New search
         </a>
         <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-th me-1"></i> Flight APIs
+            <i class="fas fa-th me-1"></i> Flights
         </a>
     </div>
 </div>

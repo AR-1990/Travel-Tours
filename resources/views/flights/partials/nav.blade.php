@@ -13,10 +13,10 @@
         <i class="fas fa-home me-1"></i> Dashboard
     </a>
     <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="{{ $isIndexActive ? 'active' : '' }}">
-        <i class="fas fa-th-large me-1"></i> Flight APIs
+        <i class="fas fa-th-large me-1"></i> Flights
     </a>
     <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="{{ $isSearchActive ? 'active' : '' }}">
-        <i class="fas fa-search me-1"></i> Low Fare Search
+        <i class="fas fa-search me-1"></i> Search
     </a>
     <a href="{{ route($flightsRoutePrefix . '.flights.reservations.index') }}" class="{{ request()->routeIs($flightsRoutePrefix . '.flights.reservations*') ? 'active' : '' }}">
         <i class="fas fa-folder-open me-1"></i> Reservations

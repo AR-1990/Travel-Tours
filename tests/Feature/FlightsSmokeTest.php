@@ -36,7 +36,13 @@ class FlightsSmokeTest extends TestCase
         }
 
         $this->actingAs($user)->get(route('admin.flights.index'))->assertOk();
-        $this->actingAs($user)->get(route('admin.flights.search'))->assertOk();
+        $this->actingAs($user)->get(route('admin.flights.search'))
+            ->assertOk()
+            ->assertSee('One Way')
+            ->assertSee('Round Trip')
+            ->assertSee('Journey Date')
+            ->assertSee('Search Now')
+            ->assertSee('Search → Price → Book → Reservation');
     }
 
     public function test_agent_and_sub_agent_flights_hub_render(): void

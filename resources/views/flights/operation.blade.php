@@ -12,7 +12,7 @@
 
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flight APIs</a></li>
+            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flights</a></li>
             <li class="breadcrumb-item active">{{ $currentOperation['label'] ?? $operationKey }}</li>
         </ol>
     </nav>
@@ -43,7 +43,7 @@
                 <button type="submit" class="btn btn-primary" @disabled(!$travelportReady)>
                     <i class="fas fa-paper-plane me-2"></i>Send request
                 </button>
-                <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="btn btn-outline-secondary">Flight APIs</a>
+                <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="btn btn-outline-secondary">Flights</a>
             </div>
         </form>
     </div>

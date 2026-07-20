@@ -12,15 +12,17 @@
 
     <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0 small">
-            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flight APIs</a></li>
-            <li class="breadcrumb-item active">Low Fare Search</li>
+            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flights</a></li>
+            <li class="breadcrumb-item active">Search</li>
         </ol>
     </nav>
 
     <div class="flights-hero">
-        <h1><i class="fas fa-plane-departure me-2"></i>Low Fare Search</h1>
-        <p class="mb-0">Compare live bookable fares for your route. Pick an option to price it, then continue through the guided booking flow.</p>
+        <h1><i class="fas fa-plane-departure me-2"></i>Search flights</h1>
+        <p class="mb-0">Same guided flow as the public site: Search → Price → Book → Reservation.</p>
     </div>
+
+    @include('flights.partials.workflow-steps', ['workflowStep' => 'search', 'canBookFlights' => $canBookFlights ?? false])
 
     @if($hasPricingContext)
         <div class="alert alert-info border-0 shadow-sm py-2 small mb-3">
@@ -32,7 +34,7 @@
         </div>
     @endif
 
-    @if(session('travelport.flight_booking') || session('travelport.last_booking'))
+    @if(session('travelport.flight_booking') || session('travelport.last_booking') || session('travelport.last_reservation_id'))
         <div class="alert alert-success border-0 shadow-sm py-2 small mb-3">
             <i class="fas fa-ticket-alt me-1"></i>
             Active booking in session —
@@ -54,10 +56,6 @@
     @endif
 
     @include('flights.partials.status')
-
-    @if(!empty($currentOperation))
-        @include('flights.partials.operation-help')
-    @endif
 
     @include('flights.partials.search-form')
 
@@ -87,7 +85,7 @@
         <div class="empty-results">
             <i class="fas fa-search fa-2x text-primary mb-3 opacity-50"></i>
             <h3 class="h6">Ready when you are</h3>
-            <p class="text-muted small mb-0">Enter route and dates above, then hit Search to load live fares.</p>
+            <p class="text-muted small mb-0">Choose From / To with friendly airport names, set dates, then Search Now.</p>
         </div>
     @endif
 </div>

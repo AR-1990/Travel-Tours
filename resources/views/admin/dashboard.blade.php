@@ -123,13 +123,13 @@
                     <p class="small mb-0 opacity-90">Search, price, book, and ticket flights — flight APIs only, with clear guidance on each tool.</p>
                 </div>
                 <div class="p-4">
-                    <a href="{{ route($flightsRoute) }}" class="btn tavelo-btn-primary">Open Air APIs</a>
-                    <a href="{{ route(str_replace('.index', '.search', $flightsRoute)) }}" class="btn tavelo-btn-soft ms-2">Low Fare Search</a>
+                    <a href="{{ route($flightsRoute) }}" class="btn tavelo-btn-primary">Open Flights</a>
+                    <a href="{{ route(str_replace('.index', '.search', $flightsRoute)) }}" class="btn tavelo-btn-soft ms-2">Search flights</a>
                     @if($isSuperAdmin)
                         <a href="{{ route('admin.integrations.edit', ['slug' => 'travelport']) }}" class="btn tavelo-btn-soft ms-2">API Settings</a>
                     @endif
                     <p class="small text-muted mt-3 mb-0">
-                        <strong>Flow:</strong> Air Shop → Air Price → Air Book → Ticketing. Use Cancel / Modify / Retrieve for servicing after booking.
+                        <strong>Flow:</strong> Search → Price → Book → Reservation. Same steps and airport naming as the public site.
                     </p>
                 </div>
             </div>

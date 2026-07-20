@@ -1,6 +1,6 @@
 @extends('admin.layouts.main')
 
-@section('title', 'Flights — Flight APIs')
+@section('title', 'Flights')
 
 @push('styles')
     @include('flights.partials.styles')
@@ -11,15 +11,16 @@
     @include('flights.partials.nav')
 
     <div class="flights-hero">
-        <h1><i class="fas fa-plane me-2"></i>Flight Flow APIs</h1>
-        <p class="mb-0">Follow the same flow as your process map: Air Shop → Air Price → Air Book → Ticketing / Cancel / Modify / Retrieve.</p>
+        <h1><i class="fas fa-plane me-2"></i>Flights</h1>
+        <p class="mb-0">Same booking flow as the public site: Search → Price → Book → Reservation.</p>
     </div>
 
     @include('flights.partials.status')
+    @include('flights.partials.workflow-steps', ['workflowStep' => session('travelport.flight_booking') || session('travelport.last_reservation_id') ? 'ticket' : (session('travelport.flight_price') ? 'price' : 'search'), 'canBookFlights' => $canBookFlights ?? false])
 
     @if($hasPricingContext)
         <div class="alert alert-info border-0 shadow-sm py-2 small">
-            <i class="fas fa-link me-1"></i> Your last <strong>Low Fare Search</strong> is saved — continue with <strong>Air Price</strong> or booking steps.
+            <i class="fas fa-link me-1"></i> Your last <strong>Search</strong> is saved — continue to <strong>Price</strong> or <strong>Book</strong>.
         </div>
     @endif
 
@@ -27,9 +28,9 @@
         <div class="col-md-4">
             <div class="card-modern h-100 border-primary border-opacity-25">
                 <span class="badge bg-primary mb-2">Start here</span>
-                <h2 class="h6">Low Fare Search</h2>
-                <p class="text-muted small mb-2">Compare live bookable fares for your route and dates — the usual first step for selling a flight.</p>
-                <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="btn btn-primary btn-sm">Search fares</a>
+                <h2 class="h6">Search</h2>
+                <p class="text-muted small mb-2">Find fares with friendly airport names (city — airport (CODE)), same as the website.</p>
+                <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="btn btn-primary btn-sm">Search flights</a>
             </div>
         </div>
         <div class="col-md-4">
@@ -41,12 +42,12 @@
         </div>
         <div class="col-md-4">
             <div class="card-modern h-100">
-                <h2 class="h6">Quick flow guide</h2>
+                <h2 class="h6">Guided flow</h2>
                 <ol class="small text-muted mb-0 ps-3">
-                    <li><strong>Search</strong> — Low Fare Search or Availability</li>
-                    <li><strong>Price</strong> — Air Price, then Fare Rules if needed</li>
-                    <li><strong>Book</strong> — Create Reservation (PNR)</li>
-                    <li><strong>Ticket</strong> — Issue Ticket and retrieve documents</li>
+                    <li><strong>Search</strong> — pick airports by name</li>
+                    <li><strong>Price</strong> — confirm sellable fare</li>
+                    <li><strong>Book</strong> — create reservation (PNR)</li>
+                    <li><strong>Reservation</strong> — file details &amp; ticketing</li>
                 </ol>
             </div>
         </div>
@@ -65,8 +66,7 @@
         <div class="card-body py-3">
             <h2 class="h6 mb-2"><i class="fas fa-map-signs me-2 text-primary"></i>How this works</h2>
             <p class="small text-muted mb-0">
-                Start with <strong>AIR SHOP</strong> to find flights, move to <strong>AIR PRICE</strong> to confirm sellable pricing, then create booking in <strong>AIR BOOK</strong>.
-                After booking, use <strong>TICKETING</strong> to issue tickets, and use <strong>CANCEL / MODIFY / RETRIEVE</strong> for after-sales servicing.
+                Use <strong>Search</strong> for day-to-day selling (same UX as the public site). Advanced Travelport operations below are optional for after-sales (cancel, modify, retrieve, refund).
             </p>
         </div>
     </div>

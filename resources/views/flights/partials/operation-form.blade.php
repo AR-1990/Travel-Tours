@@ -19,12 +19,12 @@
 @if(in_array($key, ['air_price'], true))
     <div class="alert alert-light border small mb-3">
         @if($hasPricingContext)
-            Uses the first fare option from your last <strong>Low Fare Search</strong> in this browser session.
+            Uses the first fare option from your last <strong>Search</strong> in this browser session.
         @else
             @if(($flightsRoutePrefix ?? 'admin') === 'frontend')
                 <a href="{{ route('home') }}">Run a flight search</a> first — Air Price needs a pricing solution from that response.
             @else
-                <a href="{{ route($flightsRoutePrefix . '.flights.search') }}">Run Low Fare Search</a> first — Air Price needs a pricing solution from that response.
+                <a href="{{ route($flightsRoutePrefix . '.flights.search') }}">Run Search</a> first — Air Price needs a pricing solution from that response.
             @endif
         @endif
     </div>
@@ -40,23 +40,35 @@
 
 @if(in_array($key, ['flight_details', 'flight_information'], true))
     <div class="col-md-2">
-        <label class="form-label">Carrier</label>
+        <label class="flight-field-label">Carrier</label>
         <input type="text" name="carrier" class="form-control text-uppercase" maxlength="3" value="{{ $input['carrier'] ?? '' }}" required>
     </div>
     <div class="col-md-2">
-        <label class="form-label">Flight #</label>
+        <label class="flight-field-label">Flight #</label>
         <input type="text" name="flight_number" class="form-control" value="{{ $input['flight_number'] ?? '' }}" required>
     </div>
-    <div class="col-md-2">
-        <label class="form-label">Origin</label>
-        <input type="text" name="origin" class="form-control text-uppercase" maxlength="3" value="{{ $input['origin'] ?? '' }}" required>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Destination</label>
-        <input type="text" name="destination" class="form-control text-uppercase" maxlength="3" value="{{ $input['destination'] ?? '' }}" required>
+    <div class="col-md-4">
+        @include('flights.partials.airport-picker', [
+            'name' => 'origin',
+            'id' => 'fd_origin',
+            'value' => $input['origin'] ?? '',
+            'label' => 'From',
+            'placeholder' => 'City or airport',
+            'icon' => 'fa-plane-departure',
+        ])
     </div>
     <div class="col-md-4">
-        <label class="form-label">Departure date</label>
+        @include('flights.partials.airport-picker', [
+            'name' => 'destination',
+            'id' => 'fd_destination',
+            'value' => $input['destination'] ?? '',
+            'label' => 'To',
+            'placeholder' => 'City or airport',
+            'icon' => 'fa-plane-arrival',
+        ])
+    </div>
+    <div class="col-md-4">
+        <label class="flight-field-label">Journey Date</label>
         <input type="date" name="departure_date" class="form-control" value="{{ $input['departure_date'] ?? '' }}" required>
     </div>
 @endif
@@ -75,14 +87,14 @@
         <div class="col-md-4">
             <label class="form-label">Departure (ISO)</label>
             <input type="text" name="departure_time" class="form-control" placeholder="auto from last search or 2026-08-01T10:00:00.000+01:00" value="{{ $input['departure_time'] ?? '' }}">
-            <div class="form-text">Leave blank to auto-fill from latest Low Fare Search.</div>
+            <div class="form-text">Leave blank to auto-fill from latest Search.</div>
         </div>
     </div>
 @endif
 
 @if($key === 'air_create_reservation')
     <div class="col-12">
-        <p class="small text-muted mb-2">Uses your last <strong>Air Price</strong> in this session. Enter lead passenger details.</p>
+        <p class="small text-muted mb-2">Uses your last <strong>Price</strong> in this session. Enter lead passenger details.</p>
     </div>
     <div class="col-md-2">
         <label class="form-label">Title</label>
@@ -158,6 +170,6 @@
 
 @if($key === 'air_merchandising')
     <div class="col-12">
-        <p class="small text-muted mb-0">Uses priced itinerary from your last <strong>Air Price</strong> in this session. No extra fields required.</p>
+        <p class="small text-muted mb-0">Uses priced itinerary from your last <strong>Price</strong> in this session. No extra fields required.</p>
     </div>
 @endif

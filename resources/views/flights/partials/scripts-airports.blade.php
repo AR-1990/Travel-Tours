@@ -43,6 +43,15 @@
             }
             tripRadios.forEach(r => r.addEventListener('change', syncTripType));
             syncTripType();
+
+            form.addEventListener('submit', function (e) {
+                const origin = form.querySelector('input[name="origin"]')?.value?.trim();
+                const dest = form.querySelector('input[name="destination"]')?.value?.trim();
+                if (!origin || !dest) {
+                    e.preventDefault();
+                    alert('Please select From and To airports from the list.');
+                }
+            });
         }
     };
 

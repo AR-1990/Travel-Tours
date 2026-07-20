@@ -4,8 +4,9 @@
     $code = strtoupper((string) old($fieldName, $value ?? ''));
     $airport = $code !== '' ? \App\Support\AirportDirectory::find($code) : null;
     $initialLabel = $airport['label'] ?? '';
-    $placeholder = $placeholder ?? 'Search city or airport…';
+    $placeholder = $placeholder ?? 'City or airport';
     $searchUrl = $searchUrl ?? route('api.airports.search');
+    $icon = $icon ?? ($fieldName === 'destination' ? 'fa-plane-arrival' : 'fa-plane-departure');
 @endphp
 <div class="airport-picker"
     data-field="{{ $fieldName }}"
@@ -14,7 +15,7 @@
     data-search-url="{{ $searchUrl }}">
     <label class="flight-field-label" for="{{ $pickerId }}_display">{{ $label ?? ($fieldName === 'destination' ? 'To' : 'From') }}</label>
     <div class="airport-picker-input-wrap">
-        <i class="fas fa-location-dot airport-picker-icon" aria-hidden="true"></i>
+        <i class="fas {{ $icon }} airport-picker-icon" aria-hidden="true"></i>
         <input type="text"
             id="{{ $pickerId }}_display"
             class="form-control airport-picker-display"
