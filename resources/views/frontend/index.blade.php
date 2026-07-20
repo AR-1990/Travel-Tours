@@ -1866,29 +1866,37 @@
     <script src="assets/js/jquery.timepicker.min.js"></script>
     <script src="assets/js/wow.min.js"></script>
     <script src="assets/js/main.js"></script>
+    <script src="{{ asset('js/airport-picker.js') }}"></script>
     <script>
     (function () {
-        const airportLabels = @json($airportOptions ?? []);
-        const origin = document.querySelector('select[name="origin"]');
-        const destination = document.querySelector('select[name="destination"]');
-        const originHint = document.getElementById('home-origin-hint');
-        const destinationHint = document.getElementById('home-destination-hint');
+        window.initAirportPickers?.();
 
-        function syncHint(select, hint) {
-            if (!select || !hint) return;
-            hint.textContent = airportLabels[select.value] || select.value;
+        document.getElementById('homeSwapAirports')?.addEventListener('click', function () {
+            const o = window.getAirportPicker('origin');
+            const d = window.getAirportPicker('destination');
+            if (!o || !d) return;
+            const oc = o.getCode(), od = o.display.value;
+            const dc = d.getCode(), dd = d.display.value;
+            o.setSelection(dc, dd);
+            d.setSelection(oc, od);
+        });
+
+        const form = document.getElementById('homeFlightSearchForm');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                const origin = form.querySelector('input[name="origin"]')?.value?.trim();
+                const dest = form.querySelector('input[name="destination"]')?.value?.trim();
+                if (!origin || !dest) {
+                    e.preventDefault();
+                    alert('Please select From and To airports from the list.');
+                }
+            });
         }
-
-        origin?.addEventListener('change', () => syncHint(origin, originHint));
-        destination?.addEventListener('change', () => syncHint(destination, destinationHint));
-        syncHint(origin, originHint);
-        syncHint(destination, destinationHint);
 
         const roundTrip = document.getElementById('flight-type2');
         if (roundTrip?.checked) {
             $('.flight-search .search-form-return').show();
         }
-
     })();
     </script>
 

@@ -62,7 +62,7 @@
 
         async search(q) {
             try {
-                const url = `${this.searchUrl}?q=${encodeURIComponent(q)}&limit=12`;
+                const url = `${this.searchUrl}?q=${encodeURIComponent(q)}&limit=15`;
                 const res = await fetch(url, {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -80,7 +80,7 @@
             if (!this.results.length) {
                 const li = document.createElement('li');
                 li.className = 'airport-picker-empty';
-                li.textContent = 'No matches — try another city or airport';
+                li.textContent = 'No matches — try city, airport name, or IATA code';
                 this.list.appendChild(li);
                 return;
             }
@@ -90,10 +90,11 @@
                 li.className = 'airport-picker-item';
                 li.setAttribute('role', 'option');
                 li.dataset.index = String(i);
+                const sub = [item.name, item.country].filter(Boolean).join(' · ');
                 li.innerHTML = `
                     <span class="airport-picker-item-code">${item.code}</span>
                     <span class="airport-picker-item-main">${item.city || item.name}</span>
-                    <span class="airport-picker-item-sub">${item.name}${item.country ? ' · ' + item.country : ''}</span>
+                    <span class="airport-picker-item-sub">${sub}</span>
                 `;
                 li.addEventListener('mousedown', (e) => {
                     e.preventDefault();
@@ -105,11 +106,11 @@
 
         select(item, focusDisplay = true) {
             this.hidden.value = item.code;
-            this.display.value = item.label || `${item.city} (${item.code})`;
+            this.display.value = item.label || `${item.city} — ${item.name} (${item.code})`;
             this.close();
             this.root.dispatchEvent(new CustomEvent('airport-selected', { detail: item, bubbles: true }));
             if (focusDisplay) {
-                this.display.focus();
+                this.display.blur();
             }
         }
 

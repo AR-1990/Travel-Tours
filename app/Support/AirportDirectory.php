@@ -7,6 +7,9 @@ class AirportDirectory
     /** @var list<array{code: string, name: string, city: string, country: string, type: string}>|null */
     private static ?array $all = null;
 
+    /** @var array<string, array{code: string, name: string, city: string, country: string, type: string}>|null */
+    private static ?array $byCode = null;
+
     /**
      * @return list<array{code: string, name: string, city: string, country: string, type: string}>
      */
@@ -19,6 +22,7 @@ class AirportDirectory
         $path = resource_path('data/airports.json');
         if (! is_file($path)) {
             self::$all = [];
+            self::$byCode = [];
 
             return self::$all;
         }
@@ -26,6 +30,13 @@ class AirportDirectory
         $json = file_get_contents($path);
         $data = json_decode($json ?: '[]', true);
         self::$all = is_array($data) ? $data : [];
+        self::$byCode = [];
+        foreach (self::$all as $row) {
+            $code = strtoupper((string) ($row['code'] ?? ''));
+            if ($code !== '') {
+                self::$byCode[$code] = $row;
+            }
+        }
 
         return self::$all;
     }
@@ -40,10 +51,9 @@ class AirportDirectory
             return null;
         }
 
-        foreach (self::all() as $row) {
-            if (strtoupper((string) ($row['code'] ?? '')) === $code) {
-                return self::withLabel($row);
-            }
+        self::all();
+        if (isset(self::$byCode[$code])) {
+            return self::withLabel(self::$byCode[$code]);
         }
 
         return [
@@ -67,28 +77,52 @@ class AirportDirectory
         }
 
         $q = mb_strtolower($query);
+        $popularCodes = array_flip([
+            'LHR', 'LGW', 'JFK', 'EWR', 'LAX', 'DXB', 'CDG', 'AMS', 'FRA', 'IST',
+            'SIN', 'HKG', 'DEL', 'BOM', 'SYD', 'MIA', 'ORD', 'BCN', 'MAD', 'FCO',
+            'KHI', 'LHE', 'ISB', 'DOH', 'AUH', 'BKK', 'NRT', 'ICN', 'YYZ', 'GRU',
+            'NYC', 'LON', 'PAR', 'CHI', 'ORY', 'EWR', 'ATL', 'DFW', 'DEN', 'SEA',
+        ]);
         $scored = [];
 
         foreach (self::all() as $row) {
-            $hay = mb_strtolower(implode(' ', [
-                $row['code'] ?? '',
-                $row['name'] ?? '',
-                $row['city'] ?? '',
-                $row['country'] ?? '',
-            ]));
+            $code = mb_strtolower((string) ($row['code'] ?? ''));
+            $city = mb_strtolower((string) ($row['city'] ?? ''));
+            $name = mb_strtolower((string) ($row['name'] ?? ''));
+            $country = mb_strtolower((string) ($row['country'] ?? ''));
+            $hay = $code.' '.$city.' '.$name.' '.$country;
+            $upperCode = strtoupper((string) ($row['code'] ?? ''));
 
             $score = 0;
-            if (str_starts_with(mb_strtolower((string) ($row['code'] ?? '')), $q)) {
-                $score += 100;
+            if ($code === $q) {
+                $score += 200;
+            } elseif (str_starts_with($code, $q)) {
+                $score += 120;
             }
-            if (str_contains($hay, $q)) {
+            if ($city === $q) {
+                $score += 110;
+            } elseif (str_starts_with($city, $q)) {
+                $score += 80;
+            } elseif (str_contains($city, $q)) {
+                $score += 35;
+            }
+            if (str_starts_with($name, $q)) {
                 $score += 50;
+            } elseif (str_contains($name, $q)) {
+                $score += 20;
             }
-            if (str_starts_with(mb_strtolower((string) ($row['city'] ?? '')), $q)) {
-                $score += 40;
+            if (str_contains($country, $q)) {
+                $score += 8;
             }
-            if (str_starts_with(mb_strtolower((string) ($row['name'] ?? '')), $q)) {
-                $score += 30;
+            if ($score === 0 && str_contains($hay, $q)) {
+                $score += 12;
+            }
+
+            if ($score > 0 && (($row['type'] ?? '') === 'city')) {
+                $score += 25;
+            }
+            if ($score > 0 && isset($popularCodes[$upperCode])) {
+                $score += 60;
             }
 
             if ($score > 0) {
@@ -109,16 +143,26 @@ class AirportDirectory
      */
     public static function popular(): array
     {
-        $codes = ['LHR', 'LGW', 'JFK', 'EWR', 'LAX', 'DXB', 'CDG', 'AMS', 'FRA', 'IST', 'SIN', 'HKG', 'DEL', 'BOM', 'SYD', 'MIA', 'ORD', 'BCN', 'MAD', 'FCO'];
+        $codes = [
+            'LHR', 'LGW', 'JFK', 'EWR', 'LAX', 'DXB', 'CDG', 'AMS', 'FRA', 'IST',
+            'SIN', 'HKG', 'DEL', 'BOM', 'SYD', 'MIA', 'ORD', 'BCN', 'MAD', 'FCO',
+            'KHI', 'LHE', 'ISB', 'DOH', 'AUH', 'BKK', 'NRT', 'ICN', 'YYZ', 'GRU',
+            'NYC', 'LON', 'PAR', 'CHI',
+        ];
         $out = [];
         foreach ($codes as $code) {
             $found = self::find($code);
-            if ($found !== null) {
+            if ($found !== null && ($found['city'] ?? '') !== '') {
                 $out[] = $found;
             }
         }
 
         return $out;
+    }
+
+    public static function count(): int
+    {
+        return count(self::all());
     }
 
     /**
@@ -133,9 +177,15 @@ class AirportDirectory
         $country = (string) ($row['country'] ?? '');
         $type = (string) ($row['type'] ?? 'airport');
 
-        $label = $city !== '' && $name !== ''
-            ? "{$city} — {$name} ({$code})"
-            : ($city !== '' ? "{$city} ({$code})" : "{$name} ({$code})");
+        if ($type === 'city') {
+            $label = $city !== '' ? "{$city} — All airports ({$code})" : "{$name} ({$code})";
+        } elseif ($city !== '' && $name !== '' && strcasecmp($city, $name) !== 0) {
+            $label = "{$city} — {$name} ({$code})";
+        } elseif ($city !== '') {
+            $label = "{$city} ({$code})";
+        } else {
+            $label = "{$name} ({$code})";
+        }
 
         return [
             'code' => $code,

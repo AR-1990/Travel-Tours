@@ -117,14 +117,15 @@ Route::middleware('guest')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')->group(function () {
-    Route::prefix('api')->name('api.')->group(function () {
-        Route::get('/airports/search', [AirportLookupController::class, 'search'])->name('airports.search');
-        Route::get('/airports/{code}', [AirportLookupController::class, 'show'])
-            ->name('airports.show')
-            ->where('code', '[A-Za-z]{3}');
-    });
+/** Public airport lookup — used by home + panel flight search pickers */
+Route::prefix('api')->name('api.')->group(function () {
+    Route::get('/airports/search', [AirportLookupController::class, 'search'])->name('airports.search');
+    Route::get('/airports/{code}', [AirportLookupController::class, 'show'])
+        ->name('airports.show')
+        ->where('code', '[A-Za-z]{3}');
+});
 
+Route::middleware('auth')->group(function () {
     // User Dashboard
     Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
 

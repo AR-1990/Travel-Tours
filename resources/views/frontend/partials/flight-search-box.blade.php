@@ -1,7 +1,12 @@
 @php
     $homeFlightInput = $flightSearchInput ?? [];
-    $airportOptions = $airportOptions ?? [];
+    $originCode = strtoupper((string) ($homeFlightInput['origin'] ?? 'JFK'));
+    $destCode = strtoupper((string) ($homeFlightInput['destination'] ?? 'LAX'));
+    $originAirport = \App\Support\AirportDirectory::find($originCode);
+    $destAirport = \App\Support\AirportDirectory::find($destCode);
     $searchSubmitLabel = $searchSubmitLabel ?? 'Search Now';
+    $tripType = \Illuminate\Support\Str::of((string) ($homeFlightInput['trip_type'] ?? 'oneway'))->lower();
+    $isRound = in_array((string) $tripType, ['roundtrip', 'round-way', 'round_way'], true);
 @endphp
 <div class="search-area" id="home-flight-search">
     <div class="container">
@@ -42,50 +47,86 @@
                 <div class="tab-pane fade show active" id="pills-1" role="tabpanel" tabindex="0">
                     <div class="flight-search ft-group home-flight-search">
                         <div class="search-form">
-                            <form action="{{ route('frontend.flights.search') }}" method="POST">
+                            <form action="{{ route('frontend.flights.search') }}" method="POST" id="homeFlightSearchForm">
                                 @csrf
                                 <div class="flight-type">
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio"
-                                            {{ in_array($homeFlightInput['trip_type'] ?? 'oneway', ['oneway', 'one-way'], true) ? 'checked' : '' }}
+                                            {{ ! $isRound ? 'checked' : '' }}
                                             value="one-way" name="trip_type" id="flight-type1">
                                         <label class="form-check-label" for="flight-type1">One Way</label>
                                     </div>
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio"
-                                            {{ ($homeFlightInput['trip_type'] ?? '') === 'roundtrip' ? 'checked' : '' }}
+                                            {{ $isRound ? 'checked' : '' }}
                                             value="round-way" name="trip_type" id="flight-type2">
-                                        <label class="form-check-label" for="flight-type2">Round Way</label>
+                                        <label class="form-check-label" for="flight-type2">Round Trip</label>
                                     </div>
                                 </div>
                                 <div class="flight-search-wrapper">
                                     <div class="flight-search-content">
                                         <div class="flight-search-item">
-                                            <div class="row">
-                                                <div class="col-lg-3">
-                                                    <div class="form-group">
-                                                        <label>From</label>
-                                                        <select name="origin" class="form-control home-airport-select" aria-describedby="home-origin-hint">
-                                                            @foreach($airportOptions as $code => $label)
-                                                                <option value="{{ $code }}" @selected(($homeFlightInput['origin'] ?? 'JFK') === $code)>{{ $code }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                        <p class="home-airport-hint" id="home-origin-hint">{{ $airportOptions[$homeFlightInput['origin'] ?? 'JFK'] ?? '' }}</p>
+                                            <div class="row align-items-stretch home-flight-fields">
+                                                <div class="col-lg-3 col-md-6">
+                                                    <div class="form-group home-airport-field">
+                                                        <div class="airport-picker home-airport-picker"
+                                                            data-field="origin"
+                                                            data-initial-code="{{ $originCode }}"
+                                                            data-initial-label="{{ $originAirport['label'] ?? $originCode }}"
+                                                            data-search-url="{{ route('api.airports.search') }}">
+                                                            <label class="flight-field-label" for="home_origin_display">From</label>
+                                                            <div class="airport-picker-input-wrap">
+                                                                <i class="fas fa-plane-departure airport-picker-icon" aria-hidden="true"></i>
+                                                                <input type="text"
+                                                                    id="home_origin_display"
+                                                                    class="form-control airport-picker-display"
+                                                                    placeholder="City or airport"
+                                                                    value="{{ $originAirport['label'] ?? $originCode }}"
+                                                                    autocomplete="off"
+                                                                    autocorrect="off"
+                                                                    spellcheck="false"
+                                                                    role="combobox"
+                                                                    aria-expanded="false"
+                                                                    aria-autocomplete="list"
+                                                                    aria-controls="home_origin_list">
+                                                                <input type="hidden" name="origin" id="home_origin" class="airport-picker-code" value="{{ $originCode }}" required>
+                                                            </div>
+                                                            <ul id="home_origin_list" class="airport-picker-list" role="listbox" hidden></ul>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="col-lg-3">
-                                                    <div class="form-group">
-                                                        <div class="search-form-swap"><i class="far fa-repeat"></i></div>
-                                                        <label>To</label>
-                                                        <select name="destination" class="form-control home-airport-select" aria-describedby="home-destination-hint">
-                                                            @foreach($airportOptions as $code => $label)
-                                                                <option value="{{ $code }}" @selected(($homeFlightInput['destination'] ?? 'LAX') === $code)>{{ $code }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                        <p class="home-airport-hint" id="home-destination-hint">{{ $airportOptions[$homeFlightInput['destination'] ?? 'LAX'] ?? '' }}</p>
+                                                <div class="col-lg-3 col-md-6">
+                                                    <div class="form-group home-airport-field home-airport-field-to">
+                                                        <button type="button" class="search-form-swap home-swap-airports" id="homeSwapAirports" title="Swap airports" aria-label="Swap from and to">
+                                                            <i class="far fa-repeat"></i>
+                                                        </button>
+                                                        <div class="airport-picker home-airport-picker"
+                                                            data-field="destination"
+                                                            data-initial-code="{{ $destCode }}"
+                                                            data-initial-label="{{ $destAirport['label'] ?? $destCode }}"
+                                                            data-search-url="{{ route('api.airports.search') }}">
+                                                            <label class="flight-field-label" for="home_destination_display">To</label>
+                                                            <div class="airport-picker-input-wrap">
+                                                                <i class="fas fa-plane-arrival airport-picker-icon" aria-hidden="true"></i>
+                                                                <input type="text"
+                                                                    id="home_destination_display"
+                                                                    class="form-control airport-picker-display"
+                                                                    placeholder="City or airport"
+                                                                    value="{{ $destAirport['label'] ?? $destCode }}"
+                                                                    autocomplete="off"
+                                                                    autocorrect="off"
+                                                                    spellcheck="false"
+                                                                    role="combobox"
+                                                                    aria-expanded="false"
+                                                                    aria-autocomplete="list"
+                                                                    aria-controls="home_destination_list">
+                                                                <input type="hidden" name="destination" id="home_destination" class="airport-picker-code" value="{{ $destCode }}" required>
+                                                            </div>
+                                                            <ul id="home_destination_list" class="airport-picker-list" role="listbox" hidden></ul>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="col-lg-3">
+                                                <div class="col-lg-3 col-md-6">
                                                     <div class="form-group">
                                                         <div class="search-form-date">
                                                             <div class="search-form-journey">
@@ -93,24 +134,26 @@
                                                                 <div class="form-group-icon">
                                                                     <input type="text" name="departure_date"
                                                                         class="form-control date-picker journey-date"
-                                                                        value="{{ isset($homeFlightInput['departure_date']) ? \Carbon\Carbon::parse($homeFlightInput['departure_date'])->format('m/d/Y') : '' }}">
+                                                                        value="{{ isset($homeFlightInput['departure_date']) ? \Carbon\Carbon::parse($homeFlightInput['departure_date'])->format('m/d/Y') : '' }}"
+                                                                        required>
                                                                     <i class="fal fa-calendar-days"></i>
                                                                 </div>
                                                                 <p class="journey-day-name"></p>
                                                             </div>
-                                                            <div class="search-form-return">
+                                                            <div class="search-form-return" style="{{ $isRound ? '' : 'display: none;' }}">
                                                                 <label>Return Date</label>
                                                                 <div class="form-group-icon">
                                                                     <input type="text" name="return_date"
                                                                         class="form-control date-picker return-date"
                                                                         value="{{ isset($homeFlightInput['return_date']) ? \Carbon\Carbon::parse($homeFlightInput['return_date'])->format('m/d/Y') : '' }}">
+                                                                    <i class="fal fa-calendar-days"></i>
                                                                 </div>
                                                                 <p class="return-day-name"></p>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="col-lg-3">
+                                                <div class="col-lg-3 col-md-6">
                                                     <div class="form-group dropdown passenger-box">
                                                         <div class="passenger-class" role="menu" data-bs-toggle="dropdown" aria-expanded="false">
                                                             <label>Passenger, Class</label>

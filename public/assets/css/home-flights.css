@@ -16,37 +16,167 @@
     display: none !important;
 }
 
-.home-flight-search .form-group select.home-airport-select {
+.home-flight-fields {
+    --home-teal: #24bdc7;
+    --home-navy: #053750;
+}
+
+.home-airport-field {
+    position: relative;
+    height: 100%;
+}
+
+.home-airport-field-to {
+    padding-left: 0.25rem;
+}
+
+.home-flight-search .home-airport-picker {
+    position: relative;
+}
+
+.home-flight-search .home-airport-picker .flight-field-label {
+    display: block;
+    margin: 0 0 0.2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.home-flight-search .airport-picker-input-wrap {
+    position: relative;
+}
+
+.home-flight-search .airport-picker-icon {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--home-teal);
+    font-size: 0.95rem;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.home-flight-search .airport-picker-display {
     display: block;
     width: 100%;
-    border: none;
-    background: transparent;
-    font-size: 19px;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--home-navy);
+    padding: 0.15rem 0.5rem 0.15rem 1.5rem !important;
+    margin: 0;
+    line-height: 1.35;
+    min-height: 2.1rem;
+    border-radius: 0;
+}
+
+.home-flight-search .airport-picker-display::placeholder {
+    color: #94a3b8;
     font-weight: 500;
-    color: var(--color-dark, #0f172a);
-    padding: 5px 28px 5px 0;
-    margin: 0;
-    line-height: 1.4;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2324bdc7' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 2px center;
 }
 
-.home-flight-search .form-group select.home-airport-select:focus {
+.home-flight-search .airport-picker-display:focus {
     outline: none;
-    box-shadow: none;
 }
 
-.home-flight-search .home-airport-hint {
+.home-flight-search .airport-picker-list {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 1200;
+    max-height: 320px;
+    overflow-y: auto;
     margin: 0;
-    font-size: 15px;
-    color: var(--color-dark, #334155);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 0.4rem 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(5, 55, 80, 0.16);
+}
+
+.home-flight-search .airport-picker-item {
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 3.25rem 1fr;
+    grid-template-rows: auto auto;
+    gap: 0 0.65rem;
+    align-items: center;
+}
+
+.home-flight-search .airport-picker-item:hover,
+.home-flight-search .airport-picker-item.active {
+    background: rgba(36, 189, 199, 0.1);
+}
+
+.home-flight-search .airport-picker-item-code {
+    grid-row: 1 / span 2;
+    font-weight: 800;
+    color: var(--home-teal);
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+}
+
+.home-flight-search .airport-picker-item-main {
+    font-weight: 700;
+    color: var(--home-navy);
+    font-size: 0.92rem;
+}
+
+.home-flight-search .airport-picker-item-sub {
+    grid-column: 2;
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.home-flight-search .airport-picker-empty {
+    padding: 0.85rem 1rem;
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.home-flight-search .home-swap-airports,
+.home-flight-search .search-form-swap.home-swap-airports {
+    position: absolute;
+    left: -1.1rem;
+    top: 52%;
+    transform: translateY(-50%);
+    z-index: 5;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 999px;
+    border: 1px solid #dbe7ec;
+    background: #fff;
+    color: var(--home-teal);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(5, 55, 80, 0.1);
+    cursor: pointer;
+    padding: 0;
+}
+
+.home-flight-search .home-swap-airports:hover {
+    background: var(--home-teal);
+    color: #fff;
+    border-color: var(--home-teal);
+}
+
+@media (max-width: 991.98px) {
+    .home-flight-search .home-swap-airports,
+    .home-flight-search .search-form-swap.home-swap-airports {
+        left: auto;
+        right: 0.5rem;
+        top: -0.35rem;
+        transform: none;
+    }
 }
 
 #home-flight-results {

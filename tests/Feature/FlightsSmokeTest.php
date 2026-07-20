@@ -52,6 +52,17 @@ class FlightsSmokeTest extends TestCase
         $this->actingAs($salesAgent)->get(route('subagent.flights.index'))->assertOk();
     }
 
+    public function test_airport_api_returns_json_publicly(): void
+    {
+        $this->getJson(route('api.airports.search', ['q' => 'London']))
+            ->assertOk()
+            ->assertJsonStructure(['results']);
+
+        $this->getJson(route('api.airports.search', ['q' => 'ORD']))
+            ->assertOk()
+            ->assertJsonFragment(['code' => 'ORD']);
+    }
+
     public function test_airport_api_returns_json_when_authenticated(): void
     {
         $user = User::where('email', 'superadmin@traveltours.com')->first();

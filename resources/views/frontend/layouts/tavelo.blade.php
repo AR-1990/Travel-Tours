@@ -57,6 +57,30 @@
     <script src="{{ asset('assets/js/jquery.timepicker.min.js') }}"></script>
     <script src="{{ asset('assets/js/wow.min.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
+    <script src="{{ asset('js/airport-picker.js') }}"></script>
+    <script>
+    (function () {
+        window.initAirportPickers?.();
+        document.getElementById('homeSwapAirports')?.addEventListener('click', function () {
+            const o = window.getAirportPicker('origin');
+            const d = window.getAirportPicker('destination');
+            if (!o || !d) return;
+            const oc = o.getCode(), od = o.display.value;
+            const dc = d.getCode(), dd = d.display.value;
+            o.setSelection(dc, dd);
+            d.setSelection(oc, od);
+        });
+        const form = document.getElementById('homeFlightSearchForm');
+        form?.addEventListener('submit', function (e) {
+            const origin = form.querySelector('input[name="origin"]')?.value?.trim();
+            const dest = form.querySelector('input[name="destination"]')?.value?.trim();
+            if (!origin || !dest) {
+                e.preventDefault();
+                alert('Please select From and To airports from the list.');
+            }
+        });
+    })();
+    </script>
     @stack('scripts')
 </body>
 </html>

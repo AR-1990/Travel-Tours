@@ -41,17 +41,12 @@ trait NormalizesFlightSearchInput
             return $m[1];
         }
 
-        $known = [
-            'NEW YORK' => 'JFK',
-            'LOS ANGELES' => 'LAX',
-            'LONDON' => 'LHR',
-            'DUBAI' => 'DXB',
-            'KARACHI' => 'KHI',
-            'LAHORE' => 'LHE',
-            'ISLAMABAD' => 'ISB',
-        ];
+        $matches = \App\Support\AirportDirectory::search($value, 1);
+        if ($matches !== [] && ! empty($matches[0]['code'])) {
+            return strtoupper((string) $matches[0]['code']);
+        }
 
-        return $known[$value] ?? null;
+        return null;
     }
 
     /**
