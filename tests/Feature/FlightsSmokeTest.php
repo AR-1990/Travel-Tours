@@ -190,7 +190,43 @@ class FlightsSmokeTest extends TestCase
         $this->actingAs($user)->get(route('admin.flights.book'))
             ->assertRedirect(route('admin.flights.price.show'));
         $this->actingAs($user)->get(route('admin.flights.confirmation'))
-            ->assertRedirect(route('admin.flights.search'));
+            ->assertRedirect(route('admin.flights.reservations.index'));
+    }
+
+    public function test_reservation_list_and_show_render(): void
+    {
+        $user = User::where('email', 'superadmin@traveltours.com')->first();
+        if (! $user) {
+            $this->markTestSkipped('Run TenantRbacSeeder for demo users.');
+        }
+
+        $reservation = \App\Models\FlightReservation::query()->create([
+            'user_id' => $user->id,
+            'channel' => 'admin',
+            'status' => \App\Models\FlightReservation::STATUS_RESERVED,
+            'universal_locator' => 'ABC123',
+            'air_reservation_locator' => 'XYZ987',
+            'origin' => 'LHR',
+            'destination' => 'JFK',
+            'departure_date' => now()->addDays(30)->toDateString(),
+            'adults' => 1,
+            'passenger_first' => 'Test',
+            'passenger_last' => 'Traveler',
+            'passenger_email' => 'test@example.com',
+            'booked_at' => now(),
+        ]);
+
+        $this->actingAs($user)->get(route('admin.flights.reservations.index'))->assertOk();
+        $this->actingAs($user)
+            ->get(route('admin.flights.reservations.show', $reservation))
+            ->assertOk()
+            ->assertSee('ABC123')
+            ->assertSee('Test Traveler');
+
+        session(['public.last_reservation_id' => $reservation->id]);
+        $this->get(route('frontend.flights.reservations.show', $reservation))
+            ->assertOk()
+            ->assertSee('ABC123');
     }
 
     public function test_sub_agent_without_book_permission_cannot_access_book_page(): void

@@ -22,13 +22,58 @@ class TravelportUserMessage
             }
         }
 
-        return match ($operation) {
-            'air_create_reservation' => 'We could not complete the booking. Please search again and try another flight or date.',
-            'air_ticketing' => 'We could not issue the ticket. Please try again or contact your travel agent.',
-            'air_price' => 'We could not confirm this fare. Please search again and select another option.',
-            'low_fare_search' => 'Flight search failed. Please try different dates or airports.',
-            default => 'Something went wrong with the flight request. Please try again.',
+        $shortReason = self::shortReason($technical);
+        $base = match ($operation) {
+            'air_create_reservation' => 'We could not complete the booking.',
+            'air_ticketing' => 'We could not issue the ticket.',
+            'air_price' => 'We could not confirm this fare.',
+            'low_fare_search' => 'Flight search failed.',
+            default => 'Something went wrong with the flight request.',
         };
+
+        $hint = match ($operation) {
+            'air_create_reservation' => ' Please search again and try another flight or date, and book soon after pricing.',
+            'air_ticketing' => ' Please try again or contact support.',
+            'air_price' => ' Please search again and select another option.',
+            'low_fare_search' => ' Please try different dates or airports.',
+            default => ' Please try again.',
+        };
+
+        return $shortReason !== null
+            ? $base.' '.$shortReason.$hint
+            : $base.$hint;
+    }
+
+    public static function shortReason(string $technicalMessage): ?string
+    {
+        $technical = self::stripSchemaSuffix($technicalMessage);
+        if ($technical === '') {
+            return null;
+        }
+
+        if (preg_match('/timed?\s*out|operation timed out|cURL error 28/i', $technical)) {
+            return 'The airline system took too long to respond.';
+        }
+
+        // Prefer faultstring-like short lines; strip SOAP/HTML noise.
+        $clean = trim(preg_replace('/\s+/', ' ', strip_tags($technical)) ?? '');
+        $clean = preg_replace('/^SOAP fault:\s*/i', '', $clean) ?? $clean;
+        $clean = preg_replace('/^Connection error:\s*/i', '', $clean) ?? $clean;
+
+        if ($clean === '' || strlen($clean) > 160) {
+            return null;
+        }
+
+        // Avoid dumping endpoints / curl urls in the UI.
+        if (str_contains(strtolower($clean), 'http://') || str_contains(strtolower($clean), 'https://')) {
+            if (preg_match('/timed?\s*out|cURL error 28/i', $clean)) {
+                return 'The airline system took too long to respond.';
+            }
+
+            return 'There was a connection problem with the airline system.';
+        }
+
+        return $clean;
     }
 
     private static function stripSchemaSuffix(string $message): string
@@ -88,6 +133,10 @@ class TravelportUserMessage
     private static function phraseMap(): array
     {
         return [
+            'timed out' => 'Booking timed out waiting for the airline. Please try again, or pick another flight.',
+            'operation timed out' => 'Booking timed out waiting for the airline. Please try again, or pick another flight.',
+            'curl error 28' => 'Booking timed out waiting for the airline. Please try again, or pick another flight.',
+            'connection error' => 'Could not reach the flight system. Please try again in a moment.',
             'record locator not found' => 'Your booking reference was not found. Please search, price, and book again in the same session.',
             'invalid fop type' => 'There was a payment setup problem. Please select Cash and try again.',
             'filed fare has been invalidated' => 'The fare expired before ticketing. Please search and book again, then issue the ticket immediately.',
@@ -95,7 +144,6 @@ class TravelportUserMessage
             'unsuccessful primary host transaction' => 'The airline could not confirm this booking. Please try a different flight or contact support.',
             'pricing session expired' => 'Your pricing session expired. Please search and price again before booking.',
             'run air price first' => 'Please price the flight again before booking.',
-            'connection error' => 'Could not reach the flight system. Please check your connection and try again.',
             'credentials are not configured' => 'Flight booking is not configured. Please contact the agency.',
             'target branch is required' => 'Flight API is not fully configured. Please contact the agency.',
         ];

@@ -36,7 +36,8 @@
         <div class="alert alert-success border-0 shadow-sm py-2 small mb-3">
             <i class="fas fa-ticket-alt me-1"></i>
             Active booking in session —
-            <a href="{{ route($flightsRoutePrefix . '.flights.confirmation') }}">view confirmation</a>.
+            <a href="{{ route($flightsRoutePrefix . '.flights.confirmation') }}">view reservation</a>
+            or <a href="{{ route($flightsRoutePrefix . '.flights.reservations.index') }}">all reservations</a>.
         </div>
     @endif
 

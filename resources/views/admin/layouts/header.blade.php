@@ -65,9 +65,15 @@
                 @if($isSuperAdmin || ($user && ($user->user_type === 'tenant_admin' || $user->hasPermission('flights.search'))))
                 <li class="sidebar-section-label">Travel</li>
                 <li>
-                    <a href="{{ route($isSuperAdmin ? 'admin.flights.search' : $panelPrefix . '.flights.search') }}" class="{{ request()->routeIs('admin.flights*') || request()->routeIs('agent.flights*') || request()->routeIs('subagent.flights*') ? 'active' : '' }}">
+                    <a href="{{ route($isSuperAdmin ? 'admin.flights.search' : $panelPrefix . '.flights.search') }}" class="{{ (request()->routeIs('admin.flights*') || request()->routeIs('agent.flights*') || request()->routeIs('subagent.flights*')) && ! request()->routeIs('*.flights.reservations*') ? 'active' : '' }}">
                         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
                         <span class="menu-text">Flights</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route($isSuperAdmin ? 'admin.flights.reservations.index' : $panelPrefix . '.flights.reservations.index') }}" class="{{ request()->routeIs('admin.flights.reservations*') || request()->routeIs('agent.flights.reservations*') || request()->routeIs('subagent.flights.reservations*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h16v2H4V4zm0 4h16v12H4V8zm4 2v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>
+                        <span class="menu-text">Reservations</span>
                     </a>
                 </li>
                 @endif

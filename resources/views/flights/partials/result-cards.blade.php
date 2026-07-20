@@ -43,11 +43,13 @@
                 $journeys = [['travel_time' => null, 'segments' => $sol['segments']]];
             }
             $carrier = $sol['plating_carrier'] ?? ($sol['segments'][0]['carrier'] ?? '—');
+            $carrierName = \App\Support\FlightDisplay::airlineName($carrier);
         @endphp
         <article class="flight-result-card">
             <div class="row align-items-start g-3">
                 <div class="col-auto">
-                    <div class="carrier-badge" title="Plating carrier">{{ $carrier }}</div>
+                    <div class="carrier-badge" title="{{ $carrierName }}">{{ $carrier }}</div>
+                    <div class="small text-muted text-center mt-1" style="max-width:4.5rem;line-height:1.2;">{{ $carrierName }}</div>
                 </div>
                 <div class="col">
                     @foreach($journeys as $jIndex => $journey)
@@ -63,16 +65,16 @@
                             <div class="d-flex flex-wrap align-items-center gap-3 mb-2 pb-2 {{ !$loop->last ? 'border-bottom border-light' : '' }}">
                                 <div>
                                     <div class="flight-time">{{ $dep['time'] ?? '—' }}</div>
-                                    <div class="flight-airport-code">{{ \App\Support\FlightDisplay::airportShort($seg['origin'] ?? null) }}</div>
+                                    <div class="flight-airport-code">{{ \App\Support\FlightDisplay::airportCity($seg['origin'] ?? null) }}</div>
                                     <div class="small text-muted">{{ $dep['date'] ?? '' }}</div>
                                 </div>
                                 <div class="text-muted small text-center px-2">
                                     <i class="fas fa-plane text-primary"></i>
-                                    <div>{{ $seg['carrier'] }}{{ $seg['flight_number'] }}</div>
+                                    <div>{{ \App\Support\FlightDisplay::flightLabel($seg['carrier'] ?? null, $seg['flight_number'] ?? null) }}</div>
                                 </div>
                                 <div>
                                     <div class="flight-time">{{ $arr['time'] ?? '—' }}</div>
-                                    <div class="flight-airport-code">{{ \App\Support\FlightDisplay::airportShort($seg['destination'] ?? null) }}</div>
+                                    <div class="flight-airport-code">{{ \App\Support\FlightDisplay::airportCity($seg['destination'] ?? null) }}</div>
                                     <div class="small text-muted">{{ $arr['date'] ?? '' }}</div>
                                 </div>
                             </div>

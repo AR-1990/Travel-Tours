@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Models\FlightReservation;
 use App\Services\Travelport\TravelportAirCatalog;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
@@ -139,9 +140,22 @@ trait HandlesFlightWorkflow
             'result' => $result,
         ]);
 
+        if (! ($result['ok'] ?? false)) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.price.show')
+                ->with('error', $result['message'] ?? 'Pricing failed.');
+        }
+
+        // Continue the guided flow automatically — no need to open a URL by hand.
+        if ($this->userCanBookFlights()) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.book')
+                ->with('success', $result['message'] ?? 'Fare confirmed. Enter passenger details to complete the booking.');
+        }
+
         return redirect()
             ->route($this->flightsRoutePrefix().'.flights.price.show')
-            ->with($result['ok'] ? 'success' : 'error', $result['message'] ?? 'Price complete.');
+            ->with('success', $result['message'] ?? 'Price complete.');
     }
 
     public function workflowPriceShow()
@@ -218,21 +232,36 @@ trait HandlesFlightWorkflow
                 ->route($this->flightsRoutePrefix().'.flights.book')
                 ->withInput()
                 ->with('error', $result['message'] ?? 'Booking failed.')
+                ->with('travelport_last_error_reason', $result['technical_message'] ?? null)
                 ->with('travelport_last_error_excerpt', $result['response_excerpt'] ?? null);
         }
 
-        $this->persistFlightBooking($result, $params);
+        $reservation = $this->persistFlightBooking($result, $params);
 
         return redirect()
-            ->route($this->flightsRoutePrefix().'.flights.confirmation')
-            ->with('success', $result['message'] ?? 'Booking created.');
+            ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+            ->with('success', $result['message'] ?? 'Booking created. Your reservation details are below.');
     }
 
     public function workflowConfirmation()
     {
+        $reservationId = session('travelport.last_reservation_id') ?? session('public.last_reservation_id');
+        if ($reservationId) {
+            return redirect()->route($this->flightsRoutePrefix().'.flights.reservations.show', ['id' => $reservationId]);
+        }
+
         $booking = $this->bookingSession();
         if ($booking === null) {
+            if (! $this->workflowIsPublic()) {
+                return redirect()->route($this->flightsRoutePrefix().'.flights.reservations.index')
+                    ->with('error', 'No booking in this session. Open a reservation from the list.');
+            }
+
             return redirect()->to($this->workflowSearchUrl())->with('error', 'No booking in this session.');
+        }
+
+        if (! empty($booking['id'])) {
+            return redirect()->route($this->flightsRoutePrefix().'.flights.reservations.show', ['id' => $booking['id']]);
         }
 
         $search = $this->workflowSearchStore() ?? [];
@@ -263,7 +292,16 @@ trait HandlesFlightWorkflow
                 ->with('error', 'No booking locator found.');
         }
 
-        $result = $this->runIssueTicketFlow($air, $locators);
+        $reservationId = session('travelport.last_reservation_id') ?? session('public.last_reservation_id');
+        $reservation = $reservationId ? FlightReservation::query()->find($reservationId) : null;
+
+        $result = $this->runIssueTicketFlow($air, $locators, $reservation);
+
+        if ($reservation) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+                ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Ticketing complete.');
+        }
 
         return redirect()
             ->route($this->flightsRoutePrefix().'.flights.confirmation')

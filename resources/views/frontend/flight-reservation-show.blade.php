@@ -8,7 +8,7 @@
             <div class="container">
                 <div class="hero-content text-center">
                     <h1 class="hero-title">Reservation details</h1>
-                    <p class="mb-0">Your booking file</p>
+                    <p class="mb-0">{{ $reservation->routeLabel() }}</p>
                 </div>
             </div>
         </div>
@@ -32,13 +32,13 @@
                 'flightTicket' => $flightTicket ?? null,
                 'canBookFlights' => true,
                 'travelportReady' => $travelportReady ?? false,
-                'ticketActionRoute' => route('frontend.flights.ticket'),
+                'ticketActionRoute' => $ticketActionRoute ?? route('frontend.flights.reservations.ticket', $reservation),
                 'ticketButtonClass' => 'theme-btn',
             ])
 
             <div class="mt-4 d-flex flex-wrap gap-2">
+                <a href="{{ route('frontend.flights.reservations.index') }}" class="theme-btn theme-btn-outline">All reservations<i class="fas fa-list"></i></a>
                 <a href="{{ route('home') }}" class="theme-btn theme-btn-outline">New search<i class="fas fa-search"></i></a>
-                <a href="{{ route('frontend.flights.hub') }}" class="theme-btn theme-btn-outline">Flight APIs<i class="fas fa-th"></i></a>
             </div>
         </div>
     </div>

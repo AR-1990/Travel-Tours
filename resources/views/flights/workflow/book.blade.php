@@ -31,7 +31,10 @@
     @endif
             @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm">
-            {{ session('error') }}
+            <div>{{ session('error') }}</div>
+            @if(session('travelport_last_error_reason'))
+                <div class="small text-muted mt-1">Reason: {{ session('travelport_last_error_reason') }}</div>
+            @endif
             @if(($showDevPanel ?? false) && session('travelport_last_error_excerpt'))
                 <details class="mt-2 small">
                     <summary>Technical details (admin)</summary>
@@ -97,10 +100,11 @@
                 </div>
                 <div class="mt-4 d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary btn-sm" @disabled(!($travelportReady ?? false))>
-                        <i class="fas fa-check me-1"></i> Confirm booking
+                        <i class="fas fa-check me-1"></i> Confirm booking &amp; view reservation
                     </button>
                     <a href="{{ route($flightsRoutePrefix . '.flights.price.show') }}" class="btn btn-outline-secondary btn-sm">Back to price</a>
                 </div>
+                <p class="small text-muted mt-2 mb-0">After you confirm, reservation details open automatically.</p>
             </form>
         </div>
     </div>

@@ -56,7 +56,7 @@ return [
     */
     'schema_major_version' => (int) env('TRAVELPORT_SCHEMA_MAJOR_VERSION', 52),
 
-    'timeout' => (int) env('TRAVELPORT_TIMEOUT', 30),
+    'timeout' => (int) env('TRAVELPORT_TIMEOUT', 60),
 
     /*
     |--------------------------------------------------------------------------

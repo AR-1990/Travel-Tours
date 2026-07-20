@@ -13,7 +13,8 @@
                     <h2 class="h5 mb-2">Price confirmed</h2>
                     <p class="text-muted small mb-0">
                         @if(!empty($solution['plating_carrier']))
-                            Plating carrier: <strong>{{ $solution['plating_carrier'] }}</strong>
+                            Airline: <strong>{{ \App\Support\FlightDisplay::airlineName($solution['plating_carrier']) }}</strong>
+                            <span class="text-muted">({{ $solution['plating_carrier'] }})</span>
                         @endif
                         @if(!empty($solution['fare_basis']))
                             · Fare basis: <code>{{ $solution['fare_basis'] }}</code>

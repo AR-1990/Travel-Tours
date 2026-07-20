@@ -21,11 +21,14 @@
             @endif
 
             <div class="row g-3 mb-4">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <a href="{{ route('home') }}" class="theme-btn">Search flights<i class="fas fa-search"></i></a>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <a href="{{ route('frontend.flights.results') }}" class="theme-btn theme-btn-outline">View results<i class="fas fa-list"></i></a>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ route('frontend.flights.reservations.index') }}" class="theme-btn theme-btn-outline">Reservations<i class="fas fa-folder-open"></i></a>
                 </div>
             </div>
 

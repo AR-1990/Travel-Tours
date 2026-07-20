@@ -1,11 +1,14 @@
 @php
     $step = $workflowStep ?? 'search';
+    $reservationId = session('public.last_reservation_id') ?? session('travelport.last_reservation_id');
+    $reservationRoute = $reservationId ? 'frontend.flights.reservations.show' : 'frontend.flights.confirmation';
+    $reservationParams = $reservationId ? ['id' => $reservationId] : [];
     $steps = [
         'search' => ['label' => 'Search', 'route' => 'frontend.flights.results'],
         'price' => ['label' => 'Price', 'route' => 'frontend.flights.price.show'],
         'book' => ['label' => 'Book', 'route' => 'frontend.flights.book'],
-        'ticket' => ['label' => 'Ticket', 'route' => 'frontend.flights.confirmation'],
-        'done' => ['label' => 'Done', 'route' => 'frontend.flights.confirmation'],
+        'ticket' => ['label' => 'Reservation', 'route' => $reservationRoute, 'params' => $reservationParams],
+        'done' => ['label' => 'Done', 'route' => $reservationRoute, 'params' => $reservationParams],
     ];
     $order = ['search', 'price', 'book', 'ticket', 'done'];
     $currentIndex = array_search($step, $order, true);
@@ -28,10 +31,10 @@
                     $canLink = $canLink || session('public.flight_price');
                 }
                 if ($key === 'book') {
-                    $canLink = $canLink || session('public.flight_booking');
+                    $canLink = $canLink || session('public.flight_booking') || $reservationId;
                 }
                 if ($key === 'ticket') {
-                    $canLink = $canLink || session('public.flight_booking');
+                    $canLink = $canLink || session('public.flight_booking') || $reservationId;
                 }
             @endphp
             <li class="flight-workflow-step {{ $isCurrent ? 'is-current' : '' }} {{ $isDone ? 'is-done' : '' }}">

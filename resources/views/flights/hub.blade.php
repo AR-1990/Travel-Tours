@@ -34,6 +34,13 @@
         </div>
         <div class="col-md-4">
             <div class="card-modern h-100">
+                <h2 class="h6">Reservations</h2>
+                <p class="text-muted small mb-2">Open booked PNRs — passenger, itinerary, fare, and issue ticket from the reservation file.</p>
+                <a href="{{ route($flightsRoutePrefix . '.flights.reservations.index') }}" class="btn btn-outline-primary btn-sm">View bookings</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-modern h-100">
                 <h2 class="h6">Quick flow guide</h2>
                 <ol class="small text-muted mb-0 ps-3">
                     <li><strong>Search</strong> — Low Fare Search or Availability</li>

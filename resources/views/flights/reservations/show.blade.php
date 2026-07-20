@@ -1,6 +1,6 @@
 @extends('admin.layouts.main')
 
-@section('title', 'Reservation details')
+@section('title', 'Reservation #'.$reservation->id)
 
 @push('styles')
     @include('flights.partials.styles')
@@ -13,13 +13,14 @@
     <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0 small">
             <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flight APIs</a></li>
-            <li class="breadcrumb-item active">Reservation</li>
+            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.reservations.index') }}">Reservations</a></li>
+            <li class="breadcrumb-item active">#{{ $reservation->id }}</li>
         </ol>
     </nav>
 
     <div class="flights-hero">
         <h1><i class="fas fa-file-alt me-2"></i>Reservation details</h1>
-        <p class="mb-0">Booking file for this session — route, passenger, fare, and ticketing.</p>
+        <p class="mb-0">{{ $reservation->routeLabel() }} · {{ $reservation->passengerName() ?: 'Passenger' }}</p>
     </div>
 
     @include('flights.partials.workflow-steps', ['workflowStep' => $workflowStep ?? 'ticket'])
@@ -44,17 +45,17 @@
         'flightTicket' => $flightTicket ?? null,
         'canBookFlights' => $canBookFlights ?? false,
         'travelportReady' => $travelportReady ?? false,
-        'ticketActionRoute' => route($flightsRoutePrefix . '.flights.ticket'),
+        'ticketActionRoute' => $ticketActionRoute ?? route($flightsRoutePrefix . '.flights.reservations.ticket', $reservation),
         'ticketButtonClass' => 'btn btn-primary btn-sm',
         'compact' => true,
     ])
 
     <div class="mt-2 d-flex flex-wrap gap-2">
+        <a href="{{ route($flightsRoutePrefix . '.flights.reservations.index') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-list me-1"></i> All reservations
+        </a>
         <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="btn btn-outline-secondary btn-sm">
             <i class="fas fa-search me-1"></i> New search
-        </a>
-        <a href="{{ route($flightsRoutePrefix . '.flights.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-th me-1"></i> Flight APIs
         </a>
     </div>
 </div>

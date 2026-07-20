@@ -39,4 +39,28 @@ XML;
 
         $this->assertStringContainsString('booking reference', $message);
     }
+
+    public function test_maps_timeout_to_friendly_message(): void
+    {
+        $message = TravelportUserMessage::from(
+            'air_create_reservation',
+            'Connection error: cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received for https://emea.universal-api.pp.travelport.com/B2BGateway/connect/uAPI/AirService (v52)',
+            ''
+        );
+
+        $this->assertStringContainsString('timed out', strtolower($message));
+        $this->assertStringNotContainsString('https://', $message);
+    }
+
+    public function test_fallback_includes_short_reason(): void
+    {
+        $message = TravelportUserMessage::from(
+            'air_create_reservation',
+            'Some unexpected host failure. (v52)',
+            ''
+        );
+
+        $this->assertStringContainsString('We could not complete the booking.', $message);
+        $this->assertStringContainsString('Some unexpected host failure.', $message);
+    }
 }

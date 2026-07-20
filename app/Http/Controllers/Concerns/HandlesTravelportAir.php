@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 trait HandlesTravelportAir
 {
     use HandlesFlightWorkflow;
+    use ManagesFlightReservations;
 
     abstract protected function flightsRoutePrefix(): string;
 
@@ -171,10 +172,10 @@ trait HandlesTravelportAir
             $input = $this->flightOperationParams($request, $operation);
 
             if ($operation === 'air_create_reservation' && ($result['ok'] ?? false)) {
-                $this->persistFlightBooking($result, $input);
+                $reservation = $this->persistFlightBooking($result, $input);
 
                 return redirect()
-                    ->route($this->flightsRoutePrefix().'.flights.confirmation')
+                    ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
                     ->with('success', $result['message'] ?? 'Booking created.');
             }
 

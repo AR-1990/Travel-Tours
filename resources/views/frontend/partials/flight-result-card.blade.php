@@ -17,7 +17,7 @@
                         <div class="flight-airline-img">
                             <span class="flight-airline-code">{{ $carrier }}</span>
                         </div>
-                        <h5 class="flight-airline-name">{{ $carrier }} {{ $first['flight_number'] ?? '' }}</h5>
+                        <h5 class="flight-airline-name">{{ \App\Support\FlightDisplay::flightLabel($carrier, $first['flight_number'] ?? null) }}</h5>
                     </div>
                     <div class="flight-booking-time">
                         <div class="start-time">
@@ -26,7 +26,7 @@
                             </div>
                             <div class="start-time-info">
                                 <h6 class="start-time-text">{{ $dep['time'] ?? '—' }}</h6>
-                                <span class="flight-destination">{{ \App\Support\FlightDisplay::airportShort($first['origin'] ?? null) }}</span>
+                                <span class="flight-destination">{{ \App\Support\FlightDisplay::airportCity($first['origin'] ?? null) }}</span>
                             </div>
                         </div>
                         <div class="flight-stop">
@@ -39,7 +39,7 @@
                             </div>
                             <div class="start-time-info">
                                 <h6 class="end-time-text">{{ $arr['time'] ?? '—' }}</h6>
-                                <span class="flight-destination">{{ \App\Support\FlightDisplay::airportShort($last['destination'] ?? null) }}</span>
+                                <span class="flight-destination">{{ \App\Support\FlightDisplay::airportCity($last['destination'] ?? null) }}</span>
                             </div>
                         </div>
                     </div>

@@ -1,12 +1,17 @@
 @php
     $prefix = $flightsRoutePrefix ?? 'admin';
     $step = $workflowStep ?? 'search';
+    $reservationId = session('travelport.last_reservation_id') ?? session('public.last_reservation_id');
+    $reservationShowRoute = $reservationId
+        ? $prefix.'.flights.reservations.show'
+        : $prefix.'.flights.confirmation';
+    $reservationParams = $reservationId ? ['id' => $reservationId] : [];
     $steps = [
         'search' => ['label' => 'Search', 'route' => $prefix.'.flights.search'],
         'price' => ['label' => 'Price', 'route' => $prefix.'.flights.price.show'],
         'book' => ['label' => 'Book', 'route' => $prefix.'.flights.book'],
-        'ticket' => ['label' => 'Ticket', 'route' => $prefix.'.flights.confirmation'],
-        'done' => ['label' => 'Done', 'route' => $prefix.'.flights.confirmation'],
+        'ticket' => ['label' => 'Reservation', 'route' => $reservationShowRoute, 'params' => $reservationParams],
+        'done' => ['label' => 'Done', 'route' => $reservationShowRoute, 'params' => $reservationParams],
     ];
     $order = ['search', 'price', 'book', 'ticket', 'done'];
     $currentIndex = array_search($step, $order, true);
@@ -32,7 +37,7 @@
                     $canLink = $canLink || ! empty($priceSession);
                 }
                 if (in_array($key, ['book', 'ticket'], true)) {
-                    $canLink = $canLink || ! empty($bookingSession);
+                    $canLink = $canLink || ! empty($bookingSession) || ! empty($reservationId);
                 }
                 if ($key === 'book' && empty($canBookFlights ?? false)) {
                     $canLink = false;
@@ -40,7 +45,7 @@
             @endphp
             <li class="badge rounded-pill {{ $isCurrent ? 'bg-primary' : ($isDone ? 'bg-success' : 'bg-light text-muted') }} px-3 py-2">
                 @if($canLink && ! $isCurrent)
-                    <a href="{{ route($meta['route']) }}" class="text-decoration-none {{ $isDone ? 'text-white' : 'text-dark' }}">{{ $meta['label'] }}</a>
+                    <a href="{{ route($meta['route'], $meta['params'] ?? []) }}" class="text-decoration-none {{ $isDone ? 'text-white' : 'text-dark' }}">{{ $meta['label'] }}</a>
                 @else
                     <span>{{ $meta['label'] }}</span>
                 @endif

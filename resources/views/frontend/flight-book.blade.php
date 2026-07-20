@@ -80,12 +80,13 @@
                         </div>
                         <div class="mt-4 d-flex flex-wrap gap-2">
                             <button type="submit" class="theme-btn" @disabled(!($travelportReady ?? false))>
-                                Confirm booking<i class="fas fa-check"></i>
+                                Confirm booking &amp; view reservation<i class="fas fa-check"></i>
                             </button>
                             <a href="{{ route('frontend.flights.price.show') }}" class="theme-btn theme-btn-outline">
                                 Back to price<i class="fas fa-arrow-left"></i>
                             </a>
                         </div>
+                        <p class="small text-muted mt-2 mb-0">After you confirm, reservation details open automatically.</p>
                     </form>
                 </div>
             </div>

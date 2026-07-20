@@ -82,7 +82,11 @@ abstract class TravelportSoapClient
         $host = parse_url($endpoint, PHP_URL_HOST) ?: 'emea.universal-api.pp.travelport.com';
 
         try {
-            $response = Http::timeout((int) ($c['timeout'] ?? 60))
+            // Booking / ticketing against the GDS often needs longer than search.
+            $defaultTimeout = (int) ($c['timeout'] ?? 60);
+            $timeout = max($defaultTimeout, 60);
+
+            $response = Http::timeout($timeout)
                 ->withHeaders([
                     'Content-Type' => 'text/xml; charset=utf-8',
                     'Accept-Encoding' => 'gzip,deflate',

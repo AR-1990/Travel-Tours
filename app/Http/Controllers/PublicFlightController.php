@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesFlightWorkflow;
 use App\Http\Controllers\Concerns\NormalizesFlightSearchInput;
+use App\Models\FlightReservation;
 use App\Services\Travelport\TravelportAirCatalog;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
 use App\Support\AirportDirectory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PublicFlightController extends Controller
 {
@@ -86,6 +88,108 @@ class PublicFlightController extends Controller
         return $this->workflowTicketIssue($air);
     }
 
+    public function reservationsIndex(Request $request)
+    {
+        $user = Auth::user();
+        $sessionId = session('public.last_reservation_id');
+
+        $query = FlightReservation::query()->latest('booked_at')->latest('id');
+
+        if ($user) {
+            $query->where(function ($q) use ($user, $sessionId) {
+                $q->where('user_id', $user->id)
+                    ->orWhere('passenger_email', $user->email);
+                if ($sessionId) {
+                    $q->orWhere('id', $sessionId);
+                }
+            });
+        } elseif ($sessionId) {
+            $query->where('id', $sessionId);
+        } else {
+            return redirect()->route('home')->with('error', 'No reservations found in this session. Book a flight first.');
+        }
+
+        if ($request->filled('q')) {
+            $q = trim((string) $request->input('q'));
+            $query->where(function ($builder) use ($q) {
+                $builder->where('universal_locator', 'like', "%{$q}%")
+                    ->orWhere('air_reservation_locator', 'like', "%{$q}%")
+                    ->orWhere('passenger_last', 'like', "%{$q}%")
+                    ->orWhere('origin', 'like', "%{$q}%")
+                    ->orWhere('destination', 'like', "%{$q}%");
+            });
+        }
+
+        $reservations = $query->paginate(20)->withQueryString();
+
+        return view('frontend.flight-reservations', array_merge($this->publicFlightViewData(session('public.flight_search', [])), [
+            'reservations' => $reservations,
+            'filters' => ['q' => $request->input('q')],
+        ]));
+    }
+
+    public function reservationsShow(int $id)
+    {
+        $reservation = $this->findPublicAccessibleReservation($id);
+
+        return view('frontend.flight-reservation-show', array_merge($this->publicFlightViewData(session('public.flight_search', [])), [
+            'reservation' => $reservation,
+            'flightBooking' => $reservation->toWorkflowBookingArray(),
+            'flightPriceResult' => $reservation->toPriceResultArray(),
+            'flightSearchInput' => [
+                'origin' => $reservation->origin,
+                'destination' => $reservation->destination,
+                'departure_date' => optional($reservation->departure_date)?->format('Y-m-d'),
+                'return_date' => optional($reservation->return_date)?->format('Y-m-d'),
+                'adults' => $reservation->adults,
+            ],
+            'flightTicket' => [
+                'ticket_numbers' => $reservation->ticket_numbers ?? [],
+            ],
+            'workflowStep' => $reservation->status === FlightReservation::STATUS_TICKETED ? 'done' : 'ticket',
+            'ticketActionRoute' => route('frontend.flights.reservations.ticket', $reservation),
+        ]));
+    }
+
+    public function reservationsTicket(int $id, TravelportAirService $air)
+    {
+        $reservation = $this->findPublicAccessibleReservation($id);
+
+        $locators = array_filter([
+            'universal_locator' => $reservation->universal_locator,
+            'air_reservation_locator' => $reservation->air_reservation_locator,
+        ]);
+
+        if ($locators === []) {
+            return redirect()
+                ->route('frontend.flights.reservations.show', $reservation)
+                ->with('error', 'No booking locator found on this reservation.');
+        }
+
+        $result = $this->runIssueTicketFlow($air, $locators, $reservation);
+
+        return redirect()
+            ->route('frontend.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Ticketing complete.');
+    }
+
+    protected function findPublicAccessibleReservation(int $id): FlightReservation
+    {
+        $reservation = FlightReservation::query()->findOrFail($id);
+        $user = Auth::user();
+        $sessionId = (int) session('public.last_reservation_id');
+
+        if ($sessionId === (int) $reservation->id) {
+            return $reservation;
+        }
+
+        if ($user && ((int) $reservation->user_id === (int) $user->id || strcasecmp((string) $reservation->passenger_email, (string) $user->email) === 0)) {
+            return $reservation;
+        }
+
+        abort(403, 'You do not have access to this reservation.');
+    }
+
     public function flightOperation(Request $request, string $operation, TravelportAirService $air)
     {
         if (! TravelportAirCatalog::exists($operation)) {
@@ -109,10 +213,10 @@ class PublicFlightController extends Controller
             $result = $air->execute($operation, $params);
 
             if ($operation === 'air_create_reservation' && ($result['ok'] ?? false)) {
-                $this->persistFlightBooking($result, $params);
+                $reservation = $this->persistFlightBooking($result, $params);
 
                 return redirect()
-                    ->route('frontend.flights.confirmation')
+                    ->route('frontend.flights.reservations.show', $reservation)
                     ->with('success', $result['message'] ?? 'Booking created.');
             }
 
