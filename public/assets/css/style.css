@@ -882,7 +882,7 @@ theme button
 }
 
 .top-contact-info ul li a:hover {
-  color: var(--theme-color);
+  color: var(--theme-color2);
 }
 
 .top-contact-info ul li a i {
@@ -1079,7 +1079,7 @@ theme button
 
   .navbar .nav-item .nav-link.active,
   .navbar .nav-item:hover .nav-link {
-    color: var(--theme-color);
+    color: var(--theme-color2);
   }
 
   .navbar .nav-item:hover .dropdown-menu {
@@ -1444,8 +1444,8 @@ hero css
 }
 
 .hero-single {
-  padding-top: 300px;
-  padding-bottom: 280px;
+  padding-top: 200px;
+  padding-bottom: 200px;
   background-position: center !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
@@ -1689,7 +1689,7 @@ hero css
   position: absolute;
   right: 20px;
   top: 10px;
-  font-size: 28px;
+  font-size: 15px;
   color: var(--theme-color);
 }
 
@@ -1808,7 +1808,7 @@ hero css
   position: absolute;
   border-radius: 50px;
   border: 5px solid var(--color-white);
-  top: 0px;
+  top: -20px;
   right: 50px;
   padding: 7px 18px;
   white-space: nowrap;
@@ -6878,6 +6878,7 @@ hero css
   background-position: center;
   border-radius: 0 80px 0 0;
   z-index: -1;
+  background: var(--theme-color);
 }
 
 .counter-box {
@@ -6904,6 +6905,7 @@ hero css
 
 .counter-box .icon img {
   width: 50px;
+  filter: brightness(0.5);
 }
 
 .counter-box .counter-number{
@@ -6912,7 +6914,7 @@ hero css
 }
 
 .counter-box .counter-sign{
-  color: var(--color-dark);
+  color: var(--theme-color2);
   font-size: 40px;
   line-height: 0;
   margin-left: 2px;
@@ -6921,13 +6923,13 @@ hero css
 .counter-box .counter {
   display: block;
   line-height: 1;
-  color: var(--color-dark);
+  color: var(--theme-color2);
   font-size: 50px;
   font-weight: 600;
 }
 
 .counter-box .title {
-  color: var(--color-dark);
+  color: var(--theme-color2);
   margin-top: 10px;
   font-size: 20px;
   font-weight: 600;

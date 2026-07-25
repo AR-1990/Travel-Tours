@@ -81,7 +81,7 @@
                                     <li><a href="tel:+21234567897"><i class="far fa-phone-arrow-down-left"></i>+2 123
                                             4567 897</a></li>
                                     <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#563f38303916332e373b263a337835393b"><i
-                                                class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="b1d8dfd7def1d4c9d0dcc1ddd49fd2dedc">[email&#160;protected]</span></a></li>
+                                                class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="b1d8dfd7def1d4c9d0dcc1ddd49fd2dedc">info@wisetrust.com</span></a></li>
                                 </ul>
                             </div>
                         </div>
@@ -397,7 +397,7 @@
                                     <input type="file" class="profile-img-file">
                                 </div>
                                 <h4>Antoni Jonson</h4>
-                                <p><a href="https://live.themewild.com/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="503a3f3e233f3e103528313d203c357e333f3d">[email&#160;protected]</a></p>
+                                <p><a href="https://live.themewild.com/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="503a3f3e233f3e103528313d203c357e333f3d">info@wisetrust.com</a></p>
                             </div>
                             <ul class="user-profile-sidebar-list">
                                 <li><a href="dashboard.html"><i class="far fa-gauge-high"></i> Dashboard</a></li>
@@ -709,7 +709,7 @@
                                 </li>
                                 <li><i class="far fa-map-marker-alt"></i>25/B Milford Road, New York</li>
                                 <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#98f1f6fef7d8fde0f9f5e8f4fdb6fbf7f5"><i
-                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="533a3d353c13362b323e233f367d303c3e">[email&#160;protected]</span></a></li>
+                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="533a3d353c13362b323e233f367d303c3e">info@wisetrust.com</span></a></li>
                             </ul>
                         </div>
                     </div>

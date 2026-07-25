@@ -80,8 +80,8 @@
                                 <ul>
                                     <li><a href="tel:+21234567897"><i class="far fa-phone-arrow-down-left"></i>+2 123
                                             4567 897</a></li>
-                                    <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#462f28202906233e272b362a236825292b"><i
-                                                class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="ea83848c85aa8f928b879a868fc4898587">[email&#160;protected]</span></a></li>
+                                    <li><a href="mailto:info@wisetrust.com"><i
+                                                class="far fa-envelopes"></i><span>info@wisetrust.com</span></a></li>
                                 </ul>
                             </div>
                         </div>
@@ -439,7 +439,7 @@
                                 </li>
                                 <li><i class="far fa-map-marker-alt"></i>25/B Milford Road, New York</li>
                                 <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#98f1f6fef7d8fde0f9f5e8f4fdb6fbf7f5"><i
-                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="50393e363f103528313d203c357e333f3d">[email&#160;protected]</span></a></li>
+                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="50393e363f103528313d203c357e333f3d">info@wisetrust.com</span></a></li>
                             </ul>
                         </div>
                     </div>

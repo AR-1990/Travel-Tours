@@ -80,8 +80,8 @@
                                 <ul>
                                     <li><a href="tel:+21234567897"><i class="far fa-phone-arrow-down-left"></i>+2 123
                                             4567 897</a></li>
-                                    <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#462f28202906233e272b362a236825292b"><i
-                                                class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="ea83848c85aa8f928b879a868fc4898587">[email&#160;protected]</span></a></li>
+                                    <li><a href="mailto:info@wisetrust.com"><i
+                                                class="far fa-envelopes"></i><span>info@wisetrust.com</span></a></li>
                                 </ul>
                             </div>
                         </div>
@@ -1245,7 +1245,7 @@
                                 <p>It is a long established fact that a reader will be distracted by the readable content layout.</p>
                                 <ul class="listing-side-list">
                                     <li><i class="far fa-phone"></i><a href="tel:+21234567897">+2 123 4567 897</a></li>
-                                    <li><i class="far fa-envelope"></i><a href="https://live.themewild.com/cdn-cgi/l/email-protection#90f9fef6ffd0f5e8f1fde0fcf5bef3fffd"><span class="__cf_email__" data-cfemail="87eee9e1e8c7e2ffe6eaf7ebe2a9e4e8ea">[email&#160;protected]</span></a></li>
+                                    <li><i class="far fa-envelope"></i><a href="https://live.themewild.com/cdn-cgi/l/email-protection#90f9fef6ffd0f5e8f1fde0fcf5bef3fffd"><span class="__cf_email__" data-cfemail="87eee9e1e8c7e2ffe6eaf7ebe2a9e4e8ea">info@wisetrust.com</span></a></li>
                                 </ul>
                             </div>
                             <div class="booking-sidebar listing-side-content mt-4">
@@ -1299,7 +1299,7 @@
                                 </li>
                                 <li><i class="far fa-map-marker-alt"></i>25/B Milford Road, New York</li>
                                 <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#4920272f26092c31282439252c672a2624"><i
-                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="c3aaada5ac83a6bba2aeb3afa6eda0acae">[email&#160;protected]</span></a></li>
+                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="c3aaada5ac83a6bba2aeb3afa6eda0acae">info@wisetrust.com</span></a></li>
                             </ul>
                         </div>
                     </div>

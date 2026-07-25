@@ -85,7 +85,7 @@
                         <svg fill="currentColor" viewBox="0 0 24 24">
                             <path d="M3 7h18v2H3V7zm2 4h14v10H5V11zm3 2v6h2v-6H8zm6 0v6h2v-6h-2z"/>
                         </svg>
-                        <span class="menu-text">Agents</span>
+                        <span class="menu-text">Agency</span>
                     </a>
                 </li>
 

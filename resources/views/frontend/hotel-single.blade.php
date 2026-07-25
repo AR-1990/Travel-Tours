@@ -81,7 +81,7 @@
                                     <li><a href="tel:+21234567897"><i class="far fa-phone-arrow-down-left"></i>+2 123
                                             4567 897</a></li>
                                     <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#9ef7f0f8f1defbe6fff3eef2fbb0fdf1f3"><i
-                                                class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="d4bdbab2bb94b1acb5b9a4b8b1fab7bbb9">[email&#160;protected]</span></a></li>
+                                                class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="d4bdbab2bb94b1acb5b9a4b8b1fab7bbb9">info@wisetrust.com</span></a></li>
                                 </ul>
                             </div>
                         </div>
@@ -1433,7 +1433,7 @@
                                 <p>It is a long established fact that a reader will be distracted by the readable content layout.</p>
                                 <ul class="listing-side-list">
                                     <li><i class="far fa-phone"></i><a href="tel:+21234567897">+2 123 4567 897</a></li>
-                                    <li><i class="far fa-envelope"></i><a href="https://live.themewild.com/cdn-cgi/l/email-protection#b8d1d6ded7f8ddc0d9d5c8d4dd96dbd7d5"><span class="__cf_email__" data-cfemail="4f262129200f2a372e223f232a612c2022">[email&#160;protected]</span></a></li>
+                                    <li><i class="far fa-envelope"></i><a href="https://live.themewild.com/cdn-cgi/l/email-protection#b8d1d6ded7f8ddc0d9d5c8d4dd96dbd7d5"><span class="__cf_email__" data-cfemail="4f262129200f2a372e223f232a612c2022">info@wisetrust.com</span></a></li>
                                 </ul>
                             </div>
                             <div class="booking-sidebar listing-side-content mt-4">
@@ -1487,7 +1487,7 @@
                                 </li>
                                 <li><i class="far fa-map-marker-alt"></i>25/B Milford Road, New York</li>
                                 <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#dfb6b1b9b09fbaa7beb2afb3baf1bcb0b2"><i
-                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="7e171018113e1b061f130e121b501d1113">[email&#160;protected]</span></a></li>
+                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="7e171018113e1b061f130e121b501d1113">info@wisetrust.com</span></a></li>
                             </ul>
                         </div>
                     </div>

@@ -25,7 +25,7 @@
                                 </li>
                                 <li><i class="far fa-map-marker-alt"></i>25/B Milford Road, New York</li>
                                 <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#f29b9c949db2978a939f829e97dc919d9f"><i
-                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="3e575058517e5b465f534e525b105d5153">[email&#160;protected]</span></a></li>
+                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="3e575058517e5b465f534e525b105d5153">info@wisetrust.com</span></a></li>
                             </ul>
                         </div>
                     </div>

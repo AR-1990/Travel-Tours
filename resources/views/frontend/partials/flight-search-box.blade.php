@@ -11,7 +11,7 @@
 <div class="search-area" id="home-flight-search">
     <div class="container">
         <div class="search-wrapper home-flight-search-only">
-            <div class="search-header">
+           {{-- <div class="search-header">
                 <div class="search-nav">
                     <ul class="nav nav-pills" role="tablist">
                         <li class="nav-item home-flights-tab" role="presentation">
@@ -37,7 +37,7 @@
                         </li>
                     </ul>
                 </div>
-            </div>
+            </div> --}}
             @if(session('success') || session('error'))
                 <div class="alert {{ session('error') ? 'alert-danger' : 'alert-success' }} home-flight-alert mx-3">
                     {{ session('error') ?? session('success') }}

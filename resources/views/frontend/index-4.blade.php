@@ -3126,7 +3126,7 @@
                                 </li>
                                 <li><i class="far fa-map-marker-alt"></i>25/B Milford Road, New York</li>
                                 <li><a href="https://live.themewild.com/cdn-cgi/l/email-protection#01686f676e416479606c716d642f626e6c"><i
-                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="157c7b737a55706d74786579703b767a78">[email&#160;protected]</span></a></li>
+                                            class="far fa-envelopes"></i><span class="__cf_email__" data-cfemail="157c7b737a55706d74786579703b767a78">info@wisetrust.com</span></a></li>
                             </ul>
                         </div>
                     </div>
