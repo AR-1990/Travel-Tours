@@ -39,13 +39,17 @@
     @endif
 
     @include('flights.partials.reservation-detail', [
+        'reservation' => $reservation,
         'flightBooking' => $flightBooking ?? [],
         'flightPriceResult' => $flightPriceResult ?? null,
         'searchInput' => $searchInput ?? [],
         'flightTicket' => $flightTicket ?? null,
+        'gdsSnapshot' => $gdsSnapshot ?? null,
         'canBookFlights' => $canBookFlights ?? false,
         'travelportReady' => $travelportReady ?? false,
         'ticketActionRoute' => $ticketActionRoute ?? route($flightsRoutePrefix . '.flights.reservations.ticket', $reservation),
+        'retrieveActionRoute' => $retrieveActionRoute ?? route($flightsRoutePrefix . '.flights.reservations.retrieve', $reservation),
+        'cancelActionRoute' => $cancelActionRoute ?? route($flightsRoutePrefix . '.flights.reservations.cancel', $reservation),
         'ticketButtonClass' => 'btn btn-primary btn-sm',
         'compact' => true,
     ])

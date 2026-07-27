@@ -45,8 +45,11 @@ class FlightReservation extends Model
         'price_snapshot',
         'ticket_numbers',
         'raw_result',
+        'gds_snapshot',
+        'gds_version',
         'booked_at',
         'ticketed_at',
+        'cancelled_at',
     ];
 
     protected function casts(): array
@@ -59,8 +62,10 @@ class FlightReservation extends Model
             'price_snapshot' => 'array',
             'ticket_numbers' => 'array',
             'raw_result' => 'array',
+            'gds_snapshot' => 'array',
             'booked_at' => 'datetime',
             'ticketed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 

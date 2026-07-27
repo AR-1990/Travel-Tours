@@ -146,14 +146,23 @@ class PublicFlightController extends Controller
             'flightTicket' => [
                 'ticket_numbers' => $reservation->ticket_numbers ?? [],
             ],
+            'gdsSnapshot' => $reservation->gds_snapshot,
             'workflowStep' => $reservation->status === FlightReservation::STATUS_TICKETED ? 'done' : 'ticket',
             'ticketActionRoute' => route('frontend.flights.reservations.ticket', $reservation),
+            'retrieveActionRoute' => route('frontend.flights.reservations.retrieve', $reservation),
+            'cancelActionRoute' => route('frontend.flights.reservations.cancel', $reservation),
         ]));
     }
 
     public function reservationsTicket(int $id, TravelportAirService $air)
     {
         $reservation = $this->findPublicAccessibleReservation($id);
+
+        if ($reservation->status === FlightReservation::STATUS_CANCELLED) {
+            return redirect()
+                ->route('frontend.flights.reservations.show', $reservation)
+                ->with('error', 'Cannot ticket a cancelled reservation.');
+        }
 
         $locators = array_filter([
             'universal_locator' => $reservation->universal_locator,
@@ -171,6 +180,26 @@ class PublicFlightController extends Controller
         return redirect()
             ->route('frontend.flights.reservations.show', $reservation)
             ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Ticketing complete.');
+    }
+
+    public function reservationsRetrieve(int $id, TravelportAirService $air)
+    {
+        $reservation = $this->findPublicAccessibleReservation($id);
+        $result = $this->runRetrieveUniversalRecordFlow($air, $reservation);
+
+        return redirect()
+            ->route('frontend.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Retrieve complete.');
+    }
+
+    public function reservationsCancel(int $id, TravelportAirService $air)
+    {
+        $reservation = $this->findPublicAccessibleReservation($id);
+        $result = $this->runCancelReservationFlow($air, $reservation);
+
+        return redirect()
+            ->route('frontend.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Cancel complete.');
     }
 
     protected function findPublicAccessibleReservation(int $id): FlightReservation

@@ -78,6 +78,7 @@ trait RunsFlightWorkflow
             ],
             'price_snapshot' => is_array($priceResult) ? $priceResult : null,
             'raw_result' => $result,
+            'gds_version' => $result['version'] ?? null,
             'booked_at' => now(),
         ]);
 
@@ -192,5 +193,170 @@ trait RunsFlightWorkflow
         }
 
         return $merged;
+    }
+
+    /**
+     * Retrieve Universal Record from Travelport and sync local reservation.
+     *
+     * @return array<string, mixed>
+     */
+    protected function runRetrieveUniversalRecordFlow(TravelportAirService $air, FlightReservation $reservation): array
+    {
+        $locator = trim((string) ($reservation->universal_locator ?? ''));
+        if ($locator === '') {
+            return [
+                'ok' => false,
+                'message' => 'No Universal Record locator on this reservation.',
+            ];
+        }
+
+        $result = $air->execute('universal_record_retrieve', [
+            'universal_locator' => $locator,
+        ]);
+
+        if (! ($result['ok'] ?? false)) {
+            return $result;
+        }
+
+        $this->applyUniversalRecordToReservation($reservation, $result);
+
+        session([
+            'travelport.ur_retrieve' => [
+                'reservation_id' => $reservation->id,
+                'result' => $result,
+                'retrieved_at' => now()->toIso8601String(),
+            ],
+            'public.ur_retrieve' => [
+                'reservation_id' => $reservation->id,
+                'result' => $result,
+                'retrieved_at' => now()->toIso8601String(),
+            ],
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Cancel Universal Record in GDS (retrieve version first), then mark local row cancelled.
+     *
+     * @return array<string, mixed>
+     */
+    protected function runCancelReservationFlow(TravelportAirService $air, FlightReservation $reservation): array
+    {
+        if ($reservation->status === FlightReservation::STATUS_CANCELLED) {
+            return [
+                'ok' => true,
+                'message' => 'Reservation is already cancelled.',
+                'cancelled' => true,
+            ];
+        }
+
+        if ($reservation->status === FlightReservation::STATUS_TICKETED) {
+            return [
+                'ok' => false,
+                'message' => 'This reservation is ticketed. Void or refund the ticket before cancelling the PNR.',
+            ];
+        }
+
+        $locator = trim((string) ($reservation->universal_locator ?? ''));
+        if ($locator === '') {
+            return [
+                'ok' => false,
+                'message' => 'No Universal Record locator on this reservation.',
+            ];
+        }
+
+        $version = (string) ($reservation->gds_version ?? '');
+        $retrieve = $air->execute('universal_record_retrieve', [
+            'universal_locator' => $locator,
+        ]);
+
+        if ($retrieve['ok'] ?? false) {
+            $this->applyUniversalRecordToReservation($reservation, $retrieve);
+            $reservation->refresh();
+            $version = (string) ($retrieve['version'] ?? $reservation->gds_version ?? $version);
+            if (! empty($retrieve['cancelled'])) {
+                $reservation->update([
+                    'status' => FlightReservation::STATUS_CANCELLED,
+                    'cancelled_at' => $reservation->cancelled_at ?? now(),
+                ]);
+
+                return array_merge($retrieve, [
+                    'ok' => true,
+                    'message' => 'Universal Record is already cancelled in the GDS. Local file updated.',
+                    'cancelled' => true,
+                ]);
+            }
+        }
+
+        $cancel = $air->execute('universal_record_cancel', [
+            'universal_locator' => $locator,
+            'version' => $version !== '' ? $version : '0',
+        ]);
+
+        if (! ($cancel['ok'] ?? false)) {
+            return $cancel;
+        }
+
+        $reservation->update([
+            'status' => FlightReservation::STATUS_CANCELLED,
+            'cancelled_at' => now(),
+            'gds_snapshot' => array_merge(
+                is_array($reservation->gds_snapshot) ? $reservation->gds_snapshot : [],
+                ['cancel' => $cancel, 'cancelled_at' => now()->toIso8601String()]
+            ),
+        ]);
+
+        return array_merge($cancel, ['cancelled' => true]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    protected function applyUniversalRecordToReservation(FlightReservation $reservation, array $result): void
+    {
+        $updates = [
+            'gds_version' => $result['version'] ?? $reservation->gds_version,
+            'gds_snapshot' => [
+                'retrieved_at' => now()->toIso8601String(),
+                'ur_status' => $result['ur_status'] ?? null,
+                'version' => $result['version'] ?? null,
+                'segments' => $result['segments'] ?? [],
+                'passengers' => $result['passengers'] ?? [],
+                'message' => $result['message'] ?? null,
+            ],
+        ];
+
+        if (! empty($result['universal_locator'])) {
+            $updates['universal_locator'] = $result['universal_locator'];
+        }
+        if (! empty($result['air_reservation_locator'])) {
+            $updates['air_reservation_locator'] = $result['air_reservation_locator'];
+        }
+        if (! empty($result['provider_locator'])) {
+            $updates['provider_locator'] = $result['provider_locator'];
+        }
+
+        $segments = $result['segments'] ?? [];
+        if (is_array($segments) && $segments !== []) {
+            $updates['itinerary'] = [
+                'journeys' => [[
+                    'label' => 'Retrieved itinerary',
+                    'segments' => $segments,
+                ]],
+                'segments' => $segments,
+            ];
+            $firstCarrier = $segments[0]['carrier'] ?? null;
+            if ($firstCarrier) {
+                $updates['carrier'] = $firstCarrier;
+            }
+        }
+
+        if (! empty($result['cancelled'])) {
+            $updates['status'] = FlightReservation::STATUS_CANCELLED;
+            $updates['cancelled_at'] = $reservation->cancelled_at ?? now();
+        }
+
+        $reservation->update($updates);
     }
 }

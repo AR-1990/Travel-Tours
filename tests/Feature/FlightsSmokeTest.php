@@ -238,12 +238,41 @@ class FlightsSmokeTest extends TestCase
             ->get(route('admin.flights.reservations.show', $reservation))
             ->assertOk()
             ->assertSee('ABC123')
-            ->assertSee('Test Traveler');
+            ->assertSee('Test Traveler')
+            ->assertSee('Retrieve from GDS')
+            ->assertSee('Cancel reservation');
 
         session(['public.last_reservation_id' => $reservation->id]);
         $this->get(route('frontend.flights.reservations.show', $reservation))
             ->assertOk()
-            ->assertSee('ABC123');
+            ->assertSee('ABC123')
+            ->assertSee('Cancel reservation');
+    }
+
+    public function test_parse_universal_record_extracts_version_and_segments(): void
+    {
+        $parser = new \App\Services\Travelport\TravelportFlightParser;
+        $xml = <<<'XML'
+<univ:UniversalRecordRetrieveRsp>
+  <universal:UniversalRecord LocatorCode="UR1234" Version="5" Status="Active">
+    <air:AirReservation LocatorCode="AIR99">
+      <air:AirSegment Key="s1" Carrier="BA" FlightNumber="117" Origin="LHR" Destination="JFK" DepartureTime="2026-09-01T10:00:00" Status="HK"/>
+    </air:AirReservation>
+    <com:BookingTraveler>
+      <com:BookingTravelerName Prefix="Mr" First="Ada" Last="Lovelace"/>
+    </com:BookingTraveler>
+  </universal:UniversalRecord>
+</univ:UniversalRecordRetrieveRsp>
+XML;
+        $parsed = $parser->parseUniversalRecord($xml);
+        $this->assertSame('UR1234', $parsed['universal_locator']);
+        $this->assertSame('AIR99', $parsed['air_reservation_locator']);
+        $this->assertSame('5', $parsed['version']);
+        $this->assertSame('Active', $parsed['ur_status']);
+        $this->assertNotEmpty($parsed['segments']);
+        $this->assertSame('LHR', $parsed['segments'][0]['origin']);
+        $this->assertNotEmpty($parsed['passengers']);
+        $this->assertSame('Ada', $parsed['passengers'][0]['first']);
     }
 
     public function test_sub_agent_without_book_permission_cannot_access_book_page(): void

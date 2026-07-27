@@ -26,14 +26,20 @@
             @endif
 
             @include('flights.partials.reservation-detail', [
+                'reservation' => $reservation,
                 'flightBooking' => $flightBooking ?? [],
                 'flightPriceResult' => $flightPriceResult ?? null,
                 'flightSearchInput' => $flightSearchInput ?? [],
                 'flightTicket' => $flightTicket ?? null,
+                'gdsSnapshot' => $gdsSnapshot ?? null,
                 'canBookFlights' => true,
                 'travelportReady' => $travelportReady ?? false,
                 'ticketActionRoute' => $ticketActionRoute ?? route('frontend.flights.reservations.ticket', $reservation),
+                'retrieveActionRoute' => $retrieveActionRoute ?? route('frontend.flights.reservations.retrieve', $reservation),
+                'cancelActionRoute' => $cancelActionRoute ?? route('frontend.flights.reservations.cancel', $reservation),
                 'ticketButtonClass' => 'theme-btn',
+                'secondaryButtonClass' => 'theme-btn theme-btn-outline',
+                'dangerButtonClass' => 'theme-btn theme-btn-outline',
             ])
 
             <div class="mt-4 d-flex flex-wrap gap-2">
