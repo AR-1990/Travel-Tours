@@ -25,7 +25,8 @@
                         $searchInput['destination'] ?? null,
                         $searchInput['departure_date'] ?? null,
                         $searchInput['return_date'] ?? null,
-                        (int) ($searchInput['adults'] ?? 1)
+                        (int) ($searchInput['adults'] ?? 1),
+                        $searchInput['legs'] ?? null
                     ) }}
                 </p>
             @endif

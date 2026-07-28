@@ -40,6 +40,7 @@ class FlightsSmokeTest extends TestCase
             ->assertOk()
             ->assertSee('One Way')
             ->assertSee('Round Trip')
+            ->assertSee('Multi City')
             ->assertSee('Journey Date')
             ->assertSee('Search Now')
             ->assertSee('Search → Price → Book → Reservation');

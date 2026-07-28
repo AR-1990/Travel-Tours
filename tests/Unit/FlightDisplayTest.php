@@ -13,5 +13,16 @@ class FlightDisplayTest extends TestCase
         $this->assertSame('American Airlines', FlightDisplay::airlineName('AA'));
         $this->assertStringContainsString('American Airlines', FlightDisplay::flightLabel('AA', '100'));
         $this->assertStringContainsString('New York', FlightDisplay::tripSummary('JFK', 'ORD', '2026-08-01', null, 1));
+        $this->assertStringContainsString('Chicago', FlightDisplay::tripSummary(
+            'JFK',
+            'LAX',
+            '2026-08-01',
+            null,
+            2,
+            [
+                ['origin' => 'JFK', 'destination' => 'ORD', 'departure_date' => '2026-08-01'],
+                ['origin' => 'ORD', 'destination' => 'LAX', 'departure_date' => '2026-08-05'],
+            ]
+        ));
     }
 }

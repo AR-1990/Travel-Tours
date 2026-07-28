@@ -80,7 +80,8 @@
                         $search['destination'] ?? null,
                         $search['departure_date'] ?? null,
                         $search['return_date'] ?? null,
-                        (int) ($search['adults'] ?? 1)
+                        (int) ($search['adults'] ?? 1),
+                        $search['legs'] ?? null
                     ) }}
                 </p>
             @endif

@@ -4,8 +4,28 @@
     $departure = old('departure_date', $searchInput['departure_date'] ?? now()->addDays(14)->format('Y-m-d'));
     $returnDate = old('return_date', $searchInput['return_date'] ?? '');
     $adults = (int) old('adults', $searchInput['adults'] ?? 1);
-    $tripType = old('trip_type', $returnDate !== '' ? 'roundtrip' : 'oneway');
+    $tripType = old('trip_type', $searchInput['trip_type'] ?? ($returnDate !== '' ? 'roundtrip' : 'oneway'));
+    $tripType = in_array($tripType, ['oneway', 'roundtrip', 'multicity'], true) ? $tripType : 'oneway';
     $airportSearchUrl = $airportSearchUrl ?? route('api.airports.search');
+    $isMulti = $tripType === 'multicity';
+
+    $defaultLegs = [
+        [
+            'origin' => 'LHR',
+            'destination' => 'CDG',
+            'departure_date' => now()->addDays(14)->format('Y-m-d'),
+        ],
+        [
+            'origin' => 'CDG',
+            'destination' => 'JFK',
+            'departure_date' => now()->addDays(18)->format('Y-m-d'),
+        ],
+    ];
+    $legs = old('legs', $searchInput['legs'] ?? $defaultLegs);
+    if (! is_array($legs) || count($legs) < 2) {
+        $legs = $defaultLegs;
+    }
+    $legs = array_values(array_slice($legs, 0, 6));
 
     $popularRoutePairs = [
         ['LHR', 'JFK'],
@@ -29,6 +49,10 @@
                 <input type="radio" name="trip_type" value="roundtrip" @checked($tripType === 'roundtrip')>
                 <span>Round Trip</span>
             </label>
+            <label>
+                <input type="radio" name="trip_type" value="multicity" @checked($tripType === 'multicity')>
+                <span>Multi City</span>
+            </label>
         </div>
 
         <p class="small text-muted mb-3">
@@ -36,45 +60,69 @@
             Type a <strong>city</strong> or <strong>airport name</strong> — same picker as the public site ({{ number_format(\App\Support\AirportDirectory::count()) }} airports).
         </p>
 
-        <div class="row g-3 align-items-end">
-            <div class="col-lg-4 col-md-5">
-                @include('flights.partials.airport-picker', [
-                    'name' => 'origin',
-                    'id' => 'origin',
-                    'value' => $origin,
-                    'label' => 'From',
-                    'placeholder' => 'City or airport',
-                    'searchUrl' => $airportSearchUrl,
-                    'icon' => 'fa-plane-departure',
-                ])
+        <div id="simpleRouteFields" style="{{ $isMulti ? 'display: none;' : '' }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-4 col-md-5">
+                    @include('flights.partials.airport-picker', [
+                        'name' => 'origin',
+                        'id' => 'origin',
+                        'value' => $origin,
+                        'label' => 'From',
+                        'placeholder' => 'City or airport',
+                        'searchUrl' => $airportSearchUrl,
+                        'icon' => 'fa-plane-departure',
+                    ])
+                </div>
+                <div class="col-12 d-md-none d-grid">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="swapAirportsMobile"><i class="fas fa-exchange-alt me-1"></i> Swap</button>
+                </div>
+                <div class="col-lg-1 col-md-2 d-none d-md-flex justify-content-center">
+                    <button type="button" class="flight-swap-btn" id="swapAirports" title="Swap" aria-label="Swap from and to">
+                        <i class="fas fa-exchange-alt"></i>
+                    </button>
+                </div>
+                <div class="col-lg-4 col-md-5">
+                    @include('flights.partials.airport-picker', [
+                        'name' => 'destination',
+                        'id' => 'destination',
+                        'value' => $destination,
+                        'label' => 'To',
+                        'placeholder' => 'City or airport',
+                        'searchUrl' => $airportSearchUrl,
+                        'icon' => 'fa-plane-arrival',
+                    ])
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label class="flight-field-label" for="departure_date">Journey Date</label>
+                    <input type="date" name="departure_date" id="departure_date" class="form-control" value="{{ $departure }}" @if(!$isMulti) required @endif>
+                </div>
+                <div class="col-md-6 col-lg-3" id="returnDateWrap" style="{{ $tripType === 'roundtrip' ? '' : 'display: none;' }}">
+                    <label class="flight-field-label" for="return_date">Return Date</label>
+                    <input type="date" name="return_date" id="return_date" class="form-control" value="{{ $returnDate }}">
+                </div>
             </div>
-            <div class="col-12 d-md-none d-grid">
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="swapAirportsMobile"><i class="fas fa-exchange-alt me-1"></i> Swap</button>
+        </div>
+
+        <div id="multiCityFields" style="{{ $isMulti ? '' : 'display: none;' }}">
+            <div id="multiCityLegs">
+                @foreach($legs as $index => $leg)
+                    @include('flights.partials.multicity-leg', [
+                        'index' => $index,
+                        'leg' => $leg,
+                        'airportSearchUrl' => $airportSearchUrl,
+                        'canRemove' => $index > 1,
+                    ])
+                @endforeach
             </div>
-            <div class="col-lg-1 col-md-2 d-none d-md-flex justify-content-center">
-                <button type="button" class="flight-swap-btn" id="swapAirports" title="Swap" aria-label="Swap from and to">
-                    <i class="fas fa-exchange-alt"></i>
+            <div class="mt-2 mb-1">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addMultiCityLeg">
+                    <i class="fas fa-plus me-1"></i> Add another flight
                 </button>
+                <span class="small text-muted ms-2">Up to 6 flights</span>
             </div>
-            <div class="col-lg-4 col-md-5">
-                @include('flights.partials.airport-picker', [
-                    'name' => 'destination',
-                    'id' => 'destination',
-                    'value' => $destination,
-                    'label' => 'To',
-                    'placeholder' => 'City or airport',
-                    'searchUrl' => $airportSearchUrl,
-                    'icon' => 'fa-plane-arrival',
-                ])
-            </div>
-            <div class="col-md-6 col-lg-3">
-                <label class="flight-field-label" for="departure_date">Journey Date</label>
-                <input type="date" name="departure_date" id="departure_date" class="form-control" required value="{{ $departure }}">
-            </div>
-            <div class="col-md-6 col-lg-3" id="returnDateWrap" style="{{ $tripType === 'roundtrip' ? '' : 'display: none;' }}">
-                <label class="flight-field-label" for="return_date">Return Date</label>
-                <input type="date" name="return_date" id="return_date" class="form-control" value="{{ $returnDate }}">
-            </div>
+        </div>
+
+        <div class="row g-3 align-items-end mt-1">
             <div class="col-md-6 col-lg-2">
                 <label class="flight-field-label" for="adults">Passengers</label>
                 <select name="adults" id="adults" class="form-select">
@@ -90,7 +138,7 @@
             </div>
         </div>
 
-        <div class="popular-routes mt-3">
+        <div class="popular-routes mt-3" id="popularRoutesWrap" style="{{ $isMulti ? 'display: none;' : '' }}">
             <span class="small text-muted me-1">Popular routes:</span>
             @foreach($popularRoutePairs as [$fromCode, $toCode])
                 @php
@@ -110,3 +158,16 @@
         </div>
     </form>
 </div>
+
+<template id="multiCityLegTemplate">
+    @include('flights.partials.multicity-leg', [
+        'index' => '__INDEX__',
+        'leg' => [
+            'origin' => '',
+            'destination' => '',
+            'departure_date' => now()->addDays(21)->format('Y-m-d'),
+        ],
+        'airportSearchUrl' => $airportSearchUrl,
+        'canRemove' => true,
+    ])
+</template>

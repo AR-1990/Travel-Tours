@@ -84,6 +84,28 @@ XML;
     private function routeLegs(array $params, int $schemaVer): string
     {
         $x = $this->ctx($schemaVer);
+
+        $multiLegs = $params['legs'] ?? null;
+        if (is_array($multiLegs) && $multiLegs !== []) {
+            $xml = '';
+            foreach ($multiLegs as $leg) {
+                if (! is_array($leg)) {
+                    continue;
+                }
+                $origin = $this->esc(strtoupper((string) ($leg['origin'] ?? '')));
+                $destination = $this->esc(strtoupper((string) ($leg['destination'] ?? '')));
+                $departure = $this->esc($this->date((string) ($leg['departure_date'] ?? '')));
+                if ($origin === '' || $destination === '' || $departure === '') {
+                    continue;
+                }
+                $xml .= $this->leg($origin, $destination, $departure, $x);
+            }
+
+            if ($xml !== '') {
+                return $xml;
+            }
+        }
+
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
         $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
         $departure = $this->esc($this->date((string) ($params['departure_date'] ?? '')));

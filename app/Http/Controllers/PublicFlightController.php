@@ -31,7 +31,12 @@ class PublicFlightController extends Controller
     {
         $input = $this->validatedFlightSearchInput($request);
         if ($input === null) {
-            return redirect()->route('home')->with('error', 'Please provide valid origin, destination, and journey date.');
+            $tripType = $this->normalizeTripType((string) $request->input('trip_type', 'oneway'));
+            $message = $tripType === 'multicity'
+                ? 'Multi-city search needs at least two legs with valid airports and dates.'
+                : 'Please provide valid origin, destination, and journey date.';
+
+            return redirect()->route('home')->with('error', $message);
         }
 
         $searchResult = $air->lowFareSearch($input);

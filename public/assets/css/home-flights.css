@@ -16,6 +16,59 @@
     display: none !important;
 }
 
+.home-flight-search .home-multicity {
+    display: block;
+    width: 100%;
+}
+
+.home-flight-search .home-multicity-leg {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(5, 55, 80, 0.08);
+}
+
+.home-flight-search .home-multicity-leg:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.home-flight-search .home-multicity-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+}
+
+.home-flight-search .home-multicity-add,
+.home-flight-search .home-multicity-remove {
+    border: none;
+    background: transparent;
+    color: var(--home-teal, #24bdc7);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.35rem 0;
+}
+
+.home-flight-search .home-multicity-remove {
+    color: #b45309;
+}
+
+.home-flight-search .home-multicity-leg-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.home-flight-search .home-multicity-passengers {
+    flex: 1 1 220px;
+    max-width: 320px;
+}
+
 .home-flight-fields {
     --home-teal: #24bdc7;
     --home-navy: #053750;
