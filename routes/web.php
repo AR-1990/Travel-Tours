@@ -20,6 +20,7 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TenantRegistrationController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\Frontend\SitePageController;
 use App\Http\Controllers\PublicFlightController;
 use App\Http\Controllers\SubAgent\DashboardController as SubAgentDashboardController;
 use App\Http\Controllers\SubAgent\FlightController as SubAgentFlightController;
@@ -71,6 +72,15 @@ Route::get('/platform', function () {
 })->name('platform.home');
 Route::get('/blogs', [BlogController::class, 'index'])->name('blogs.index');
 Route::get('/blogs/{slug}', [BlogController::class, 'show'])->name('blogs.show');
+
+Route::get('/flight-list', [SitePageController::class, 'flights'])->name('pages.flights');
+Route::get('/hotel-grid', [SitePageController::class, 'hotels'])->name('pages.hotels');
+Route::get('/activity-grid', [SitePageController::class, 'activities'])->name('pages.activities');
+Route::get('/about', [SitePageController::class, 'about'])->name('pages.about');
+Route::get('/contact', [SitePageController::class, 'contact'])->name('pages.contact');
+Route::post('/contact', [SitePageController::class, 'contactSubmit'])->name('pages.contact.submit');
+Route::get('/become-expert', [SitePageController::class, 'becomeExpert'])->name('pages.become-expert');
+Route::post('/become-expert', [SitePageController::class, 'becomeExpertSubmit'])->name('pages.become-expert.submit');
 
 /*
 |--------------------------------------------------------------------------

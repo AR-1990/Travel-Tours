@@ -9813,7 +9813,7 @@ sidebar css
   z-index: -1;
   width: 30px;
   height: 2.5px;
-  background-color: var(--theme-color);
+  background-color: var(--theme-color2);
   bottom: 0;
   left: 0;
 }
@@ -9824,7 +9824,7 @@ sidebar css
   z-index: -1;
   width: 10px;
   height: 2.5px;
-  background-color: var(--theme-color);
+  background-color: var(--theme-color2);
   bottom: 0;
   left: 35px;
 }
@@ -9842,7 +9842,7 @@ sidebar css
 
 .footer-list li a i {
   margin-right: 5px;
-  color: var(--theme-color);
+  color: var(--theme-color2);
   font-size: 13px;
 }
 
@@ -9917,7 +9917,7 @@ sidebar css
 .footer-call-icon i{
   background: transparent !important;
   font-size: 45px !important;
-  color: var(--theme-color) !important;
+  color: var(--theme-color2) !important;
 }
 
 .footer-call-info h6{
@@ -9926,7 +9926,7 @@ sidebar css
 }
 
 .footer-call-info a{
-  color: var(--theme-color) !important;
+  color: var(--theme-color2) !important;
   font-size: 20px;
   font-weight: 700;
 }

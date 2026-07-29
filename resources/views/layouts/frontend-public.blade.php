@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/jquery-ui.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/jquery.timepicker.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/site-pages.css') }}?v={{ file_exists(public_path('assets/css/site-pages.css')) ? filemtime(public_path('assets/css/site-pages.css')) : time() }}">
     @stack('styles')
 </head>
 <body>

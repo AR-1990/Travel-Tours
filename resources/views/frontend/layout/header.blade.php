@@ -71,17 +71,31 @@
                     </div>
                     <div class="collapse navbar-collapse" id="main_nav">
                         <ul class="navbar-nav">
-                            <li class="nav-item"><a class="nav-link" href="{{ route('home') }}">Home</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ url('/flight-list') }}">Flight</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ url('/hotel-grid') }}">Hotel</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ url('/about') }}">About Us</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ url('/activity-grid') }}">Activity</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ route('blogs.index') }}">Blog</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ url('/contact') }}">Contact</a></li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">Home</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('pages.flights') || request()->routeIs('frontend.flights.*') ? 'active' : '' }}" href="{{ route('pages.flights') }}">Flight</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('pages.hotels') ? 'active' : '' }}" href="{{ route('pages.hotels') }}">Hotel</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('pages.about') ? 'active' : '' }}" href="{{ route('pages.about') }}">About Us</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('pages.activities') ? 'active' : '' }}" href="{{ route('pages.activities') }}">Activity</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('blogs.*') ? 'active' : '' }}" href="{{ route('blogs.index') }}">Blog</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('pages.contact') ? 'active' : '' }}" href="{{ route('pages.contact') }}">Contact</a>
+                            </li>
                         </ul>
                         <div class="header-nav-right">
                             <div class="header-btn">
-                                <a href="{{ url('/become-expert') }}" class="theme-btn mt-2">Become An Expert</a>
+                                <a href="{{ route('pages.become-expert') }}" class="theme-btn mt-2">Become An Expert</a>
                             </div>
                         </div>
                     </div>
