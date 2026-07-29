@@ -4,7 +4,7 @@
     $destCode = strtoupper((string) ($homeFlightInput['destination'] ?? 'LAX'));
     $originAirport = \App\Support\AirportDirectory::find($originCode);
     $destAirport = \App\Support\AirportDirectory::find($destCode);
-    $searchSubmitLabel = $searchSubmitLabel ?? 'Search Now';
+    $searchSubmitLabel = $searchSubmitLabel ?? 'Search Flights';
     $tripTypeRaw = \Illuminate\Support\Str::of((string) ($homeFlightInput['trip_type'] ?? 'oneway'))->lower()->toString();
     $isRound = in_array($tripTypeRaw, ['roundtrip', 'round-way', 'round_way'], true);
     $isMulti = in_array($tripTypeRaw, ['multicity', 'multi-city', 'multi_city', 'multi'], true);
@@ -30,73 +30,54 @@
     }
     $multiLegs = array_values(array_slice($multiLegs, 0, 6));
 @endphp
-<div class="search-area" id="home-flight-search">
+<div class="search-area home-flight-search-area" id="home-flight-search">
     <div class="container">
         <div class="search-wrapper home-flight-search-only">
-           {{-- <div class="search-header">
-                <div class="search-nav">
-                    <ul class="nav nav-pills" role="tablist">
-                        <li class="nav-item home-flights-tab" role="presentation">
-                            <span class="nav-link active"><i class="far fa-plane-departure"></i> Flights</span>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <span class="nav-link nav-link-disabled" title="Coming soon"><i class="far fa-hotel"></i> Hotels</span>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <span class="nav-link nav-link-disabled" title="Coming soon"><i class="far fa-person-biking-mountain"></i> Activity</span>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <span class="nav-link nav-link-disabled" title="Coming soon"><i class="far fa-car-building"></i> Holiday Package</span>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <span class="nav-link nav-link-disabled" title="Coming soon"><i class="far fa-car"></i> Cars</span>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <span class="nav-link nav-link-disabled" title="Coming soon"><i class="far fa-ship"></i> Cruises</span>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <span class="nav-link nav-link-disabled" title="Coming soon"><i class="far fa-earth-americas"></i> Tours</span>
-                        </li>
-                    </ul>
-                </div>
-            </div> --}}
             @if(session('success') || session('error'))
-                <div class="alert {{ session('error') ? 'alert-danger' : 'alert-success' }} home-flight-alert mx-3">
+                <div class="alert {{ session('error') ? 'alert-danger' : 'alert-success' }} home-flight-alert">
                     {{ session('error') ?? session('success') }}
                 </div>
             @endif
-            <div class="tab-content" id="pills-tabContent">
+            <div class="tab-content home-flight-panel" id="pills-tabContent">
                 <div class="tab-pane fade show active" id="pills-1" role="tabpanel" tabindex="0">
                     <div class="flight-search ft-group home-flight-search">
                         <div class="search-form">
                             <form action="{{ route('frontend.flights.search') }}" method="POST" id="homeFlightSearchForm">
                                 @csrf
-                                <div class="flight-type">
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio"
-                                            {{ (! $isRound && ! $isMulti) ? 'checked' : '' }}
-                                            value="one-way" name="trip_type" id="flight-type1">
-                                        <label class="form-check-label" for="flight-type1">One Way</label>
+
+                                <div class="home-flight-toolbar">
+                                    <div class="home-flight-toolbar-copy">
+                                        <span class="home-flight-kicker"><i class="far fa-plane-departure"></i> Flight Search</span>
+                                        <p>Find the best routes with flexible trip options</p>
                                     </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio"
-                                            {{ $isRound ? 'checked' : '' }}
-                                            value="round-way" name="trip_type" id="flight-type2">
-                                        <label class="form-check-label" for="flight-type2">Round Trip</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio"
-                                            {{ $isMulti ? 'checked' : '' }}
-                                            value="multi-city" name="trip_type" id="flight-type3">
-                                        <label class="form-check-label" for="flight-type3">Multi City</label>
+                                    <div class="flight-type home-trip-toggle" role="radiogroup" aria-label="Trip type">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio"
+                                                {{ (! $isRound && ! $isMulti) ? 'checked' : '' }}
+                                                value="one-way" name="trip_type" id="flight-type1">
+                                            <label class="form-check-label" for="flight-type1">One Way</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio"
+                                                {{ $isRound ? 'checked' : '' }}
+                                                value="round-way" name="trip_type" id="flight-type2">
+                                            <label class="form-check-label" for="flight-type2">Round Trip</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio"
+                                                {{ $isMulti ? 'checked' : '' }}
+                                                value="multi-city" name="trip_type" id="flight-type3">
+                                            <label class="form-check-label" for="flight-type3">Multi City</label>
+                                        </div>
                                     </div>
                                 </div>
+
                                 <div class="flight-search-wrapper">
                                     <div class="flight-search-content">
                                         <div class="flight-search-item" id="homeSimpleRoute" style="{{ $isMulti ? 'display: none;' : '' }}">
-                                            <div class="row align-items-stretch home-flight-fields">
+                                            <div class="row g-3 align-items-stretch home-flight-fields">
                                                 <div class="col-lg-3 col-md-6">
-                                                    <div class="form-group home-airport-field">
+                                                    <div class="form-group home-airport-field home-field-card">
                                                         <div class="airport-picker home-airport-picker"
                                                             data-field="origin"
                                                             data-initial-code="{{ $originCode }}"
@@ -124,7 +105,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="col-lg-3 col-md-6">
-                                                    <div class="form-group home-airport-field home-airport-field-to">
+                                                    <div class="form-group home-airport-field home-airport-field-to home-field-card">
                                                         <button type="button" class="search-form-swap home-swap-airports" id="homeSwapAirports" title="Swap airports" aria-label="Swap from and to">
                                                             <i class="far fa-repeat"></i>
                                                         </button>
@@ -155,7 +136,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="col-lg-3 col-md-6">
-                                                    <div class="form-group">
+                                                    <div class="form-group home-field-card">
                                                         <div class="search-form-date">
                                                             <div class="search-form-journey">
                                                                 <label>Journey Date</label>
@@ -182,7 +163,9 @@
                                                     </div>
                                                 </div>
                                                 <div class="col-lg-3 col-md-6">
-                                                    @include('frontend.partials.flight-passenger-box', ['homeFlightInput' => $homeFlightInput])
+                                                    <div class="home-field-card home-passenger-wrap">
+                                                        @include('frontend.partials.flight-passenger-box', ['homeFlightInput' => $homeFlightInput])
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -203,16 +186,19 @@
                                                     <i class="fal fa-plus-circle"></i> Add Another Flight
                                                 </button>
                                                 <div class="home-multicity-passengers">
-                                                    @include('frontend.partials.flight-passenger-box', [
-                                                        'homeFlightInput' => $homeFlightInput,
-                                                        'idPrefix' => 'multi_',
-                                                    ])
+                                                    <div class="home-field-card home-passenger-wrap">
+                                                        @include('frontend.partials.flight-passenger-box', [
+                                                            'homeFlightInput' => $homeFlightInput,
+                                                            'idPrefix' => 'multi_',
+                                                        ])
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="search-btn">
-                                        <button type="submit" class="theme-btn">
+
+                                    <div class="search-btn home-search-btn">
+                                        <button type="submit" class="theme-btn home-search-submit">
                                             <span class="far fa-search"></span> {{ $searchSubmitLabel }}
                                         </button>
                                     </div>

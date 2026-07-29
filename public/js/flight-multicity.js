@@ -22,6 +22,10 @@
             row.dataset.legIndex = String(index);
             const num = row.querySelector('.leg-number');
             if (num) num.textContent = String(index + 1);
+            const removeBtn = row.querySelector('.remove-home-multi-city-leg');
+            if (removeBtn) {
+                removeBtn.setAttribute('aria-label', 'Remove flight ' + (index + 1));
+            }
 
             row.querySelectorAll('[id]').forEach((el) => {
                 el.id = el.id.replace(/home_leg_(?:__INDEX__|\d+)/g, 'home_leg_' + index);
