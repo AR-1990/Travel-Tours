@@ -127,7 +127,7 @@
         addBtn?.addEventListener('click', function () {
             if (!legsContainer || !template) return;
             if (legsContainer.querySelectorAll('.multi-city-leg').length >= 6) {
-                alert('Maximum of 6 flights for multi-city search.');
+                alert('Maximum of 6 flights for multi-destination search.');
                 return;
             }
             const html = template.innerHTML.replace(/__INDEX__/g, String(legsContainer.children.length));
@@ -165,7 +165,7 @@
                 });
                 if (!ok) {
                     e.preventDefault();
-                    alert('Please complete at least two multi-city legs with different airports and dates.');
+                    alert('Please complete at least two multi-destination legs with different airports and dates.');
                 }
                 return;
             }

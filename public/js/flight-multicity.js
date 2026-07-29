@@ -128,7 +128,7 @@
         document.getElementById('homeAddMultiCityLeg')?.addEventListener('click', function () {
             if (!legsContainer || !template) return;
             if (legsContainer.querySelectorAll('.home-multicity-leg').length >= 6) {
-                alert('Maximum of 6 flights for multi-city search.');
+                alert('Maximum of 6 flights for multi-destination search.');
                 return;
             }
             const html = template.innerHTML.replace(/__INDEX__/g, String(legsContainer.children.length));
@@ -162,7 +162,7 @@
             const row = removeBtn.closest('.home-multicity-leg');
             if (!row) return;
             if (legsContainer.querySelectorAll('.home-multicity-leg').length <= 2) {
-                alert('Multi-city search needs at least two flights.');
+                alert('Multi-destination search needs at least two flights.');
                 return;
             }
             row.remove();
@@ -182,7 +182,7 @@
                 });
                 if (!ok) {
                     e.preventDefault();
-                    alert('Please complete at least two multi-city legs with different airports and dates.');
+                    alert('Please complete at least two multi-destination legs with different airports and dates.');
                 }
                 return;
             }

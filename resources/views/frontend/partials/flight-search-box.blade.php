@@ -67,7 +67,7 @@
                                             <input class="form-check-input" type="radio"
                                                 {{ $isMulti ? 'checked' : '' }}
                                                 value="multi-city" name="trip_type" id="flight-type3">
-                                            <label class="form-check-label" for="flight-type3">Multi City</label>
+                                            <label class="form-check-label" for="flight-type3">Multi Destination</label>
                                         </div>
                                     </div>
                                 </div>

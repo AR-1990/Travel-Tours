@@ -51,7 +51,7 @@
             </label>
             <label>
                 <input type="radio" name="trip_type" value="multicity" @checked($tripType === 'multicity')>
-                <span>Multi City</span>
+                <span>Multi Destination</span>
             </label>
         </div>
 
