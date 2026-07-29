@@ -481,11 +481,29 @@ Version         : 1.0
     journeyDate.setDate(today.getDate() + 1);
     returnDate.setDate(today.getDate() + 2);
 
-    $(".journey-date").val(journeyDate.toLocaleDateString());
-    $(".return-date").val(returnDate.toLocaleDateString());
+    $(".journey-date").each(function () {
+        if (!$(this).val()) {
+            $(this).val(journeyDate.toLocaleDateString());
+        }
+    });
+    $(".return-date").each(function () {
+        if (!$(this).val()) {
+            $(this).val(returnDate.toLocaleDateString());
+        }
+    });
 
-    $(".journey-day-name").html(journeyDate.toLocaleString('en-us', { weekday: 'long' }));
-    $(".return-day-name").html(returnDate.toLocaleString('en-us', { weekday: 'long' }));
+    $(".journey-date").each(function () {
+        var ojd = $(this).val();
+        if (!ojd) return;
+        const journeyDayName = new Date(ojd).toLocaleString('en-us', { weekday: 'long' });
+        $(this).closest(".search-form-date").find(".journey-day-name").html(journeyDayName);
+    });
+    $(".return-date").each(function () {
+        var rd = $(this).val();
+        if (!rd) return;
+        const returnDayName = new Date(rd).toLocaleString('en-us', { weekday: 'long' });
+        $(this).closest(".search-form-date").find(".return-day-name").html(returnDayName);
+    });
 
     $(".journey-date").change(function () {
         var ojd = $(this).closest(".search-form-date").find(".journey-date").val();

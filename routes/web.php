@@ -60,6 +60,8 @@ Route::post('/flights/ticket', [PublicFlightController::class, 'flightTicketIssu
 Route::get('/flights/reservations', [PublicFlightController::class, 'reservationsIndex'])->name('frontend.flights.reservations.index');
 Route::get('/flights/reservations/{id}', [PublicFlightController::class, 'reservationsShow'])->name('frontend.flights.reservations.show')->whereNumber('id');
 Route::post('/flights/reservations/{id}/ticket', [PublicFlightController::class, 'reservationsTicket'])->name('frontend.flights.reservations.ticket')->whereNumber('id');
+Route::post('/flights/reservations/{id}/retrieve', [PublicFlightController::class, 'reservationsRetrieve'])->name('frontend.flights.reservations.retrieve')->whereNumber('id');
+Route::post('/flights/reservations/{id}/cancel', [PublicFlightController::class, 'reservationsCancel'])->name('frontend.flights.reservations.cancel')->whereNumber('id');
 Route::match(['get', 'post'], '/flights/operations/{operation}', [PublicFlightController::class, 'flightOperation'])
     ->name('frontend.flights.operation');
 
@@ -221,6 +223,8 @@ Route::middleware(['auth', RoleMiddleware::class.':1'])->prefix('admin')->name('
     Route::get('/flights/reservations', [AdminFlightController::class, 'reservationsIndex'])->name('flights.reservations.index');
     Route::get('/flights/reservations/{id}', [AdminFlightController::class, 'reservationsShow'])->name('flights.reservations.show')->whereNumber('id');
     Route::post('/flights/reservations/{id}/ticket', [AdminFlightController::class, 'reservationsTicket'])->name('flights.reservations.ticket')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/retrieve', [AdminFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/cancel', [AdminFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AdminFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 
@@ -263,6 +267,8 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('agent')->na
     Route::get('/flights/reservations', [AgentFlightController::class, 'reservationsIndex'])->name('flights.reservations.index');
     Route::get('/flights/reservations/{id}', [AgentFlightController::class, 'reservationsShow'])->name('flights.reservations.show')->whereNumber('id');
     Route::post('/flights/reservations/{id}/ticket', [AgentFlightController::class, 'reservationsTicket'])->name('flights.reservations.ticket')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/retrieve', [AgentFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/cancel', [AgentFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 
@@ -287,6 +293,8 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('sub-agent')
     Route::get('/flights/reservations', [SubAgentFlightController::class, 'reservationsIndex'])->name('flights.reservations.index');
     Route::get('/flights/reservations/{id}', [SubAgentFlightController::class, 'reservationsShow'])->name('flights.reservations.show')->whereNumber('id');
     Route::post('/flights/reservations/{id}/ticket', [SubAgentFlightController::class, 'reservationsTicket'])->name('flights.reservations.ticket')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/retrieve', [SubAgentFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/cancel', [SubAgentFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [SubAgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 });
 

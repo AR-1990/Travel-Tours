@@ -4,7 +4,10 @@
     $solution = $priceResult['solutions'][0] ?? null;
     $search = $searchInput ?? ($flightSearchInput ?? []);
     $ticket = $flightTicket ?? null;
-    $isTicketed = ! empty($ticket['ticket_numbers']);
+    $reservationModel = $reservation ?? null;
+    $status = $reservationModel->status ?? null;
+    $isCancelled = $status === \App\Models\FlightReservation::STATUS_CANCELLED;
+    $isTicketed = $status === \App\Models\FlightReservation::STATUS_TICKETED || ! empty($ticket['ticket_numbers']);
     $pax = $booking['input']['passengers'][0] ?? null;
     if (! is_array($pax)) {
         $pax = [
@@ -17,14 +20,28 @@
             'gender' => $booking['input']['passenger_gender'] ?? null,
         ];
     }
-    $statusLabel = $isTicketed ? 'Ticketed' : 'Reserved';
-    $statusClass = $isTicketed ? 'bg-success' : 'bg-warning text-dark';
+    if ($isCancelled) {
+        $statusLabel = 'Cancelled';
+        $statusClass = 'bg-secondary';
+        $headline = 'Reservation cancelled';
+    } elseif ($isTicketed) {
+        $statusLabel = 'Ticketed';
+        $statusClass = 'bg-success';
+        $headline = 'Booking complete';
+    } else {
+        $statusLabel = 'Reserved';
+        $statusClass = 'bg-warning text-dark';
+        $headline = 'Booking reserved';
+    }
     $carrierCode = $solution['plating_carrier'] ?? ($solution['segments'][0]['carrier'] ?? null);
     $price = \App\Support\FlightDisplay::parsePrice($solution['total_price'] ?? null);
     $base = \App\Support\FlightDisplay::parsePrice($solution['base_price'] ?? null);
     $taxes = \App\Support\FlightDisplay::parsePrice($solution['taxes'] ?? null);
     $journeys = is_array($solution) ? \App\Support\FlightDisplay::solutionJourneys($solution) : [];
     $ticketRoute = $ticketActionRoute ?? null;
+    $retrieveRoute = $retrieveActionRoute ?? null;
+    $cancelRoute = $cancelActionRoute ?? null;
+    $gds = $gdsSnapshot ?? ($reservationModel->gds_snapshot ?? null);
 @endphp
 
 <div class="reservation-detail">
@@ -33,7 +50,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
                 <div>
                     <div class="text-muted small mb-1">Reservation file</div>
-                    <h2 class="h5 mb-0">{{ $isTicketed ? 'Booking complete' : 'Booking reserved' }}</h2>
+                    <h2 class="h5 mb-0">{{ $headline }}</h2>
                 </div>
                 <span class="badge {{ $statusClass }} px-3 py-2">{{ $statusLabel }}</span>
             </div>
@@ -63,7 +80,8 @@
                         $search['destination'] ?? null,
                         $search['departure_date'] ?? null,
                         $search['return_date'] ?? null,
-                        (int) ($search['adults'] ?? 1)
+                        (int) ($search['adults'] ?? 1),
+                        $search['legs'] ?? null
                     ) }}
                 </p>
             @endif
@@ -179,18 +197,22 @@
         </div>
     @endif
 
-    @if($isTicketed)
+    @if($isTicketed && ! $isCancelled)
         <div class="card border-0 shadow-sm mb-4 border-success">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
                 <h3 class="h6 mb-3 text-success"><i class="fas fa-ticket-alt me-2"></i>E-tickets</h3>
-                <ul class="mb-0">
-                    @foreach($ticket['ticket_numbers'] as $number)
-                        <li><code>{{ $number }}</code></li>
-                    @endforeach
-                </ul>
+                @if(! empty($ticket['ticket_numbers']))
+                    <ul class="mb-0">
+                        @foreach($ticket['ticket_numbers'] as $number)
+                            <li><code>{{ $number }}</code></li>
+                        @endforeach
+                    </ul>
+                @else
+                    <p class="text-muted small mb-0">Marked ticketed — ticket numbers not stored yet.</p>
+                @endif
             </div>
         </div>
-    @elseif(($canBookFlights ?? false) && $ticketRoute)
+    @elseif(! $isCancelled && ($canBookFlights ?? false) && $ticketRoute)
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
                 <h3 class="h6 mb-2">Issue e-ticket</h3>
@@ -204,6 +226,85 @@
                         <i class="fas fa-receipt me-1"></i> Issue ticket
                     </button>
                 </form>
+            </div>
+        </div>
+    @endif
+
+    @if($retrieveRoute || ($cancelRoute && ! $isCancelled))
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
+                <h3 class="h6 mb-2">Manage reservation</h3>
+                <p class="text-muted small mb-3">
+                    Retrieve refreshes this file from the GDS Universal Record.
+                    Cancel voids the PNR in Travelport (not available after ticketing).
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    @if($retrieveRoute)
+                        <form method="POST" action="{{ $retrieveRoute }}">
+                            @csrf
+                            <button type="submit" class="{{ $secondaryButtonClass ?? 'btn btn-outline-primary btn-sm' }}" @disabled(!($travelportReady ?? false) || empty($booking['universal_locator']))>
+                                <i class="fas fa-sync me-1"></i> Retrieve from GDS
+                            </button>
+                        </form>
+                    @endif
+                    @if($cancelRoute && ! $isCancelled && ! $isTicketed && ($canBookFlights ?? false))
+                        <form method="POST" action="{{ $cancelRoute }}" onsubmit="return confirm('Cancel this reservation in the GDS? This cannot be undone.');">
+                            @csrf
+                            <button type="submit" class="{{ $dangerButtonClass ?? 'btn btn-outline-danger btn-sm' }}" @disabled(!($travelportReady ?? false) || empty($booking['universal_locator']))>
+                                <i class="fas fa-ban me-1"></i> Cancel reservation
+                            </button>
+                        </form>
+                    @endif
+                </div>
+                @if($isTicketed && ! $isCancelled)
+                    <p class="small text-muted mt-3 mb-0">Ticketed bookings need void/refund before PNR cancel.</p>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    @if(is_array($gds) && $gds !== [])
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
+                <h3 class="h6 mb-3">GDS Universal Record</h3>
+                <div class="row g-3 mb-2">
+                    <div class="col-md-4">
+                        <div class="small text-muted">UR status</div>
+                        <div class="fw-semibold">{{ $gds['ur_status'] ?? '—' }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="small text-muted">Version</div>
+                        <div class="fw-semibold"><code>{{ $gds['version'] ?? ($reservationModel->gds_version ?? '—') }}</code></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="small text-muted">Last retrieved</div>
+                        <div class="fw-semibold">{{ isset($gds['retrieved_at']) ? ((\App\Support\FlightDisplay::parseDateTime($gds['retrieved_at'])['date'] ?? null) ?: $gds['retrieved_at']) : '—' }}</div>
+                    </div>
+                </div>
+                @if(! empty($gds['segments']) && is_array($gds['segments']))
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Flight</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($gds['segments'] as $seg)
+                                    <tr>
+                                        <td>{{ \App\Support\FlightDisplay::flightLabel($seg['carrier'] ?? null, $seg['flight_number'] ?? null) }}</td>
+                                        <td>{{ \App\Support\FlightDisplay::airportCity($seg['origin'] ?? null) }}</td>
+                                        <td>{{ \App\Support\FlightDisplay::airportCity($seg['destination'] ?? null) }}</td>
+                                        <td>{{ $seg['status'] ?? '—' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </div>
         </div>
     @endif

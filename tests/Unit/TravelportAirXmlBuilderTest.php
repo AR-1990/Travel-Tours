@@ -60,6 +60,28 @@ class TravelportAirXmlBuilderTest extends TestCase
         $this->assertStringContainsString('soapenv:Envelope', $xml);
     }
 
+    public function test_low_fare_search_builds_multiple_search_air_legs(): void
+    {
+        $builder = new TravelportAirXmlBuilder;
+        $xml = $builder->build('low_fare_search', [
+            'origin' => 'LHR',
+            'destination' => 'JFK',
+            'departure_date' => '2026-09-01',
+            'adults' => 1,
+            'legs' => [
+                ['origin' => 'LHR', 'destination' => 'CDG', 'departure_date' => '2026-09-01'],
+                ['origin' => 'CDG', 'destination' => 'JFK', 'departure_date' => '2026-09-05'],
+                ['origin' => 'JFK', 'destination' => 'ORD', 'departure_date' => '2026-09-10'],
+            ],
+        ], 52);
+
+        $this->assertSame(3, preg_match_all('/<air:SearchAirLeg\b/', $xml));
+        $this->assertStringContainsString('Code="LHR"', $xml);
+        $this->assertStringContainsString('Code="CDG"', $xml);
+        $this->assertStringContainsString('Code="JFK"', $xml);
+        $this->assertStringContainsString('Code="ORD"', $xml);
+    }
+
     public function test_extract_air_pricing_solution_from_price_xml(): void
     {
         $sample = <<<'XML'

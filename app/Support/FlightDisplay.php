@@ -173,18 +173,42 @@ class FlightDisplay
         }
     }
 
-    public static function tripSummary(?string $origin, ?string $destination, ?string $departure, ?string $returnDate, int $adults): string
+    /**
+     * @param  list<array{origin?: string, destination?: string, departure_date?: string}>|null  $legs
+     */
+    public static function tripSummary(?string $origin, ?string $destination, ?string $departure, ?string $returnDate, int $adults, ?array $legs = null): string
     {
-        $parts = [
-            self::airportCity($origin).' → '.self::airportCity($destination),
-        ];
+        if (is_array($legs) && count($legs) >= 2) {
+            $cities = [];
+            foreach ($legs as $index => $leg) {
+                if (! is_array($leg)) {
+                    continue;
+                }
+                if ($index === 0) {
+                    $cities[] = self::airportCity($leg['origin'] ?? null);
+                }
+                $cities[] = self::airportCity($leg['destination'] ?? null);
+            }
+            $parts = [implode(' → ', array_filter($cities))];
+            $dates = array_values(array_filter(array_map(
+                static fn ($leg) => is_array($leg) ? ($leg['departure_date'] ?? null) : null,
+                $legs
+            )));
+            if ($dates !== []) {
+                $parts[] = implode(', ', $dates);
+            }
+        } else {
+            $parts = [
+                self::airportCity($origin).' → '.self::airportCity($destination),
+            ];
 
-        if ($departure) {
-            $parts[] = $departure;
-        }
+            if ($departure) {
+                $parts[] = $departure;
+            }
 
-        if ($returnDate) {
-            $parts[] = 'return '.$returnDate;
+            if ($returnDate) {
+                $parts[] = 'return '.$returnDate;
+            }
         }
 
         $parts[] = $adults.' adult'.($adults > 1 ? 's' : '');
@@ -204,14 +228,19 @@ class FlightDisplay
         }
 
         $out = [];
+        $journeyCount = count($journeys);
         foreach ($journeys as $index => $journey) {
-            $label = match ($index) {
-                0 => 'Outbound',
-                1 => 'Return',
-                default => 'Leg '.($index + 1),
-            };
+            if ($journeyCount > 2) {
+                $label = 'Leg '.($index + 1);
+            } else {
+                $label = match ($index) {
+                    0 => 'Outbound',
+                    1 => 'Return',
+                    default => 'Leg '.($index + 1),
+                };
+            }
             $out[] = [
-                'label' => count($journeys) > 1 ? $label : 'Itinerary',
+                'label' => $journeyCount > 1 ? $label : 'Itinerary',
                 'travel_time' => $journey['travel_time'] ?? null,
                 'segments' => $journey['segments'] ?? [],
             ];

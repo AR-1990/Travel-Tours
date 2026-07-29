@@ -12,6 +12,7 @@ trait HandlesTravelportAir
 {
     use HandlesFlightWorkflow;
     use ManagesFlightReservations;
+    use NormalizesFlightSearchInput;
 
     abstract protected function flightsRoutePrefix(): string;
 
@@ -70,7 +71,8 @@ trait HandlesTravelportAir
 
         if ($request->isMethod('post')) {
             $result = $this->runRouteSearch($request, $air);
-            $input = $request->only(['origin', 'destination', 'departure_date', 'return_date', 'adults', 'trip_type']);
+            $input = $this->validatedFlightSearchInput($request)
+                ?? $request->only(['origin', 'destination', 'departure_date', 'return_date', 'adults', 'trip_type', 'legs']);
 
             session([
                 'travelport.flight_search' => [
@@ -208,7 +210,53 @@ trait HandlesTravelportAir
      */
     protected function runRouteSearch(Request $request, TravelportAirService $air): array
     {
-        $tripType = $request->input('trip_type', 'oneway');
+        $tripType = $this->normalizeTripType((string) $request->input('trip_type', 'oneway'));
+
+        if ($tripType === 'multicity') {
+            $validated = $request->validate([
+                'legs' => ['required', 'array', 'min:2', 'max:6'],
+                'legs.*.origin' => ['required', 'string', 'size:3'],
+                'legs.*.destination' => ['required', 'string', 'size:3'],
+                'legs.*.departure_date' => ['required', 'date', 'after_or_equal:today'],
+                'adults' => ['nullable', 'integer', 'min:1', 'max:9'],
+                'trip_type' => ['nullable', 'in:oneway,roundtrip,multicity'],
+            ]);
+
+            $legs = [];
+            foreach ($validated['legs'] as $leg) {
+                $origin = strtoupper((string) $leg['origin']);
+                $destination = strtoupper((string) $leg['destination']);
+                if ($origin === $destination) {
+                    continue;
+                }
+                $legs[] = [
+                    'origin' => $origin,
+                    'destination' => $destination,
+                    'departure_date' => $leg['departure_date'],
+                ];
+            }
+
+            if (count($legs) < 2) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'legs' => 'Multi-city search needs at least two different flight legs.',
+                ]);
+            }
+
+            usort($legs, static fn (array $a, array $b): int => strcmp($a['departure_date'], $b['departure_date']));
+            $legs = array_values(array_slice($legs, 0, 6));
+            $first = $legs[0];
+            $last = $legs[array_key_last($legs)];
+
+            return $air->lowFareSearch([
+                'origin' => $first['origin'],
+                'destination' => $last['destination'],
+                'departure_date' => $first['departure_date'],
+                'return_date' => null,
+                'adults' => (int) ($validated['adults'] ?? 1),
+                'trip_type' => 'multicity',
+                'legs' => $legs,
+            ]);
+        }
 
         $validated = $request->validate([
             'origin' => ['required', 'string', 'size:3'],
@@ -216,7 +264,7 @@ trait HandlesTravelportAir
             'departure_date' => ['required', 'date', 'after_or_equal:today'],
             'return_date' => [$tripType === 'roundtrip' ? 'required' : 'nullable', 'date', 'after:departure_date'],
             'adults' => ['nullable', 'integer', 'min:1', 'max:9'],
-            'trip_type' => ['nullable', 'in:oneway,roundtrip'],
+            'trip_type' => ['nullable', 'in:oneway,roundtrip,multicity'],
         ]);
 
         $returnDate = ($tripType === 'roundtrip') ? ($validated['return_date'] ?? null) : null;
@@ -227,6 +275,7 @@ trait HandlesTravelportAir
             'departure_date' => $validated['departure_date'],
             'return_date' => $returnDate,
             'adults' => (int) ($validated['adults'] ?? 1),
+            'trip_type' => $tripType,
         ]);
     }
 

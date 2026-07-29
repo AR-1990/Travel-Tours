@@ -52,7 +52,8 @@
                                     $flightSearchInput['destination'] ?? null,
                                     $flightSearchInput['departure_date'] ?? null,
                                     $flightSearchInput['return_date'] ?? null,
-                                    (int) ($flightSearchInput['adults'] ?? 1)
+                                    (int) ($flightSearchInput['adults'] ?? 1),
+                                    $flightSearchInput['legs'] ?? null
                                 ) }}
                             </p>
                         @endif

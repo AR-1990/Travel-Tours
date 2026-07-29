@@ -371,6 +371,16 @@ class TravelportFlightParser
             $air = $provider;
         }
 
+        $version = null;
+        if (preg_match('/<(?:[\w]+:)?UniversalRecord\b[^>]*\bVersion="([^"]+)"/', $xml, $m)) {
+            $version = $m[1];
+        }
+
+        $urStatus = null;
+        if (preg_match('/<(?:[\w]+:)?UniversalRecord\b[^>]*\bStatus="([^"]+)"/', $xml, $m)) {
+            $urStatus = $m[1];
+        }
+
         return [
             'solutions' => [],
             'trace_id' => $traceId,
@@ -378,7 +388,75 @@ class TravelportFlightParser
             'universal_locator' => $universal,
             'air_reservation_locator' => $air,
             'provider_locator' => $provider,
+            'version' => $version,
+            'ur_status' => $urStatus,
         ];
+    }
+
+    /**
+     * Richer Universal Record snapshot for reservation refresh UI.
+     *
+     * @return array{
+     *   solutions: list<array<string, mixed>>,
+     *   trace_id: ?string,
+     *   total_found: int,
+     *   universal_locator: ?string,
+     *   air_reservation_locator: ?string,
+     *   provider_locator: ?string,
+     *   version: ?string,
+     *   ur_status: ?string,
+     *   segments: list<array<string, mixed>>,
+     *   passengers: list<array<string, mixed>>,
+     *   cancelled: bool
+     * }
+     */
+    public function parseUniversalRecord(string $xml): array
+    {
+        $base = $this->parseLocators($xml);
+
+        $segments = [];
+        if (preg_match_all('/<(?:[\w]+:)?AirSegment\b([^>]*)\/?>/', $xml, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $attrs = $match[1] ?? '';
+                $segments[] = [
+                    'key' => $this->attr($attrs, 'Key'),
+                    'carrier' => $this->attr($attrs, 'Carrier'),
+                    'flight_number' => $this->attr($attrs, 'FlightNumber'),
+                    'origin' => $this->attr($attrs, 'Origin'),
+                    'destination' => $this->attr($attrs, 'Destination'),
+                    'departure' => $this->attr($attrs, 'DepartureTime'),
+                    'arrival' => $this->attr($attrs, 'ArrivalTime'),
+                    'status' => $this->attr($attrs, 'Status'),
+                ];
+            }
+        }
+
+        $passengers = [];
+        if (preg_match_all('/<(?:[\w]+:)?BookingTraveler\b([^>]*)>.*?<(?:[\w]+:)?BookingTravelerName\b([^>]*)\/?>/s', $xml, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $nameAttrs = $match[2] ?? '';
+                $passengers[] = [
+                    'prefix' => $this->attr($nameAttrs, 'Prefix'),
+                    'first' => $this->attr($nameAttrs, 'First'),
+                    'last' => $this->attr($nameAttrs, 'Last'),
+                ];
+            }
+        }
+
+        $cancelled = false;
+        $status = strtoupper((string) ($base['ur_status'] ?? ''));
+        if (in_array($status, ['CANCELLED', 'CANCELED', 'XX'], true)) {
+            $cancelled = true;
+        }
+        if (Str::contains($xml, 'UniversalRecordCancelRsp') && ! Str::contains(strtolower($xml), 'fault')) {
+            $cancelled = true;
+        }
+
+        return array_merge($base, [
+            'segments' => $segments,
+            'passengers' => $passengers,
+            'cancelled' => $cancelled,
+        ]);
     }
 
     /**

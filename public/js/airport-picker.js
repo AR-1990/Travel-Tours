@@ -91,9 +91,10 @@
                 li.setAttribute('role', 'option');
                 li.dataset.index = String(i);
                 const sub = [item.name, item.country].filter(Boolean).join(' · ');
+                const main = item.label || [item.city, item.name].filter(Boolean).join(' — ') || item.code;
                 li.innerHTML = `
                     <span class="airport-picker-item-code">${item.code}</span>
-                    <span class="airport-picker-item-main">${item.city || item.name}</span>
+                    <span class="airport-picker-item-main">${main}</span>
                     <span class="airport-picker-item-sub">${sub}</span>
                 `;
                 li.addEventListener('mousedown', (e) => {

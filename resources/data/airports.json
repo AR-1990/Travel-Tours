@@ -1976,7 +1976,7 @@
   {
     "code": "ISB",
     "name": "Islamabad International",
-    "city": "Attock",
+    "city": "Islamabad",
     "country": "Pakistan",
     "type": "airport"
   },
@@ -12112,7 +12112,7 @@
   {
     "code": "GWD",
     "name": "New Gwadar International",
-    "city": "Gurandani",
+    "city": "Gwadar",
     "country": "Pakistan",
     "type": "airport"
   },

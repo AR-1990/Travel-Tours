@@ -85,9 +85,12 @@ trait ManagesFlightReservations
             'flightTicket' => [
                 'ticket_numbers' => $reservation->ticket_numbers ?? [],
             ],
+            'gdsSnapshot' => $reservation->gds_snapshot,
             'workflowStep' => $reservation->status === FlightReservation::STATUS_TICKETED ? 'done' : 'ticket',
             'canBookFlights' => $this->userCanBookFlights(),
             'ticketActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.ticket', $reservation),
+            'retrieveActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.retrieve', $reservation),
+            'cancelActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.cancel', $reservation),
         ]));
     }
 
@@ -97,6 +100,12 @@ trait ManagesFlightReservations
         $this->ensureFlightBookPermission();
 
         $reservation = $this->findAccessibleReservation($id);
+
+        if ($reservation->status === FlightReservation::STATUS_CANCELLED) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+                ->with('error', 'Cannot ticket a cancelled reservation.');
+        }
 
         $locators = array_filter([
             'universal_locator' => $reservation->universal_locator,
@@ -114,6 +123,34 @@ trait ManagesFlightReservations
         return redirect()
             ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
             ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Ticketing complete.')
+            ->with('travelport_last_error_reason', ($result['ok'] ?? false) ? null : ($result['technical_message'] ?? $result['message'] ?? null));
+    }
+
+    public function reservationsRetrieve(int $id, TravelportAirService $air)
+    {
+        $this->ensureFlightAccess();
+        $this->ensureFlightSearchPermission();
+
+        $reservation = $this->findAccessibleReservation($id);
+        $result = $this->runRetrieveUniversalRecordFlow($air, $reservation);
+
+        return redirect()
+            ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Retrieve complete.')
+            ->with('travelport_last_error_reason', ($result['ok'] ?? false) ? null : ($result['technical_message'] ?? $result['message'] ?? null));
+    }
+
+    public function reservationsCancel(int $id, TravelportAirService $air)
+    {
+        $this->ensureFlightAccess();
+        $this->ensureFlightBookPermission();
+
+        $reservation = $this->findAccessibleReservation($id);
+        $result = $this->runCancelReservationFlow($air, $reservation);
+
+        return redirect()
+            ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Cancel complete.')
             ->with('travelport_last_error_reason', ($result['ok'] ?? false) ? null : ($result['technical_message'] ?? $result['message'] ?? null));
     }
 
