@@ -192,6 +192,14 @@
                 code: form.dataset.ssDestCode || 'MHD',
                 label: form.dataset.ssDestLabel || 'MHD',
             },
+            travelportOrigin: {
+                code: form.dataset.tpOriginCode || 'LHR',
+                label: form.dataset.tpOriginLabel || 'LHR',
+            },
+            travelportDestination: {
+                code: form.dataset.tpDestCode || 'JFK',
+                label: form.dataset.tpDestLabel || 'JFK',
+            },
         });
     };
 

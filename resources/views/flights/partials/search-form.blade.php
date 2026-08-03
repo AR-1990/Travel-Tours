@@ -40,6 +40,10 @@
     $sunspringAirportCodes = \App\Support\SunSpringAirports::CODES;
     $ssDefaultOrigin = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultOrigin());
     $ssDefaultDest = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultDestination());
+    $ssMid = \App\Support\AirportDirectory::find('SYZ');
+    $tpDefaultOrigin = \App\Support\AirportDirectory::find('LHR');
+    $tpDefaultDest = \App\Support\AirportDirectory::find('JFK');
+    $tpMid = \App\Support\AirportDirectory::find('CDG');
 @endphp
 <div class="flight-search-card">
     <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.search') }}" id="flightSearchForm"
@@ -47,7 +51,13 @@
         data-ss-origin-label="{{ $ssDefaultOrigin['label'] ?? 'THR' }}"
         data-ss-dest-code="{{ \App\Support\SunSpringAirports::defaultDestination() }}"
         data-ss-dest-label="{{ $ssDefaultDest['label'] ?? 'MHD' }}"
-        data-ss-codes='@json($sunspringAirportCodes)'>
+        data-ss-mid-label="{{ $ssMid['label'] ?? 'SYZ' }}"
+        data-ss-codes='@json($sunspringAirportCodes)'
+        data-tp-origin-code="LHR"
+        data-tp-origin-label="{{ $tpDefaultOrigin['label'] ?? 'LHR' }}"
+        data-tp-dest-code="JFK"
+        data-tp-dest-label="{{ $tpDefaultDest['label'] ?? 'JFK' }}"
+        data-tp-mid-label="{{ $tpMid['label'] ?? 'CDG' }}">
         @csrf
         <div class="trip-type-tabs" role="group" aria-label="Trip type">
             <label>

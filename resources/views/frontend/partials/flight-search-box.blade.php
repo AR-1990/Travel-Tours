@@ -24,6 +24,10 @@
     $ssDefaultOrigin = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultOrigin());
     $ssDefaultDest = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultDestination());
     $sunspringPopularRoutes = \App\Support\SunSpringAirports::POPULAR_ROUTES;
+    $ssMid = \App\Support\AirportDirectory::find('SYZ');
+    $tpDefaultOrigin = \App\Support\AirportDirectory::find('JFK');
+    $tpDefaultDest = \App\Support\AirportDirectory::find('LAX');
+    $tpMid = \App\Support\AirportDirectory::find('ORD');
 
     $defaultMultiLegs = [
         [
@@ -62,7 +66,13 @@
                                 data-ss-origin-label="{{ $ssDefaultOrigin['label'] ?? 'THR' }}"
                                 data-ss-dest-code="{{ \App\Support\SunSpringAirports::defaultDestination() }}"
                                 data-ss-dest-label="{{ $ssDefaultDest['label'] ?? 'MHD' }}"
-                                data-ss-codes='@json($sunspringAirportCodes)'>
+                                data-ss-mid-label="{{ $ssMid['label'] ?? 'SYZ' }}"
+                                data-ss-codes='@json($sunspringAirportCodes)'
+                                data-tp-origin-code="JFK"
+                                data-tp-origin-label="{{ $tpDefaultOrigin['label'] ?? 'JFK' }}"
+                                data-tp-dest-code="LAX"
+                                data-tp-dest-label="{{ $tpDefaultDest['label'] ?? 'LAX' }}"
+                                data-tp-mid-label="{{ $tpMid['label'] ?? 'ORD' }}">
                                 @csrf
 
                                 <div class="home-flight-toolbar">
@@ -287,6 +297,14 @@
         defaultDestination: {
             code: form.dataset.ssDestCode || 'MHD',
             label: form.dataset.ssDestLabel || 'MHD',
+        },
+        travelportOrigin: {
+            code: form.dataset.tpOriginCode || 'JFK',
+            label: form.dataset.tpOriginLabel || 'JFK',
+        },
+        travelportDestination: {
+            code: form.dataset.tpDestCode || 'LAX',
+            label: form.dataset.tpDestLabel || 'LAX',
         },
     });
 })();

@@ -203,33 +203,64 @@
     };
 
     /**
-     * When provider switches to SunSpring, constrain airports to the Sepehran allow-list
-     * and reset From/To if the current codes are not allowed.
+     * Apply provider-specific From/To defaults and constrain the airport picker scope.
+     * @param {boolean} forceDefaults When true (provider radio change), always set From/To.
      */
-    window.syncAirportPickersForProvider = function (form, options) {
+    window.syncAirportPickersForProvider = function (form, options, forceDefaults) {
         if (!form) return;
         const opts = options || {};
         const provider = form.querySelector('input[name="provider"]:checked:not(:disabled)')?.value || '';
         const isSun = provider === 'sunspring';
         const allowed = new Set((opts.allowedCodes || []).map((c) => String(c).toUpperCase()));
-        const defaultOrigin = opts.defaultOrigin || { code: 'THR', label: 'Tehran — Mehrabad (THR)' };
-        const defaultDest = opts.defaultDestination || { code: 'MHD', label: 'Mashhad (MHD)' };
+
+        const sunOrigin = opts.defaultOrigin || { code: 'THR', label: 'Tehran — Mehrabad (THR)' };
+        const sunDest = opts.defaultDestination || { code: 'MHD', label: 'Mashhad (MHD)' };
+        const tpOrigin = opts.travelportOrigin || {
+            code: form.dataset.tpOriginCode || 'LHR',
+            label: form.dataset.tpOriginLabel || 'London — Heathrow (LHR)',
+        };
+        const tpDest = opts.travelportDestination || {
+            code: form.dataset.tpDestCode || 'JFK',
+            label: form.dataset.tpDestLabel || 'New York — JFK (JFK)',
+        };
+
+        const targetOrigin = isSun ? sunOrigin : tpOrigin;
+        const targetDest = isSun ? sunDest : tpDest;
 
         form.querySelectorAll('.airport-picker').forEach((el) => {
             el.dataset.provider = provider;
             const picker = el._airportPicker;
             if (!picker) return;
+
             const code = (picker.getCode() || '').toUpperCase();
-            if (!isSun || !allowed.size || allowed.has(code)) {
+            const field = el.dataset.field || '';
+            const isDestination = field.includes('destination') || field.endsWith('destination');
+            const isOrigin = field.includes('origin') || field === 'origin' || field.endsWith('[origin]');
+
+            // Multi-city middle legs: only fix invalid SunSpring codes unless forcing simple route.
+            const isSimpleRoute = field === 'origin' || field === 'destination';
+
+            if (forceDefaults && isSimpleRoute) {
+                if (isDestination) {
+                    picker.setSelection(targetDest.code, targetDest.label);
+                } else if (isOrigin) {
+                    picker.setSelection(targetOrigin.code, targetOrigin.label);
+                }
                 return;
             }
-            const field = el.dataset.field || '';
-            if (field.includes('destination') || field.endsWith('destination')) {
-                picker.setSelection(defaultDest.code, defaultDest.label);
-            } else {
-                picker.setSelection(defaultOrigin.code, defaultOrigin.label);
+
+            if (isSun && allowed.size && code && !allowed.has(code)) {
+                if (isDestination) {
+                    picker.setSelection(sunDest.code, sunDest.label);
+                } else {
+                    picker.setSelection(sunOrigin.code, sunOrigin.label);
+                }
             }
         });
+
+        if (forceDefaults) {
+            applyMultiCityDefaults(form, isSun, opts);
+        }
 
         const help = form.querySelector('[data-provider-airport-help]');
         if (help) {
@@ -242,14 +273,47 @@
         if (sunPopular) sunPopular.hidden = !isSun;
     };
 
+    function applyMultiCityDefaults(form, isSun, opts) {
+        const legs = form.querySelectorAll('.multi-city-leg, .home-multicity-leg');
+        if (!legs.length) return;
+
+        const sun = {
+            o1: opts.defaultOrigin || { code: 'THR', label: 'THR' },
+            d1: { code: 'SYZ', label: form.dataset.ssMidLabel || 'Shiraz (SYZ)' },
+            o2: { code: 'SYZ', label: form.dataset.ssMidLabel || 'Shiraz (SYZ)' },
+            d2: opts.defaultDestination || { code: 'MHD', label: 'MHD' },
+        };
+        const tp = {
+            o1: opts.travelportOrigin || { code: form.dataset.tpOriginCode || 'LHR', label: form.dataset.tpOriginLabel || 'LHR' },
+            d1: { code: 'CDG', label: form.dataset.tpMidLabel || 'Paris — Charles de Gaulle (CDG)' },
+            o2: { code: 'CDG', label: form.dataset.tpMidLabel || 'Paris — Charles de Gaulle (CDG)' },
+            d2: opts.travelportDestination || { code: form.dataset.tpDestCode || 'JFK', label: form.dataset.tpDestLabel || 'JFK' },
+        };
+        const map = isSun ? sun : tp;
+
+        legs.forEach((row, index) => {
+            const originPicker = row.querySelector('.airport-picker[data-field*="[origin]"]')?._airportPicker;
+            const destPicker = row.querySelector('.airport-picker[data-field*="[destination]"]')?._airportPicker;
+            if (index === 0) {
+                originPicker?.setSelection(map.o1.code, map.o1.label);
+                destPicker?.setSelection(map.d1.code, map.d1.label);
+            } else if (index === 1) {
+                originPicker?.setSelection(map.o2.code, map.o2.label);
+                destPicker?.setSelection(map.d2.code, map.d2.label);
+            }
+        });
+    }
+
     window.bindFlightProviderAirportScope = function (form, options) {
         if (!form || form.dataset.providerAirportBound === '1') return;
         form.dataset.providerAirportBound = '1';
-        const sync = () => window.syncAirportPickersForProvider(form, options);
+        // Initial page load: only constrain invalid SunSpring picks, keep existing values.
+        window.syncAirportPickersForProvider(form, options, false);
         form.querySelectorAll('input[name="provider"]').forEach((input) => {
-            input.addEventListener('change', sync);
+            input.addEventListener('change', () => {
+                window.syncAirportPickersForProvider(form, options, true);
+            });
         });
-        sync();
     };
 
     if (document.readyState === 'loading') {
