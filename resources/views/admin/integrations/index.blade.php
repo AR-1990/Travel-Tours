@@ -45,6 +45,6 @@
         @endforeach
     </div>
 
-    <p class="text-muted small mt-4 mb-0">Encryption uses <code>APP_KEY</code>. Optional <code>TRAVELPORT_*</code> values in <code>.env</code> still act as defaults until overridden in an integration’s settings.</p>
+    <p class="text-muted small mt-4 mb-0">Encryption uses <code>APP_KEY</code>. Optional <code>TRAVELPORT_*</code> / <code>SUNSPRING_*</code> values in <code>.env</code> still act as defaults until overridden in an integration’s settings.</p>
 </div>
 @endsection

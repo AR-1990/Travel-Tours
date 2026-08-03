@@ -72,6 +72,31 @@
                                     </div>
                                 </div>
 
+                                @php
+                                    $travelportReady = $travelportReady ?? \App\Services\Travelport\TravelportIntegrationConfig::isReadyForAir();
+                                    $sunspringReady = $sunspringReady ?? \App\Services\SunSpring\SunSpringIntegrationConfig::isReadyForAir();
+                                    $flightProviders = $flightProviders ?? \App\Support\FlightProvider::options();
+                                    $provider = old('provider', $homeFlightInput['provider'] ?? \App\Support\FlightProvider::current());
+                                @endphp
+                                <div class="home-provider-select mb-3">
+                                    <div class="home-provider-select__label">Search via API</div>
+                                    <div class="flight-type home-trip-toggle" role="radiogroup" aria-label="Flight provider">
+                                        @foreach($flightProviders as $option)
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio"
+                                                    name="provider"
+                                                    id="flight-provider-{{ $option['id'] }}"
+                                                    value="{{ $option['id'] }}"
+                                                    {{ $provider === $option['id'] ? 'checked' : '' }}
+                                                    {{ empty($option['ready']) ? 'disabled' : '' }}>
+                                                <label class="form-check-label" for="flight-provider-{{ $option['id'] }}">
+                                                    {{ $option['label'] }}@if(empty($option['ready'])) (off)@endif
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+
                                 <div class="flight-search-wrapper">
                                     <div class="flight-search-content">
                                         <div class="flight-search-item" id="homeSimpleRoute" style="{{ $isMulti ? 'display: none;' : '' }}">

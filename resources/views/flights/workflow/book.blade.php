@@ -47,6 +47,12 @@
 
     @include('flights.partials.status')
 
+    <div class="mb-3">
+        @include('flights.partials.provider-badge', [
+            'provider' => \App\Support\FlightProvider::fromResult($flightPriceResult ?? null),
+        ])
+    </div>
+
     @include('frontend.partials.flight-price-summary', ['searchResult' => $flightPriceResult ?? null])
 
     <div class="card border-0 shadow-sm mt-4">
@@ -89,6 +95,20 @@
                         <label class="form-label">Phone</label>
                         <input type="text" name="passenger_phone" class="form-control form-control-sm" value="{{ old('passenger_phone', $bookInput['passenger_phone'] ?? '') }}" required>
                     </div>
+                    @if(($flightProvider ?? '') === 'sunspring')
+                        <div class="col-md-4">
+                            <label class="form-label">National ID</label>
+                            <input type="text" name="national_id" class="form-control form-control-sm" value="{{ old('national_id', '0000000000') }}" maxlength="32">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nationality</label>
+                            <input type="text" name="nationality" class="form-control form-control-sm" value="{{ old('nationality', 'USA') }}" maxlength="8">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Country code</label>
+                            <input type="text" name="country_code" class="form-control form-control-sm" value="{{ old('country_code', '+98') }}" maxlength="8">
+                        </div>
+                    @endif
                     <div class="col-md-4">
                         <label class="form-label">Form of payment</label>
                         <select name="form_of_payment" class="form-select form-select-sm">
@@ -99,7 +119,7 @@
                     </div>
                 </div>
                 <div class="mt-4 d-flex flex-wrap gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm" @disabled(!($travelportReady ?? false))>
+                    <button type="submit" class="btn btn-primary btn-sm" @disabled(!($providerReady ?? $travelportReady ?? false))>
                         <i class="fas fa-check me-1"></i> Confirm booking &amp; view reservation
                     </button>
                     <a href="{{ route($flightsRoutePrefix . '.flights.price.show') }}" class="btn btn-outline-secondary btn-sm">Back to price</a>

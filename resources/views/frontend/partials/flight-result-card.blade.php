@@ -17,7 +17,14 @@
                         <div class="flight-airline-img">
                             <span class="flight-airline-code">{{ $carrier }}</span>
                         </div>
-                        <h5 class="flight-airline-name">{{ \App\Support\FlightDisplay::flightLabel($carrier, $first['flight_number'] ?? null) }}</h5>
+                        <div>
+                            <h5 class="flight-airline-name mb-1">{{ \App\Support\FlightDisplay::flightLabel($carrier, $first['flight_number'] ?? null) }}</h5>
+                            @include('flights.partials.provider-badge', [
+                                'provider' => $sol['provider'] ?? ($flightSearchResult['provider'] ?? null),
+                                'sol' => $sol,
+                                'size' => 'sm',
+                            ])
+                        </div>
                     </div>
                     <div class="flight-booking-time">
                         <div class="start-time">
@@ -63,7 +70,7 @@
                     @csrf
                     <input type="hidden" name="solution_key" value="{{ $sol['key'] ?? '' }}">
                     <button type="submit" class="theme-btn flight-price-btn"
-                            @disabled(!($travelportReady ?? false) || empty($sol['key']))>
+                            @disabled(!($providerReady ?? $travelportReady ?? false) || empty($sol['key']))>
                         Price &amp; hold<i class="fas fa-arrow-circle-right"></i>
                     </button>
                 </form>

@@ -55,6 +55,26 @@
             </label>
         </div>
 
+        @php
+            $provider = old('provider', $searchInput['provider'] ?? ($flightProvider ?? 'travelport'));
+            $providers = $flightProviders ?? [
+                ['id' => 'travelport', 'label' => 'Travelport', 'ready' => $travelportReady ?? false],
+                ['id' => 'sunspring', 'label' => 'SunSpring', 'ready' => $sunspringReady ?? false],
+            ];
+        @endphp
+        <div class="mb-3">
+            <div class="provider-select-label">Search via API</div>
+            <div class="trip-type-tabs" role="group" aria-label="Flight provider">
+                @foreach($providers as $option)
+                    <label>
+                        <input type="radio" name="provider" value="{{ $option['id'] }}" @checked($provider === $option['id']) @disabled(empty($option['ready']))>
+                        <span>{{ $option['label'] }}@if(empty($option['ready'])) (off)@endif</span>
+                    </label>
+                @endforeach
+            </div>
+            <p class="small text-muted mb-0 mt-1">Results will show which API they came from (Travelport or SunSpring).</p>
+        </div>
+
         <p class="small text-muted mb-3">
             <i class="fas fa-info-circle me-1"></i>
             Type a <strong>city</strong> or <strong>airport name</strong> — same picker as the public site ({{ number_format(\App\Support\AirportDirectory::count()) }} airports).
@@ -132,7 +152,7 @@
                 </select>
             </div>
             <div class="col-md-6 col-lg-2 d-grid">
-                <button type="submit" class="btn btn-primary btn-lg" @disabled(!$travelportReady)>
+                <button type="submit" class="btn btn-primary btn-lg" @disabled(!($anyProviderReady ?? $travelportReady ?? false))>
                     <i class="fas fa-search me-2"></i>Search Now
                 </button>
             </div>

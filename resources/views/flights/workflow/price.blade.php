@@ -34,6 +34,12 @@
 
     @include('flights.partials.status')
 
+    <div class="mb-3">
+        @include('flights.partials.provider-badge', [
+            'provider' => \App\Support\FlightProvider::fromResult($flightPriceResult ?? null),
+        ])
+    </div>
+
     @include('frontend.partials.flight-price-summary', ['searchResult' => $flightPriceResult ?? null])
 
     @if(!empty($flightPriceResult['ok']))

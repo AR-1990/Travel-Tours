@@ -8,6 +8,8 @@ class Integration extends Model
 {
     public const SLUG_TRAVELPORT = 'travelport';
 
+    public const SLUG_SUNSPRING = 'sunspring';
+
     protected $fillable = [
         'slug',
         'name',

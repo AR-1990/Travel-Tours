@@ -38,12 +38,15 @@
             <div class="row">
                 <div class="col-lg-12">
                     <div class="booking-sort mb-4">
-                        <h5>
+                        <h5 class="d-flex flex-wrap align-items-center gap-2">
                             @if(!empty($flightSearchResult['solutions']))
                                 {{ count($flightSearchResult['solutions']) }} Results Found
                             @else
                                 0 Results Found
                             @endif
+                            @include('flights.partials.provider-badge', [
+                                'provider' => \App\Support\FlightProvider::fromResult($flightSearchResult ?? null),
+                            ])
                         </h5>
                         @if(!empty($flightSearchInput))
                             <p class="mb-0 text-muted">
@@ -65,6 +68,8 @@
                                 @include('frontend.partials.flight-result-card', [
                                     'sol' => $sol,
                                     'travelportReady' => $travelportReady ?? false,
+                                    'providerReady' => $providerReady ?? false,
+                                    'flightSearchResult' => $flightSearchResult ?? null,
                                 ])
                             @endforeach
                         </div>

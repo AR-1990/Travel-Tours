@@ -41,6 +41,7 @@
                             <th>Booked</th>
                             <th>Passenger</th>
                             <th>Route</th>
+                            <th>API</th>
                             <th>Locator</th>
                             <th>Status</th>
                             <th></th>
@@ -55,6 +56,13 @@
                                     {{ $reservation->routeLabel() }}
                                     <div class="small text-muted">{{ optional($reservation->departure_date)->format('d M Y') }}</div>
                                 </td>
+                                <td>
+                                    @include('flights.partials.provider-badge', [
+                                        'provider' => $reservation->provider(),
+                                        'reservation' => $reservation,
+                                        'size' => 'sm',
+                                    ])
+                                </td>
                                 <td><code>{{ $reservation->universal_locator ?? $reservation->air_reservation_locator ?? '—' }}</code></td>
                                 <td><span class="badge {{ $reservation->statusBadgeClass() }}">{{ $reservation->statusLabel() }}</span></td>
                                 <td class="text-end">
@@ -63,7 +71,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-5">
+                                <td colspan="7" class="text-center text-muted py-5">
                                     No reservations yet. <a href="{{ route('home') }}">Search flights</a> to book.
                                 </td>
                             </tr>

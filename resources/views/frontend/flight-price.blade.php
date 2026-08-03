@@ -31,7 +31,13 @@
                 <div class="alert alert-danger">{{ session('error') }}</div>
             @endif
 
-            @if(!($travelportReady ?? false))
+            <div class="mb-3">
+                @include('flights.partials.provider-badge', [
+                    'provider' => \App\Support\FlightProvider::fromResult($flightPriceResult ?? null),
+                ])
+            </div>
+
+            @if(!($providerReady ?? $travelportReady ?? false))
                 <div class="alert alert-warning">Flight pricing is not configured. Contact the agency.</div>
             @endif
 

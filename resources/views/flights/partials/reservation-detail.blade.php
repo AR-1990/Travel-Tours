@@ -51,6 +51,15 @@
                 <div>
                     <div class="text-muted small mb-1">Reservation file</div>
                     <h2 class="h5 mb-0">{{ $headline }}</h2>
+                    <div class="mt-2">
+                        @include('flights.partials.provider-badge', [
+                            'provider' => isset($reservation) && is_object($reservation)
+                                ? $reservation->provider()
+                                : ($flightPriceResult['provider'] ?? ($flightProvider ?? null)),
+                            'reservation' => $reservation ?? null,
+                            'size' => 'sm',
+                        ])
+                    </div>
                 </div>
                 <span class="badge {{ $statusClass }} px-3 py-2">{{ $statusLabel }}</span>
             </div>
@@ -222,7 +231,7 @@
                 </p>
                 <form method="POST" action="{{ $ticketRoute }}">
                     @csrf
-                    <button type="submit" class="{{ $ticketButtonClass ?? 'btn btn-primary btn-sm' }}" @disabled(!($travelportReady ?? false))>
+                    <button type="submit" class="{{ $ticketButtonClass ?? 'btn btn-primary btn-sm' }}" @disabled(!($providerReady ?? $travelportReady ?? false))>
                         <i class="fas fa-receipt me-1"></i> Issue ticket
                     </button>
                 </form>
@@ -242,7 +251,7 @@
                     @if($retrieveRoute)
                         <form method="POST" action="{{ $retrieveRoute }}">
                             @csrf
-                            <button type="submit" class="{{ $secondaryButtonClass ?? 'btn btn-outline-primary btn-sm' }}" @disabled(!($travelportReady ?? false) || empty($booking['universal_locator']))>
+                            <button type="submit" class="{{ $secondaryButtonClass ?? 'btn btn-outline-primary btn-sm' }}" @disabled(!($providerReady ?? $travelportReady ?? false) || empty($booking['universal_locator']))>
                                 <i class="fas fa-sync me-1"></i> Retrieve from GDS
                             </button>
                         </form>
@@ -250,7 +259,7 @@
                     @if($cancelRoute && ! $isCancelled && ! $isTicketed && ($canBookFlights ?? false))
                         <form method="POST" action="{{ $cancelRoute }}" onsubmit="return confirm('Cancel this reservation in the GDS? This cannot be undone.');">
                             @csrf
-                            <button type="submit" class="{{ $dangerButtonClass ?? 'btn btn-outline-danger btn-sm' }}" @disabled(!($travelportReady ?? false) || empty($booking['universal_locator']))>
+                            <button type="submit" class="{{ $dangerButtonClass ?? 'btn btn-outline-danger btn-sm' }}" @disabled(!($providerReady ?? $travelportReady ?? false) || empty($booking['universal_locator']))>
                                 <i class="fas fa-ban me-1"></i> Cancel reservation
                             </button>
                         </form>

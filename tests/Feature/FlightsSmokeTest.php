@@ -43,7 +43,10 @@ class FlightsSmokeTest extends TestCase
             ->assertSee('Multi Destination')
             ->assertSee('Journey Date')
             ->assertSee('Search Now')
-            ->assertSee('Search → Price → Book → Reservation');
+            ->assertSee('Search → Price → Book → Reservation')
+            ->assertSee('Search via API')
+            ->assertSee('Travelport')
+            ->assertSee('SunSpring');
     }
 
     public function test_agent_and_sub_agent_flights_hub_render(): void

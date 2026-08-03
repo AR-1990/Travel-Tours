@@ -79,6 +79,26 @@ class FlightReservation extends Model
         return $this->belongsTo(Tenant::class);
     }
 
+    public function provider(): string
+    {
+        $fromRaw = strtolower((string) data_get($this->raw_result, 'provider', ''));
+        if ($fromRaw === 'sunspring') {
+            return 'sunspring';
+        }
+
+        return 'travelport';
+    }
+
+    public function isSunSpring(): bool
+    {
+        return $this->provider() === 'sunspring';
+    }
+
+    public function providerLabel(): string
+    {
+        return \App\Support\FlightProvider::label($this->provider());
+    }
+
     public function passengerName(): string
     {
         return trim(($this->passenger_prefix ? $this->passenger_prefix.' ' : '').($this->passenger_first ?? '').' '.($this->passenger_last ?? ''));

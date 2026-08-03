@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\FlightReservation;
+use App\Services\SunSpring\SunSpringIntegrationConfig;
 use App\Services\Travelport\TravelportAirService;
+use App\Services\Travelport\TravelportIntegrationConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -71,6 +73,10 @@ trait ManagesFlightReservations
 
         $reservation = $this->findAccessibleReservation($id);
 
+        $providerReady = $reservation->isSunSpring()
+            ? SunSpringIntegrationConfig::isReadyForAir()
+            : TravelportIntegrationConfig::isReadyForAir();
+
         return view('flights.reservations.show', array_merge($this->travelportViewBase(), [
             'reservation' => $reservation,
             'flightBooking' => $reservation->toWorkflowBookingArray(),
@@ -88,6 +94,7 @@ trait ManagesFlightReservations
             'gdsSnapshot' => $reservation->gds_snapshot,
             'workflowStep' => $reservation->status === FlightReservation::STATUS_TICKETED ? 'done' : 'ticket',
             'canBookFlights' => $this->userCanBookFlights(),
+            'providerReady' => $providerReady,
             'ticketActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.ticket', $reservation),
             'retrieveActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.retrieve', $reservation),
             'cancelActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.cancel', $reservation),

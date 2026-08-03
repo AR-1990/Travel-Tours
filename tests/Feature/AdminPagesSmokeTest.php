@@ -27,5 +27,11 @@ class AdminPagesSmokeTest extends TestCase
             $params = str_contains($name, 'integrations.edit') ? ['slug' => 'travelport'] : [];
             $this->actingAs($user)->get(route($name, $params))->assertOk();
         }
+
+        $this->actingAs($user)
+            ->get(route('admin.integrations.edit', ['slug' => 'sunspring']))
+            ->assertOk()
+            ->assertSee('SunSpring Airline API')
+            ->assertSee('Get authorize token');
     }
 }

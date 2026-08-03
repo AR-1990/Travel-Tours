@@ -1,28 +1,33 @@
-@if(!$travelportEnabled)
+@php
+    $anyReady = $anyProviderReady ?? (($travelportReady ?? false) || ($sunspringReady ?? false));
+    $tpReady = $travelportReady ?? false;
+    $ssReady = $sunspringReady ?? false;
+@endphp
+
+@if(! $anyReady)
     <div class="alert alert-warning d-flex align-items-start gap-2 border-0 shadow-sm">
-        <i class="fas fa-exclamation-triangle mt-1"></i>
+        <i class="fas fa-key mt-1"></i>
         <div>
-            <strong>Travelport is disabled.</strong>
-            @if($flightsRoutePrefix === 'admin')
-                Enable it under <a href="{{ route('admin.integrations.index') }}" class="alert-link">Integrations</a>.
+            <strong>Setup required.</strong> Configure at least one flight provider under Integrations.
+            @if(($flightsRoutePrefix ?? '') === 'admin')
+                <a href="{{ route('admin.integrations.index') }}" class="alert-link">Open Integrations</a>
             @else
                 Contact your platform administrator.
             @endif
         </div>
     </div>
-@elseif(!$travelportReady)
-    <div class="alert alert-warning d-flex align-items-start gap-2 border-0 shadow-sm">
-        <i class="fas fa-key mt-1"></i>
-        <div>
-            <strong>Setup required.</strong> Air search needs API username, password, and target branch.
-            @if($flightsRoutePrefix === 'admin')
-                <a href="{{ route('admin.integrations.edit', ['slug' => 'travelport']) }}" class="alert-link">Configure Travelport</a>
-            @endif
-        </div>
-    </div>
 @else
     <div class="d-flex flex-wrap gap-2 mb-3">
-        <span class="status-pill ok"><i class="fas fa-check-circle"></i> GDS connected</span>
+        @if($tpReady)
+            <span class="status-pill ok"><i class="fas fa-check-circle"></i> Travelport ready</span>
+        @else
+            <span class="status-pill text-muted" style="background:#f3f4f6;color:#6b7280!important"><i class="fas fa-minus-circle"></i> Travelport off</span>
+        @endif
+        @if($ssReady)
+            <span class="status-pill ok"><i class="fas fa-check-circle"></i> SunSpring ready</span>
+        @else
+            <span class="status-pill text-muted" style="background:#f3f4f6;color:#6b7280!important"><i class="fas fa-minus-circle"></i> SunSpring off</span>
+        @endif
         <span class="status-pill ok text-muted" style="background:#f3f4f6;color:#4b5563!important"><i class="fas fa-cloud"></i> Live search</span>
     </div>
 @endif

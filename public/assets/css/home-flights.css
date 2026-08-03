@@ -119,6 +119,19 @@
     color: #fff;
 }
 
+#home-flight-search .home-provider-select {
+    margin-top: -0.35rem;
+}
+
+#home-flight-search .home-provider-select__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--hf-muted);
+    margin-bottom: 0.45rem;
+}
+
 /* Field cards */
 #home-flight-search .home-field-card,
 #home-flight-search .home-flight-search .form-group.home-field-card,

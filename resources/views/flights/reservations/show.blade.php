@@ -47,6 +47,7 @@
         'gdsSnapshot' => $gdsSnapshot ?? null,
         'canBookFlights' => $canBookFlights ?? false,
         'travelportReady' => $travelportReady ?? false,
+        'providerReady' => $providerReady ?? $travelportReady ?? false,
         'ticketActionRoute' => $ticketActionRoute ?? route($flightsRoutePrefix . '.flights.reservations.ticket', $reservation),
         'retrieveActionRoute' => $retrieveActionRoute ?? route($flightsRoutePrefix . '.flights.reservations.retrieve', $reservation),
         'cancelActionRoute' => $cancelActionRoute ?? route($flightsRoutePrefix . '.flights.reservations.cancel', $reservation),

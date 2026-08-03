@@ -13,11 +13,10 @@ return [
             'description' => 'SOAP Universal API: connectivity, Air shopping, availability, booking, ticketing.',
             'coming_soon' => false,
         ],
-        // Example placeholder for a future integration:
-        // 'payments' => [
-        //     'name' => 'Payments',
-        //     'description' => 'Card capture and refunds.',
-        //     'coming_soon' => true,
-        // ],
+        'sunspring' => [
+            'name' => 'SunSpring Airline API',
+            'description' => 'REST Airline APIs: authorize token, flight search, price, book, ticket, cancel.',
+            'coming_soon' => false,
+        ],
     ],
 ];

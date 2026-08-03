@@ -357,6 +357,37 @@
     .status-pill.ok { background: #d1fae5; color: #065f46; }
     .status-pill.warn { background: #fef3c7; color: #92400e; }
     .status-pill.err { background: #fee2e2; color: #991b1b; }
+    .provider-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+    .provider-badge--sm { font-size: 0.68rem; padding: 0.2rem 0.55rem; }
+    .provider-badge--travelport {
+        background: #eef2ff;
+        color: #3730a3;
+        border-color: #c7d2fe;
+    }
+    .provider-badge--sunspring {
+        background: #ecfdf5;
+        color: #065f46;
+        border-color: #a7f3d0;
+    }
+    .provider-select-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #6b7280;
+        margin-bottom: 0.4rem;
+    }
     .empty-results {
         text-align: center;
         padding: 3rem 2rem;

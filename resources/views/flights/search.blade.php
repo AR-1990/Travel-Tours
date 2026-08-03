@@ -81,7 +81,7 @@
                 </div>
             </details>
         @endif
-    @elseif($travelportReady)
+    @elseif($anyProviderReady ?? $travelportReady)
         <div class="empty-results">
             <i class="fas fa-search fa-2x text-primary mb-3 opacity-50"></i>
             <h3 class="h6">Ready when you are</h3>

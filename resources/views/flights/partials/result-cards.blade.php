@@ -7,15 +7,19 @@
     @endphp
     <div class="results-header">
         <div>
-            <h2 class="h5 mb-1">
+            <h2 class="h5 mb-1 d-flex flex-wrap align-items-center gap-2">
                 @if($paginator)
                     {{ $paginator->total() }} fare option{{ $paginator->total() !== 1 ? 's' : '' }}
                     <span class="text-muted fw-normal">(page {{ $paginator->currentPage() }} of {{ $paginator->lastPage() }})</span>
                 @else
                     {{ $onPage }} fare option{{ $onPage !== 1 ? 's' : '' }}
                 @endif
+                @include('flights.partials.provider-badge', [
+                    'provider' => \App\Support\FlightProvider::fromResult($searchResult ?? null),
+                    'size' => 'sm',
+                ])
                 @if($apiTotal > $listed)
-                    <span class="text-muted fw-normal">· {{ $listed }} loaded from GDS</span>
+                    <span class="text-muted fw-normal">· {{ $listed }} loaded</span>
                 @endif
             </h2>
             @if(!empty($searchInput))
@@ -51,6 +55,13 @@
                 <div class="col-auto">
                     <div class="carrier-badge" title="{{ $carrierName }}">{{ $carrier }}</div>
                     <div class="small text-muted text-center mt-1" style="max-width:4.5rem;line-height:1.2;">{{ $carrierName }}</div>
+                    <div class="mt-2 text-center">
+                        @include('flights.partials.provider-badge', [
+                            'provider' => $sol['provider'] ?? ($searchResult['provider'] ?? null),
+                            'sol' => $sol,
+                            'size' => 'sm',
+                        ])
+                    </div>
                 </div>
                 <div class="col">
                     @foreach($journeys as $jIndex => $journey)
@@ -96,7 +107,7 @@
                         <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.price') }}" class="mt-2">
                             @csrf
                             <input type="hidden" name="solution_key" value="{{ $sol['key'] ?? '' }}">
-                            <button type="submit" class="btn btn-primary btn-sm" @disabled(!$travelportReady || empty($sol['key']))>
+                            <button type="submit" class="btn btn-primary btn-sm" @disabled(!($providerReady ?? $travelportReady ?? false) || empty($sol['key']))>
                                 Price &amp; hold
                             </button>
                         </form>

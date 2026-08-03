@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\FlightReservation;
+use App\Services\SunSpring\SunSpringAirService;
 use App\Services\Travelport\TravelportAirService;
 use App\Support\FlightDisplay;
 use Illuminate\Support\Facades\Auth;
@@ -153,6 +154,10 @@ trait RunsFlightWorkflow
      */
     protected function runIssueTicketFlow(TravelportAirService $air, array $locators, ?FlightReservation $reservation = null): array
     {
+        if ($reservation !== null && $reservation->isSunSpring()) {
+            return $this->runSunSpringTicketFlow($reservation);
+        }
+
         $ticketResult = $air->execute('air_ticketing', $locators);
         if (! ($ticketResult['ok'] ?? false)) {
             return $ticketResult;
@@ -202,6 +207,10 @@ trait RunsFlightWorkflow
      */
     protected function runRetrieveUniversalRecordFlow(TravelportAirService $air, FlightReservation $reservation): array
     {
+        if ($reservation->isSunSpring()) {
+            return $this->runSunSpringTicketInfoFlow($reservation);
+        }
+
         $locator = trim((string) ($reservation->universal_locator ?? ''));
         if ($locator === '') {
             return [
@@ -249,6 +258,10 @@ trait RunsFlightWorkflow
                 'message' => 'Reservation is already cancelled.',
                 'cancelled' => true,
             ];
+        }
+
+        if ($reservation->isSunSpring()) {
+            return $this->runSunSpringCancelFlow($reservation);
         }
 
         if ($reservation->status === FlightReservation::STATUS_TICKETED) {
@@ -358,5 +371,86 @@ trait RunsFlightWorkflow
         }
 
         $reservation->update($updates);
+    }
+
+    protected function runSunSpringTicketFlow(FlightReservation $reservation): array
+    {
+        $reference = (int) ($reservation->provider_locator ?: $reservation->universal_locator);
+        $result = app(SunSpringAirService::class)->issueTicket(['reference' => $reference]);
+
+        session([
+            'travelport.flight_ticket' => $result,
+            'public.flight_ticket' => $result,
+        ]);
+
+        if ($result['ok'] ?? false) {
+            $reservation->forceFill([
+                'status' => FlightReservation::STATUS_TICKETED,
+                'ticket_numbers' => $result['ticket_numbers'] ?? [],
+                'ticketed_at' => now(),
+                'raw_result' => array_merge((array) $reservation->raw_result, ['ticket' => $result]),
+            ])->save();
+        }
+
+        return $result;
+    }
+
+    protected function runSunSpringTicketInfoFlow(FlightReservation $reservation): array
+    {
+        $reference = (string) ($reservation->provider_locator ?: $reservation->universal_locator);
+        if ($reference === '') {
+            return ['ok' => false, 'message' => 'No SunSpring booking reference on this reservation.'];
+        }
+
+        $result = app(SunSpringAirService::class)->ticketInfo(['reference' => $reference]);
+        if ($result['ok'] ?? false) {
+            $reservation->forceFill([
+                'gds_snapshot' => array_merge(
+                    is_array($reservation->gds_snapshot) ? $reservation->gds_snapshot : [],
+                    ['ticket_info' => $result, 'retrieved_at' => now()->toIso8601String()]
+                ),
+                'raw_result' => array_merge((array) $reservation->raw_result, ['ticket_info' => $result]),
+            ])->save();
+        }
+
+        return [
+            'ok' => $result['ok'] ?? false,
+            'message' => $result['message'] ?? (($result['ok'] ?? false) ? 'SunSpring ticket info retrieved.' : 'Retrieve failed.'),
+            'provider' => 'sunspring',
+            'raw' => $result,
+        ];
+    }
+
+    protected function runSunSpringCancelFlow(FlightReservation $reservation): array
+    {
+        if ($reservation->status === FlightReservation::STATUS_TICKETED) {
+            return [
+                'ok' => false,
+                'message' => 'This reservation is ticketed. Cancel via SunSpring void/refund before removing the booking.',
+            ];
+        }
+
+        $reference = (string) ($reservation->provider_locator ?: $reservation->universal_locator);
+        if ($reference === '') {
+            return ['ok' => false, 'message' => 'No SunSpring booking reference on this reservation.'];
+        }
+
+        $result = app(SunSpringAirService::class)->cancel(['reference' => $reference]);
+        if (! ($result['ok'] ?? false)) {
+            return $result;
+        }
+
+        $reservation->update([
+            'status' => FlightReservation::STATUS_CANCELLED,
+            'cancelled_at' => now(),
+            'raw_result' => array_merge((array) $reservation->raw_result, ['cancel' => $result]),
+        ]);
+
+        return array_merge($result, [
+            'ok' => true,
+            'message' => $result['message'] ?? 'SunSpring reservation cancelled.',
+            'cancelled' => true,
+            'provider' => 'sunspring',
+        ]);
     }
 }

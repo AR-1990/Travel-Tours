@@ -35,18 +35,26 @@ class TravelportAirService extends TravelportSoapClient
     public function lowFareSearch(array $params): array
     {
         $result = $this->execute('low_fare_search', $params);
+        $solutions = array_map(static function ($sol) {
+            if (is_array($sol) && empty($sol['provider'])) {
+                $sol['provider'] = 'travelport';
+            }
+
+            return $sol;
+        }, $result['solutions'] ?? []);
 
         return [
             'ok' => $result['ok'],
             'http_status' => $result['http_status'],
             'message' => $result['message'],
-            'solutions' => $result['solutions'] ?? [],
-            'total_found' => $result['total_found'] ?? count($result['solutions'] ?? []),
+            'solutions' => $solutions,
+            'total_found' => $result['total_found'] ?? count($solutions),
             'trace_id' => $result['trace_id'],
             'response_excerpt' => $result['response_excerpt'],
             'endpoint' => $result['endpoint'],
             'operation' => 'low_fare_search',
             'schema_version' => $result['schema_version'] ?? null,
+            'provider' => 'travelport',
         ];
     }
 
@@ -262,6 +270,7 @@ class TravelportAirService extends TravelportSoapClient
                 'endpoint' => $endpoint,
                 'operation' => $operation,
                 'schema_version' => $ver,
+                'provider' => 'travelport',
             ];
         }
 

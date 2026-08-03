@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\FlightReservation;
+use App\Services\SunSpring\SunSpringAirService;
 use App\Services\Travelport\TravelportAirCatalog;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
+use App\Support\FlightProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -113,31 +115,44 @@ trait HandlesFlightWorkflow
         }
     }
 
-    public function workflowPrice(Request $request, TravelportAirService $air)
+    public function workflowPrice(Request $request, TravelportAirService $air, ?SunSpringAirService $sunspring = null)
     {
         $this->ensureFlightSearchPermission();
-
-        if (! TravelportIntegrationConfig::isReadyForAir()) {
-            return $this->workflowRedirectAfterPriceFail('Flight pricing is not configured.');
-        }
-
-        if (! $air->hasStoredPricingContext()) {
-            return $this->workflowRedirectAfterPriceFail('Run a flight search first, then price a fare.');
-        }
 
         $stored = $this->workflowSearchStore();
         $adults = (int) ($stored['input']['adults'] ?? 1);
         $solutionKey = (string) $request->input('solution_key', '');
 
-        $result = $air->execute('air_price', [
-            'adults' => $adults,
-            'solution_key' => $solutionKey,
-        ]);
+        if (FlightProvider::isSunSpring()) {
+            $sunspring ??= app(SunSpringAirService::class);
+            if (! $sunspring->isReady()) {
+                return $this->workflowRedirectAfterPriceFail('Flight pricing is not configured for the selected provider.');
+            }
+            if (! $sunspring->hasStoredPricingContext()) {
+                return $this->workflowRedirectAfterPriceFail('Run a SunSpring flight search first, then price a fare.');
+            }
+            $result = $sunspring->airPrice([
+                'adults' => $adults,
+                'solution_key' => $solutionKey,
+            ]);
+        } else {
+            if (! TravelportIntegrationConfig::isReadyForAir()) {
+                return $this->workflowRedirectAfterPriceFail('Flight pricing is not configured for the selected provider.');
+            }
+            if (! $air->hasStoredPricingContext()) {
+                return $this->workflowRedirectAfterPriceFail('Run a flight search first, then price a fare.');
+            }
+            $result = $air->execute('air_price', [
+                'adults' => $adults,
+                'solution_key' => $solutionKey,
+            ]);
+        }
 
         $this->saveWorkflowPrice([
             'solution_key' => $solutionKey,
             'input' => ['adults' => $adults],
             'result' => $result,
+            'provider' => FlightProvider::current(),
         ]);
 
         if (! ($result['ok'] ?? false)) {
@@ -146,7 +161,6 @@ trait HandlesFlightWorkflow
                 ->with('error', $result['message'] ?? 'Pricing failed.');
         }
 
-        // Continue the guided flow automatically — no need to open a URL by hand.
         if ($this->userCanBookFlights()) {
             return redirect()
                 ->route($this->flightsRoutePrefix().'.flights.book')
@@ -185,7 +199,12 @@ trait HandlesFlightWorkflow
                 ->with('error', 'Please confirm a fare before booking.');
         }
 
-        if (! session('travelport.last_air_price_xml')) {
+        if (! FlightProvider::isSunSpring() && ! session('travelport.last_air_price_xml')) {
+            return redirect()->to($this->workflowSearchUrl())
+                ->with('error', 'Pricing session expired. Search and price again.');
+        }
+
+        if (FlightProvider::isSunSpring() && ! session('sunspring.last_price')) {
             return redirect()->to($this->workflowSearchUrl())
                 ->with('error', 'Pricing session expired. Search and price again.');
         }
@@ -204,11 +223,17 @@ trait HandlesFlightWorkflow
         ]));
     }
 
-    public function workflowBookStore(Request $request, TravelportAirService $air)
+    public function workflowBookStore(Request $request, TravelportAirService $air, ?SunSpringAirService $sunspring = null)
     {
         $this->ensureFlightBookPermission();
 
-        if (! TravelportIntegrationConfig::isReadyForAir()) {
+        if (FlightProvider::isSunSpring()) {
+            $sunspring ??= app(SunSpringAirService::class);
+            if (! $sunspring->isReady()) {
+                return redirect()->route($this->flightsRoutePrefix().'.flights.book')
+                    ->with('error', 'Flight booking is not configured.');
+            }
+        } elseif (! TravelportIntegrationConfig::isReadyForAir()) {
             return redirect()->route($this->flightsRoutePrefix().'.flights.book')
                 ->with('error', 'Flight booking is not configured.');
         }
@@ -222,7 +247,50 @@ trait HandlesFlightWorkflow
             'passenger_gender' => ['required', 'in:M,F'],
             'passenger_prefix' => ['nullable', 'string', 'max:10'],
             'form_of_payment' => ['nullable', 'string', 'max:20'],
+            'national_id' => ['nullable', 'string', 'max:32'],
+            'nationality' => ['nullable', 'string', 'max:8'],
+            'country_code' => ['nullable', 'string', 'max:8'],
         ]);
+
+        if (FlightProvider::isSunSpring()) {
+            $sunspring ??= app(SunSpringAirService::class);
+            $params = [
+                'country_code' => (string) $request->input('country_code', '+96'),
+                'passengers' => [[
+                    'prefix' => (string) $request->input('passenger_prefix', 'Mr'),
+                    'first' => (string) $request->input('passenger_first'),
+                    'last' => (string) $request->input('passenger_last'),
+                    'email' => (string) $request->input('passenger_email'),
+                    'phone' => (string) $request->input('passenger_phone'),
+                    'dob' => (string) $request->input('passenger_dob'),
+                    'gender' => (string) $request->input('passenger_gender'),
+                    'type' => 'ADT',
+                    'national_id' => (string) $request->input('national_id', '0000000000'),
+                    'nationality' => (string) $request->input('nationality', 'USA'),
+                ]],
+                'passenger_prefix' => (string) $request->input('passenger_prefix', 'Mr'),
+                'passenger_first' => (string) $request->input('passenger_first'),
+                'passenger_last' => (string) $request->input('passenger_last'),
+                'passenger_email' => (string) $request->input('passenger_email'),
+                'passenger_phone' => (string) $request->input('passenger_phone'),
+                'passenger_dob' => (string) $request->input('passenger_dob'),
+                'passenger_gender' => (string) $request->input('passenger_gender'),
+            ];
+
+            $result = $sunspring->book($params);
+            if (! ($result['ok'] ?? false)) {
+                return redirect()
+                    ->route($this->flightsRoutePrefix().'.flights.book')
+                    ->withInput()
+                    ->with('error', $result['message'] ?? 'Booking failed.');
+            }
+
+            $reservation = $this->persistFlightBooking($result, $params);
+
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+                ->with('success', $result['message'] ?? 'Booking created. Your reservation details are below.');
+        }
 
         $params = $this->flightOperationParams($request, 'air_create_reservation');
         $result = $air->execute('air_create_reservation', $params);
@@ -277,13 +345,56 @@ trait HandlesFlightWorkflow
         ]));
     }
 
-    public function workflowTicketIssue(TravelportAirService $air)
+    public function workflowTicketIssue(TravelportAirService $air, ?SunSpringAirService $sunspring = null)
     {
         $this->ensureFlightBookPermission();
 
-        if (! TravelportIntegrationConfig::isReadyForAir()) {
+        if (FlightProvider::isSunSpring()) {
+            $sunspring ??= app(SunSpringAirService::class);
+            if (! $sunspring->isReady()) {
+                return redirect()->route($this->flightsRoutePrefix().'.flights.confirmation')
+                    ->with('error', 'Ticketing is not configured.');
+            }
+        } elseif (! TravelportIntegrationConfig::isReadyForAir()) {
             return redirect()->route($this->flightsRoutePrefix().'.flights.confirmation')
                 ->with('error', 'Ticketing is not configured.');
+        }
+
+        $reservationId = session('travelport.last_reservation_id') ?? session('public.last_reservation_id');
+        $reservation = $reservationId ? FlightReservation::query()->find($reservationId) : null;
+
+        if (FlightProvider::isSunSpring()) {
+            $sunspring ??= app(SunSpringAirService::class);
+            $reference = (int) (
+                $reservation?->provider_locator
+                ?: $reservation?->universal_locator
+                ?: data_get(session('sunspring.last_booking'), 'reference_id', 0)
+            );
+            $result = $sunspring->issueTicket(['reference' => $reference]);
+
+            if (($result['ok'] ?? false) && $reservation) {
+                $reservation->forceFill([
+                    'status' => FlightReservation::STATUS_TICKETED,
+                    'ticket_numbers' => $result['ticket_numbers'] ?? [],
+                    'ticketed_at' => now(),
+                    'raw_result' => array_merge((array) $reservation->raw_result, ['ticket' => $result]),
+                ])->save();
+            }
+
+            session([
+                'travelport.flight_ticket' => $result,
+                'public.flight_ticket' => $result,
+            ]);
+
+            if ($reservation) {
+                return redirect()
+                    ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+                    ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Ticketing complete.');
+            }
+
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.confirmation')
+                ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Ticketing complete.');
         }
 
         $locators = $this->bookingLocatorParams();
@@ -291,9 +402,6 @@ trait HandlesFlightWorkflow
             return redirect()->route($this->flightsRoutePrefix().'.flights.confirmation')
                 ->with('error', 'No booking locator found.');
         }
-
-        $reservationId = session('travelport.last_reservation_id') ?? session('public.last_reservation_id');
-        $reservation = $reservationId ? FlightReservation::query()->find($reservationId) : null;
 
         $result = $this->runIssueTicketFlow($air, $locators, $reservation);
 

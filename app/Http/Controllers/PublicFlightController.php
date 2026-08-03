@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\HandlesFlightWorkflow;
 use App\Http\Controllers\Concerns\NormalizesFlightSearchInput;
 use App\Models\FlightReservation;
+use App\Services\SunSpring\SunSpringAirService;
+use App\Services\SunSpring\SunSpringIntegrationConfig;
 use App\Services\Travelport\TravelportAirCatalog;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
 use App\Support\AirportDirectory;
+use App\Support\FlightProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,8 +30,12 @@ class PublicFlightController extends Controller
         return view('frontend.flight-hub', $this->publicFlightViewData(session('public.flight_search', [])));
     }
 
-    public function flightSearch(Request $request, TravelportAirService $air)
+    public function flightSearch(Request $request, TravelportAirService $air, SunSpringAirService $sunspring)
     {
+        if ($request->filled('provider')) {
+            FlightProvider::set((string) $request->input('provider'));
+        }
+
         $input = $this->validatedFlightSearchInput($request);
         if ($input === null) {
             $tripType = $this->normalizeTripType((string) $request->input('trip_type', 'oneway'));
@@ -39,7 +46,10 @@ class PublicFlightController extends Controller
             return redirect()->route('home')->with('error', $message);
         }
 
-        $searchResult = $air->lowFareSearch($input);
+        $input['provider'] = FlightProvider::current();
+        $searchResult = FlightProvider::isSunSpring()
+            ? $sunspring->lowFareSearch($input)
+            : $air->lowFareSearch($input);
 
         session([
             'public.flight_search' => [
@@ -63,9 +73,9 @@ class PublicFlightController extends Controller
         return view('frontend.flight-results', $this->publicFlightViewData($stored));
     }
 
-    public function flightPrice(Request $request, TravelportAirService $air)
+    public function flightPrice(Request $request, TravelportAirService $air, SunSpringAirService $sunspring)
     {
-        return $this->workflowPrice($request, $air);
+        return $this->workflowPrice($request, $air, $sunspring);
     }
 
     public function flightPriceShow()
@@ -78,9 +88,9 @@ class PublicFlightController extends Controller
         return $this->workflowBookShow();
     }
 
-    public function flightBookStore(Request $request, TravelportAirService $air)
+    public function flightBookStore(Request $request, TravelportAirService $air, SunSpringAirService $sunspring)
     {
-        return $this->workflowBookStore($request, $air);
+        return $this->workflowBookStore($request, $air, $sunspring);
     }
 
     public function flightConfirmation()
@@ -88,9 +98,9 @@ class PublicFlightController extends Controller
         return $this->workflowConfirmation();
     }
 
-    public function flightTicketIssue(TravelportAirService $air)
+    public function flightTicketIssue(TravelportAirService $air, SunSpringAirService $sunspring)
     {
-        return $this->workflowTicketIssue($air);
+        return $this->workflowTicketIssue($air, $sunspring);
     }
 
     public function reservationsIndex(Request $request)
@@ -153,6 +163,9 @@ class PublicFlightController extends Controller
             ],
             'gdsSnapshot' => $reservation->gds_snapshot,
             'workflowStep' => $reservation->status === FlightReservation::STATUS_TICKETED ? 'done' : 'ticket',
+            'providerReady' => $reservation->isSunSpring()
+                ? SunSpringIntegrationConfig::isReadyForAir()
+                : TravelportIntegrationConfig::isReadyForAir(),
             'ticketActionRoute' => route('frontend.flights.reservations.ticket', $reservation),
             'retrieveActionRoute' => route('frontend.flights.reservations.retrieve', $reservation),
             'cancelActionRoute' => route('frontend.flights.reservations.cancel', $reservation),
@@ -302,7 +315,14 @@ class PublicFlightController extends Controller
             'flightSearchResult' => $searchSession['result'] ?? null,
             'airportOptions' => $airportOptions,
             'travelportReady' => TravelportIntegrationConfig::isReadyForAir(),
-            'hasPricingContext' => app(TravelportAirService::class)->hasStoredPricingContext(),
+            'sunspringReady' => SunSpringIntegrationConfig::isReadyForAir(),
+            'anyProviderReady' => TravelportIntegrationConfig::isReadyForAir() || SunSpringIntegrationConfig::isReadyForAir(),
+            'providerReady' => FlightProvider::isReady(),
+            'flightProvider' => FlightProvider::current(),
+            'flightProviders' => FlightProvider::options(),
+            'hasPricingContext' => FlightProvider::isSunSpring()
+                ? app(SunSpringAirService::class)->hasStoredPricingContext()
+                : app(TravelportAirService::class)->hasStoredPricingContext(),
             'operationGroups' => TravelportAirCatalog::groupedForUi(),
             'canBookFlights' => true,
         ];
