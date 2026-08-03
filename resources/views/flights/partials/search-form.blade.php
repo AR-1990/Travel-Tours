@@ -36,9 +36,18 @@
         ['ORD', 'CDG'],
         ['NYC', 'LON'],
     ];
+    $sunspringPopularRoutes = \App\Support\SunSpringAirports::POPULAR_ROUTES;
+    $sunspringAirportCodes = \App\Support\SunSpringAirports::CODES;
+    $ssDefaultOrigin = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultOrigin());
+    $ssDefaultDest = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultDestination());
 @endphp
 <div class="flight-search-card">
-    <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.search') }}" id="flightSearchForm">
+    <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.search') }}" id="flightSearchForm"
+        data-ss-origin-code="{{ \App\Support\SunSpringAirports::defaultOrigin() }}"
+        data-ss-origin-label="{{ $ssDefaultOrigin['label'] ?? 'THR' }}"
+        data-ss-dest-code="{{ \App\Support\SunSpringAirports::defaultDestination() }}"
+        data-ss-dest-label="{{ $ssDefaultDest['label'] ?? 'MHD' }}"
+        data-ss-codes='@json($sunspringAirportCodes)'>
         @csrf
         <div class="trip-type-tabs" role="group" aria-label="Trip type">
             <label>
@@ -78,6 +87,10 @@
         <p class="small text-muted mb-3">
             <i class="fas fa-info-circle me-1"></i>
             Type a <strong>city</strong> or <strong>airport name</strong> — same picker as the public site ({{ number_format(\App\Support\AirportDirectory::count()) }} airports).
+        </p>
+        <p class="small text-muted mb-3" data-provider-airport-help hidden>
+            <i class="fas fa-info-circle me-1"></i>
+            SunSpring shows <strong>Sepehran network airports only</strong> (e.g. THR, MHD, SYZ). Worldwide airports stay available on Travelport.
         </p>
 
         <div id="simpleRouteFields" style="{{ $isMulti ? 'display: none;' : '' }}">
@@ -159,22 +172,42 @@
         </div>
 
         <div class="popular-routes mt-3" id="popularRoutesWrap" style="{{ $isMulti ? 'display: none;' : '' }}">
-            <span class="small text-muted me-1">Popular routes:</span>
-            @foreach($popularRoutePairs as [$fromCode, $toCode])
-                @php
-                    $fromAirport = \App\Support\AirportDirectory::find($fromCode);
-                    $toAirport = \App\Support\AirportDirectory::find($toCode);
-                    $fromCity = $fromAirport['city'] ?? $fromCode;
-                    $toCity = $toAirport['city'] ?? $toCode;
-                @endphp
-                <button type="button"
-                    data-origin="{{ $fromCode }}"
-                    data-destination="{{ $toCode }}"
-                    data-o-label="{{ $fromAirport['label'] ?? $fromCode }}"
-                    data-d-label="{{ $toAirport['label'] ?? $toCode }}">
-                    {{ $fromCity }} → {{ $toCity }}
-                </button>
-            @endforeach
+            <div data-popular-routes="travelport">
+                <span class="small text-muted me-1">Popular routes:</span>
+                @foreach($popularRoutePairs as [$fromCode, $toCode])
+                    @php
+                        $fromAirport = \App\Support\AirportDirectory::find($fromCode);
+                        $toAirport = \App\Support\AirportDirectory::find($toCode);
+                        $fromCity = $fromAirport['city'] ?? $fromCode;
+                        $toCity = $toAirport['city'] ?? $toCode;
+                    @endphp
+                    <button type="button"
+                        data-origin="{{ $fromCode }}"
+                        data-destination="{{ $toCode }}"
+                        data-o-label="{{ $fromAirport['label'] ?? $fromCode }}"
+                        data-d-label="{{ $toAirport['label'] ?? $toCode }}">
+                        {{ $fromCity }} → {{ $toCity }}
+                    </button>
+                @endforeach
+            </div>
+            <div data-popular-routes="sunspring" hidden>
+                <span class="small text-muted me-1">SunSpring routes:</span>
+                @foreach($sunspringPopularRoutes as [$fromCode, $toCode])
+                    @php
+                        $fromAirport = \App\Support\AirportDirectory::find($fromCode);
+                        $toAirport = \App\Support\AirportDirectory::find($toCode);
+                        $fromCity = $fromAirport['city'] ?? $fromCode;
+                        $toCity = $toAirport['city'] ?? $toCode;
+                    @endphp
+                    <button type="button"
+                        data-origin="{{ $fromCode }}"
+                        data-destination="{{ $toCode }}"
+                        data-o-label="{{ $fromAirport['label'] ?? $fromCode }}"
+                        data-d-label="{{ $toAirport['label'] ?? $toCode }}">
+                        {{ $fromCity }} → {{ $toCity }}
+                    </button>
+                @endforeach
+            </div>
         </div>
     </form>
 </div>

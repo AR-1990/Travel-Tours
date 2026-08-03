@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Support\AirportDirectory;
+use App\Support\FlightProvider;
+use App\Support\SunSpringAirports;
 use Illuminate\Http\Request;
 
 class AirportLookupController extends Controller
@@ -11,9 +13,20 @@ class AirportLookupController extends Controller
     {
         $q = (string) $request->query('q', '');
         $limit = min(30, max(5, (int) $request->query('limit', 15)));
+        $provider = strtolower((string) $request->query('provider', ''));
+
+        if ($provider === FlightProvider::SUNSPRING) {
+            return response()->json([
+                'results' => SunSpringAirports::search($q, $limit),
+                'provider' => FlightProvider::SUNSPRING,
+                'scope' => 'sunspring',
+            ]);
+        }
 
         return response()->json([
             'results' => AirportDirectory::search($q, $limit),
+            'provider' => FlightProvider::TRAVELPORT,
+            'scope' => 'world',
         ]);
     }
 

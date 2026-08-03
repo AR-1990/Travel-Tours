@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\Integration;
 use App\Services\SunSpring\SunSpringClient;
 use App\Services\SunSpring\SunSpringIntegrationConfig;
 use Tests\TestCase;
@@ -30,17 +31,27 @@ class SunSpringIntegrationConfigTest extends TestCase
             'sunspring.password' => '',
         ]);
 
-        // No integrations DB row required: merged() falls back to config when query returns null.
-        // If MySQL is down this test is skipped.
+        $row = null;
+        $wasEnabled = null;
+
         try {
-            $url = SunSpringIntegrationConfig::baseUrl();
+            $row = Integration::query()->where('slug', Integration::SLUG_SUNSPRING)->first();
+            if ($row) {
+                $wasEnabled = (bool) $row->is_enabled;
+                // Disable DB override so this unit test only exercises config defaults.
+                $row->forceFill(['is_enabled' => false])->save();
+            }
+
+            $this->assertSame('https://sandbox.sunspring.ae', SunSpringIntegrationConfig::baseUrl());
+
+            config(['sunspring.environment' => 'production']);
+            $this->assertSame('https://api.sunspring.ae', SunSpringIntegrationConfig::baseUrl());
         } catch (\Throwable $e) {
             $this->markTestSkipped('Database unavailable for integration config merge: '.$e->getMessage());
+        } finally {
+            if ($row !== null && $wasEnabled !== null) {
+                $row->forceFill(['is_enabled' => $wasEnabled])->save();
+            }
         }
-
-        $this->assertSame('https://sandbox.sunspring.ae', $url);
-
-        config(['sunspring.environment' => 'production']);
-        $this->assertSame('https://api.sunspring.ae', SunSpringIntegrationConfig::baseUrl());
     }
 }

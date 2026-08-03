@@ -33,6 +33,20 @@ class SunSpringAirService
         }
 
         $body = $this->searchBody($params);
+        $origin = strtoupper((string) data_get($body, 'outbound.departure', ''));
+        $destination = strtoupper((string) data_get($body, 'outbound.arrival', ''));
+        if ($origin === '' || $destination === ''
+            || ! \App\Support\SunSpringAirports::isAllowed($origin)
+            || ! \App\Support\SunSpringAirports::isAllowed($destination)) {
+            return [
+                'ok' => false,
+                'message' => 'SunSpring only supports Sepehran network airports (e.g. THR, MHD, SYZ). Switch to Travelport for worldwide search.',
+                'solutions' => [],
+                'total_found' => 0,
+                'provider' => 'sunspring',
+            ];
+        }
+
         $response = $this->client->post('/api/v2/flight/FlightSearch', $body);
 
         if (! ($response['ok'] ?? false)) {

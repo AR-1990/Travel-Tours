@@ -177,6 +177,22 @@
                 alert('Please select From and To airports from the list.');
             }
         });
+
+        let ssCodes = [];
+        try {
+            ssCodes = JSON.parse(form.dataset.ssCodes || '[]');
+        } catch (_) {}
+        window.bindFlightProviderAirportScope?.(form, {
+            allowedCodes: ssCodes,
+            defaultOrigin: {
+                code: form.dataset.ssOriginCode || 'THR',
+                label: form.dataset.ssOriginLabel || 'THR',
+            },
+            defaultDestination: {
+                code: form.dataset.ssDestCode || 'MHD',
+                label: form.dataset.ssDestLabel || 'MHD',
+            },
+        });
     };
 
     if (typeof window.initFlightUi === 'function') {

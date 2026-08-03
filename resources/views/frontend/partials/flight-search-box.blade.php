@@ -1,7 +1,18 @@
 @php
     $homeFlightInput = $flightSearchInput ?? [];
-    $originCode = strtoupper((string) ($homeFlightInput['origin'] ?? 'JFK'));
-    $destCode = strtoupper((string) ($homeFlightInput['destination'] ?? 'LAX'));
+    $provider = old('provider', $homeFlightInput['provider'] ?? \App\Support\FlightProvider::current());
+    $defaultOrigin = $provider === 'sunspring' ? \App\Support\SunSpringAirports::defaultOrigin() : 'JFK';
+    $defaultDest = $provider === 'sunspring' ? \App\Support\SunSpringAirports::defaultDestination() : 'LAX';
+    $originCode = strtoupper((string) ($homeFlightInput['origin'] ?? $defaultOrigin));
+    $destCode = strtoupper((string) ($homeFlightInput['destination'] ?? $defaultDest));
+    if ($provider === 'sunspring') {
+        if (! \App\Support\SunSpringAirports::isAllowed($originCode)) {
+            $originCode = \App\Support\SunSpringAirports::defaultOrigin();
+        }
+        if (! \App\Support\SunSpringAirports::isAllowed($destCode)) {
+            $destCode = \App\Support\SunSpringAirports::defaultDestination();
+        }
+    }
     $originAirport = \App\Support\AirportDirectory::find($originCode);
     $destAirport = \App\Support\AirportDirectory::find($destCode);
     $searchSubmitLabel = $searchSubmitLabel ?? 'Search Flights';
@@ -9,16 +20,20 @@
     $isRound = in_array($tripTypeRaw, ['roundtrip', 'round-way', 'round_way'], true);
     $isMulti = in_array($tripTypeRaw, ['multicity', 'multi-city', 'multi_city', 'multi'], true);
     $airportSearchUrl = route('api.airports.search');
+    $sunspringAirportCodes = \App\Support\SunSpringAirports::CODES;
+    $ssDefaultOrigin = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultOrigin());
+    $ssDefaultDest = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultDestination());
+    $sunspringPopularRoutes = \App\Support\SunSpringAirports::POPULAR_ROUTES;
 
     $defaultMultiLegs = [
         [
-            'origin' => $originCode,
-            'destination' => 'ORD',
+            'origin' => $provider === 'sunspring' ? 'THR' : $originCode,
+            'destination' => $provider === 'sunspring' ? 'SYZ' : 'ORD',
             'departure_date' => $homeFlightInput['departure_date'] ?? now()->addDays(14)->format('Y-m-d'),
         ],
         [
-            'origin' => 'ORD',
-            'destination' => $destCode,
+            'origin' => $provider === 'sunspring' ? 'SYZ' : 'ORD',
+            'destination' => $provider === 'sunspring' ? 'MHD' : $destCode,
             'departure_date' => isset($homeFlightInput['departure_date'])
                 ? \Carbon\Carbon::parse($homeFlightInput['departure_date'])->addDays(3)->format('Y-m-d')
                 : now()->addDays(17)->format('Y-m-d'),
@@ -42,7 +57,12 @@
                 <div class="tab-pane fade show active" id="pills-1" role="tabpanel" tabindex="0">
                     <div class="flight-search ft-group home-flight-search">
                         <div class="search-form">
-                            <form action="{{ route('frontend.flights.search') }}" method="POST" id="homeFlightSearchForm">
+                            <form action="{{ route('frontend.flights.search') }}" method="POST" id="homeFlightSearchForm"
+                                data-ss-origin-code="{{ \App\Support\SunSpringAirports::defaultOrigin() }}"
+                                data-ss-origin-label="{{ $ssDefaultOrigin['label'] ?? 'THR' }}"
+                                data-ss-dest-code="{{ \App\Support\SunSpringAirports::defaultDestination() }}"
+                                data-ss-dest-label="{{ $ssDefaultDest['label'] ?? 'MHD' }}"
+                                data-ss-codes='@json($sunspringAirportCodes)'>
                                 @csrf
 
                                 <div class="home-flight-toolbar">
@@ -76,7 +96,6 @@
                                     $travelportReady = $travelportReady ?? \App\Services\Travelport\TravelportIntegrationConfig::isReadyForAir();
                                     $sunspringReady = $sunspringReady ?? \App\Services\SunSpring\SunSpringIntegrationConfig::isReadyForAir();
                                     $flightProviders = $flightProviders ?? \App\Support\FlightProvider::options();
-                                    $provider = old('provider', $homeFlightInput['provider'] ?? \App\Support\FlightProvider::current());
                                 @endphp
                                 <div class="home-provider-select mb-3">
                                     <div class="home-provider-select__label">Search via API</div>
@@ -95,6 +114,9 @@
                                             </div>
                                         @endforeach
                                     </div>
+                                    <p class="small text-muted mt-2 mb-0" data-provider-airport-help @if($provider !== 'sunspring') hidden @endif>
+                                        SunSpring lists Sepehran network airports only (THR, MHD, SYZ, …).
+                                    </p>
                                 </div>
 
                                 <div class="flight-search-wrapper">
@@ -249,3 +271,23 @@
         'canRemove' => true,
     ])
 </template>
+
+<script>
+(function () {
+    const form = document.getElementById('homeFlightSearchForm');
+    if (!form || typeof window.bindFlightProviderAirportScope !== 'function') return;
+    let ssCodes = [];
+    try { ssCodes = JSON.parse(form.dataset.ssCodes || '[]'); } catch (_) {}
+    window.bindFlightProviderAirportScope(form, {
+        allowedCodes: ssCodes,
+        defaultOrigin: {
+            code: form.dataset.ssOriginCode || 'THR',
+            label: form.dataset.ssOriginLabel || 'THR',
+        },
+        defaultDestination: {
+            code: form.dataset.ssDestCode || 'MHD',
+            label: form.dataset.ssDestLabel || 'MHD',
+        },
+    });
+})();
+</script>

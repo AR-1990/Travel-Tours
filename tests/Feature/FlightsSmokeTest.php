@@ -71,6 +71,16 @@ class FlightsSmokeTest extends TestCase
         $this->getJson(route('api.airports.search', ['q' => 'ORD']))
             ->assertOk()
             ->assertJsonFragment(['code' => 'ORD']);
+
+        $sun = $this->getJson(route('api.airports.search', ['q' => 'Teh', 'provider' => 'sunspring']));
+        $sun->assertOk()->assertJsonPath('provider', 'sunspring');
+        $codes = collect($sun->json('results'))->pluck('code')->all();
+        $this->assertNotEmpty($codes);
+        $this->assertTrue(collect($codes)->every(fn ($c) => in_array($c, \App\Support\SunSpringAirports::CODES, true)));
+
+        $this->getJson(route('api.airports.search', ['q' => 'London', 'provider' => 'sunspring']))
+            ->assertOk()
+            ->assertJsonPath('results', []);
     }
 
     public function test_airport_api_returns_json_when_authenticated(): void

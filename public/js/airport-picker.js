@@ -47,6 +47,15 @@
             });
         }
 
+        getProvider() {
+            const form = this.root.closest('form');
+            const checked = form?.querySelector('input[name="provider"]:checked:not(:disabled)');
+            if (checked?.value) {
+                return checked.value;
+            }
+            return this.root.dataset.provider || '';
+        }
+
         async fetchOne(code) {
             try {
                 const res = await fetch(`/api/airports/${encodeURIComponent(code)}`, {
@@ -62,7 +71,15 @@
 
         async search(q) {
             try {
-                const url = `${this.searchUrl}?q=${encodeURIComponent(q)}&limit=15`;
+                const provider = this.getProvider();
+                const params = new URLSearchParams({
+                    q: q || '',
+                    limit: '15',
+                });
+                if (provider) {
+                    params.set('provider', provider);
+                }
+                const url = `${this.searchUrl}?${params.toString()}`;
                 const res = await fetch(url, {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -183,6 +200,56 @@
         const el = document.querySelector(`.airport-picker[data-field="${nameOrId}"]`)
             || document.querySelector(`#${nameOrId}`)?.closest('.airport-picker');
         return el?._airportPicker || null;
+    };
+
+    /**
+     * When provider switches to SunSpring, constrain airports to the Sepehran allow-list
+     * and reset From/To if the current codes are not allowed.
+     */
+    window.syncAirportPickersForProvider = function (form, options) {
+        if (!form) return;
+        const opts = options || {};
+        const provider = form.querySelector('input[name="provider"]:checked:not(:disabled)')?.value || '';
+        const isSun = provider === 'sunspring';
+        const allowed = new Set((opts.allowedCodes || []).map((c) => String(c).toUpperCase()));
+        const defaultOrigin = opts.defaultOrigin || { code: 'THR', label: 'Tehran — Mehrabad (THR)' };
+        const defaultDest = opts.defaultDestination || { code: 'MHD', label: 'Mashhad (MHD)' };
+
+        form.querySelectorAll('.airport-picker').forEach((el) => {
+            el.dataset.provider = provider;
+            const picker = el._airportPicker;
+            if (!picker) return;
+            const code = (picker.getCode() || '').toUpperCase();
+            if (!isSun || !allowed.size || allowed.has(code)) {
+                return;
+            }
+            const field = el.dataset.field || '';
+            if (field.includes('destination') || field.endsWith('destination')) {
+                picker.setSelection(defaultDest.code, defaultDest.label);
+            } else {
+                picker.setSelection(defaultOrigin.code, defaultOrigin.label);
+            }
+        });
+
+        const help = form.querySelector('[data-provider-airport-help]');
+        if (help) {
+            help.hidden = !isSun;
+        }
+
+        const worldPopular = form.querySelector('[data-popular-routes="travelport"]');
+        const sunPopular = form.querySelector('[data-popular-routes="sunspring"]');
+        if (worldPopular) worldPopular.hidden = isSun;
+        if (sunPopular) sunPopular.hidden = !isSun;
+    };
+
+    window.bindFlightProviderAirportScope = function (form, options) {
+        if (!form || form.dataset.providerAirportBound === '1') return;
+        form.dataset.providerAirportBound = '1';
+        const sync = () => window.syncAirportPickersForProvider(form, options);
+        form.querySelectorAll('input[name="provider"]').forEach((input) => {
+            input.addEventListener('change', sync);
+        });
+        sync();
     };
 
     if (document.readyState === 'loading') {
