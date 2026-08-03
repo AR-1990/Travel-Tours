@@ -1866,8 +1866,8 @@
     <script src="assets/js/jquery.timepicker.min.js"></script>
     <script src="assets/js/wow.min.js"></script>
     <script src="assets/js/main.js"></script>
-    <script src="{{ asset('js/airport-picker.js') }}"></script>
-    <script src="{{ asset('js/flight-multicity.js') }}"></script>
+    <script src="{{ asset('js/airport-picker.js') }}?v={{ file_exists(public_path('js/airport-picker.js')) ? filemtime(public_path('js/airport-picker.js')) : time() }}"></script>
+    <script src="{{ asset('js/flight-multicity.js') }}?v={{ file_exists(public_path('js/flight-multicity.js')) ? filemtime(public_path('js/flight-multicity.js')) : time() }}"></script>
     <script>
     (function () {
         window.initHomeFlightSearch?.();

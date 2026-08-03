@@ -281,31 +281,3 @@
         'canRemove' => true,
     ])
 </template>
-
-<script>
-(function () {
-    const form = document.getElementById('homeFlightSearchForm');
-    if (!form || typeof window.bindFlightProviderAirportScope !== 'function') return;
-    let ssCodes = [];
-    try { ssCodes = JSON.parse(form.dataset.ssCodes || '[]'); } catch (_) {}
-    window.bindFlightProviderAirportScope(form, {
-        allowedCodes: ssCodes,
-        defaultOrigin: {
-            code: form.dataset.ssOriginCode || 'THR',
-            label: form.dataset.ssOriginLabel || 'THR',
-        },
-        defaultDestination: {
-            code: form.dataset.ssDestCode || 'MHD',
-            label: form.dataset.ssDestLabel || 'MHD',
-        },
-        travelportOrigin: {
-            code: form.dataset.tpOriginCode || 'JFK',
-            label: form.dataset.tpOriginLabel || 'JFK',
-        },
-        travelportDestination: {
-            code: form.dataset.tpDestCode || 'LAX',
-            label: form.dataset.tpDestLabel || 'LAX',
-        },
-    });
-})();
-</script>

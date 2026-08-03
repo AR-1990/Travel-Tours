@@ -1,4 +1,4 @@
-<script src="{{ asset('js/airport-picker.js') }}"></script>
+<script src="{{ asset('js/airport-picker.js') }}?v={{ file_exists(public_path('js/airport-picker.js')) ? filemtime(public_path('js/airport-picker.js')) : time() }}"></script>
 <script>
 (function () {
     function swapPickers() {
@@ -201,6 +201,8 @@
                 label: form.dataset.tpDestLabel || 'JFK',
             },
         });
+        // Also auto-scan any other forms (public pages).
+        window.initFlightProviderAirportScopes?.();
     };
 
     if (typeof window.initFlightUi === 'function') {

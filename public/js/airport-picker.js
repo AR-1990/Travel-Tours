@@ -316,9 +316,47 @@
         });
     };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAll);
-    } else {
+    /**
+     * Auto-wire any flight search form that declares SunSpring allow-list data attrs.
+     * Needed on the public site because the search box renders before this script loads.
+     */
+    window.initFlightProviderAirportScopes = function () {
+        document.querySelectorAll('form[data-ss-codes]').forEach((form) => {
+            let ssCodes = [];
+            try {
+                ssCodes = JSON.parse(form.dataset.ssCodes || '[]');
+            } catch (_) {}
+
+            window.bindFlightProviderAirportScope(form, {
+                allowedCodes: ssCodes,
+                defaultOrigin: {
+                    code: form.dataset.ssOriginCode || 'THR',
+                    label: form.dataset.ssOriginLabel || 'THR',
+                },
+                defaultDestination: {
+                    code: form.dataset.ssDestCode || 'MHD',
+                    label: form.dataset.ssDestLabel || 'MHD',
+                },
+                travelportOrigin: {
+                    code: form.dataset.tpOriginCode || 'LHR',
+                    label: form.dataset.tpOriginLabel || 'LHR',
+                },
+                travelportDestination: {
+                    code: form.dataset.tpDestCode || 'JFK',
+                    label: form.dataset.tpDestLabel || 'JFK',
+                },
+            });
+        });
+    };
+
+    function boot() {
         initAll();
+        window.initFlightProviderAirportScopes();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
     }
 })();

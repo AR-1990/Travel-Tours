@@ -103,6 +103,7 @@
         window.__homeFlightSearchReady = true;
 
         window.initAirportPickers?.();
+        window.initFlightProviderAirportScopes?.();
 
         document.getElementById('homeSwapAirports')?.addEventListener('click', function () {
             const o = window.getAirportPicker('origin');
