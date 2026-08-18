@@ -74,7 +74,8 @@
                         </div>
                         @if(!empty($flightSearchResult['solutions']))
                             <div class="col-md-3 booking-sort-box">
-                                <select id="flight-price-sort" class="select" aria-label="Sort by price">
+                                <label class="visually-hidden" for="flight-price-sort">Sort by price</label>
+                                <select id="flight-price-sort" class="flight-price-sort" aria-label="Sort by price">
                                     <option value="asc" selected>Price: Low to High</option>
                                     <option value="desc">Price: High to Low</option>
                                 </select>
@@ -104,6 +105,28 @@
         </div>
     </div>
 @endsection
+
+@push('styles')
+<style>
+.flight-price-sort {
+    width: 100%;
+    height: 46px;
+    line-height: 44px;
+    border-radius: 14px;
+    padding: 0 15px;
+    font-size: 16px;
+    color: var(--color-dark);
+    background: #fff;
+    border: 1px solid var(--border-info-color);
+    cursor: pointer;
+    appearance: auto;
+}
+.flight-price-sort:focus {
+    outline: none;
+    border-color: var(--theme-color);
+}
+</style>
+@endpush
 
 @push('scripts')
 <script>
@@ -141,7 +164,7 @@
     function applyFlightPriceSort(order) {
         const list = document.getElementById('flight-results-list');
         if (!list) return;
-        const items = Array.from(list.children);
+        const items = Array.from(list.querySelectorAll(':scope > [data-price]'));
         items.sort(function (a, b) {
             const pa = parseFloat(a.getAttribute('data-price') || 'Infinity');
             const pb = parseFloat(b.getAttribute('data-price') || 'Infinity');
@@ -153,9 +176,23 @@
     }
 
     const sortSelect = document.getElementById('flight-price-sort');
-    sortSelect?.addEventListener('change', function () {
-        applyFlightPriceSort(this.value);
-    });
+    if (sortSelect) {
+        const onSort = function () {
+            applyFlightPriceSort(sortSelect.value);
+        };
+        sortSelect.addEventListener('change', onSort);
+        sortSelect.addEventListener('input', onSort);
+        if (window.jQuery) {
+            window.jQuery(sortSelect).on('change', onSort);
+            window.jQuery(document).on('click', '.booking-sort-box .nice-select .option', function () {
+                const value = this.getAttribute('data-value') || '';
+                if (value) {
+                    sortSelect.value = value;
+                    applyFlightPriceSort(value);
+                }
+            });
+        }
+    }
 })();
 </script>
 @endpush

@@ -11,8 +11,12 @@
     $solReady = $solProvider === 'sunspring'
         ? (bool) ($sunspringReady ?? false)
         : (bool) ($travelportReady ?? $providerReady ?? false);
+    $sortPrice = \App\Support\FlightDisplay::priceSortKey($sol['total_price'] ?? null);
+    if (! is_finite($sortPrice) || $sortPrice >= 999999999) {
+        $sortPrice = 999999999;
+    }
 @endphp
-<div class="col-lg-12" data-price="{{ \App\Support\FlightDisplay::priceSortKey($sol['total_price'] ?? null) }}">
+<div class="col-lg-12 js-flight-result" data-price="{{ number_format($sortPrice, 2, '.', '') }}">
     <div class="flight-booking-item wow fadeInUp">
         <div class="flight-booking-wrapper">
             <div class="flight-booking-info">
