@@ -25,4 +25,12 @@ class FlightDisplayTest extends TestCase
             ]
         ));
     }
+
+    public function test_price_sort_key_reads_currency_strings(): void
+    {
+        $this->assertSame(1095.23, FlightDisplay::priceSortKey('USD1095.23'));
+        $this->assertSame(1095.23, FlightDisplay::priceSortKey('USD 1,095.23'));
+        $this->assertSame(90.0, FlightDisplay::priceSortKey(90));
+        $this->assertSame(PHP_FLOAT_MAX, FlightDisplay::priceSortKey(null));
+    }
 }

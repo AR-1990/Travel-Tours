@@ -12,7 +12,7 @@
         ? (bool) ($sunspringReady ?? false)
         : (bool) ($travelportReady ?? $providerReady ?? false);
 @endphp
-<div class="col-lg-12">
+<div class="col-lg-12" data-price="{{ \App\Support\FlightDisplay::priceSortKey($sol['total_price'] ?? null) }}">
     <div class="flight-booking-item wow fadeInUp">
         <div class="flight-booking-wrapper">
             <div class="flight-booking-info">

@@ -152,6 +152,28 @@ class FlightDisplay
     }
 
     /**
+     * Numeric amount for sorting fares. Missing or unreadable prices sink to the end.
+     */
+    public static function priceSortKey(mixed $raw): float
+    {
+        if (is_int($raw) || is_float($raw)) {
+            return (float) $raw;
+        }
+
+        $value = trim((string) $raw);
+        if ($value === '') {
+            return PHP_FLOAT_MAX;
+        }
+
+        $cleaned = preg_replace('/[^\d.]/', '', $value) ?? '';
+        if ($cleaned === '' || $cleaned === '.') {
+            return PHP_FLOAT_MAX;
+        }
+
+        return (float) $cleaned;
+    }
+
+    /**
      * @return array{date: string, time: string, weekday: string}|null
      */
     public static function parseDateTime(?string $value): ?array

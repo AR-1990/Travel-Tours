@@ -179,7 +179,9 @@ class FlightProviderUiTest extends TestCase
         $this->get(route('frontend.flights.results'))
             ->assertOk()
             ->assertSee('API: SunSpring', false)
-            ->assertSee('REF-UI-1', false);
+            ->assertSee('REF-UI-1', false)
+            ->assertSee('Price: Low to High', false)
+            ->assertSee('Price: High to Low', false);
     }
 
     public function test_admin_sunspring_search_shows_api_badge(): void

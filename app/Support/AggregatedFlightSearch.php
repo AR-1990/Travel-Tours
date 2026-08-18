@@ -118,6 +118,8 @@ class AggregatedFlightSearch
             ? 'Found '.count($solutions).' fare(s) ('.implode(', ', $counts).').'
             : self::failureMessage($sources);
 
+        $solutions = self::sortByPrice($solutions);
+
         return [
             'ok' => $ok,
             'message' => $message,
@@ -125,6 +127,25 @@ class AggregatedFlightSearch
             'provider' => count($sources) > 1 ? 'mixed' : (string) array_key_first($sources),
             'sources' => $sources,
         ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $solutions
+     * @return list<array<string, mixed>>
+     */
+    public static function sortByPrice(array $solutions, string $direction = 'asc'): array
+    {
+        $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
+
+        usort($solutions, static function (array $a, array $b) use ($direction): int {
+            $left = FlightDisplay::priceSortKey($a['total_price'] ?? null);
+            $right = FlightDisplay::priceSortKey($b['total_price'] ?? null);
+            $cmp = $left <=> $right;
+
+            return $direction === 'desc' ? -$cmp : $cmp;
+        });
+
+        return array_values($solutions);
     }
 
     /**

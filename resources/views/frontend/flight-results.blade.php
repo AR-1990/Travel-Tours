@@ -38,42 +38,52 @@
             <div class="row">
                 <div class="col-lg-12">
                     <div class="booking-sort mb-4">
-                        <h5 class="d-flex flex-wrap align-items-center gap-2">
-                            @if(!empty($flightSearchResult['solutions']))
-                                {{ count($flightSearchResult['solutions']) }} Results Found
-                            @else
-                                0 Results Found
+                        <div>
+                            <h5 class="mb-2">
+                                @if(!empty($flightSearchResult['solutions']))
+                                    {{ count($flightSearchResult['solutions']) }} Results Found
+                                @else
+                                    0 Results Found
+                                @endif
+                            </h5>
+                            @php
+                                $searchSources = $flightSearchResult['sources'] ?? [];
+                            @endphp
+                            @if(!empty($searchSources))
+                                <p class="small text-muted mb-2">
+                                    @foreach($searchSources as $sourceProvider => $sourceMeta)
+                                        <span class="me-2">
+                                            @include('flights.partials.provider-badge', ['provider' => $sourceProvider, 'size' => 'sm'])
+                                            {{ (int) ($sourceMeta['count'] ?? 0) }}
+                                        </span>
+                                    @endforeach
+                                </p>
                             @endif
-                        </h5>
-                        @php
-                            $searchSources = $flightSearchResult['sources'] ?? [];
-                        @endphp
-                        @if(!empty($searchSources))
-                            <p class="small text-muted mb-2">
-                                @foreach($searchSources as $sourceProvider => $sourceMeta)
-                                    <span class="me-2">
-                                        @include('flights.partials.provider-badge', ['provider' => $sourceProvider, 'size' => 'sm'])
-                                        {{ (int) ($sourceMeta['count'] ?? 0) }}
-                                    </span>
-                                @endforeach
-                            </p>
-                        @endif
-                        @if(!empty($flightSearchInput))
-                            <p class="mb-0 text-muted">
-                                {{ \App\Support\FlightDisplay::tripSummary(
-                                    $flightSearchInput['origin'] ?? null,
-                                    $flightSearchInput['destination'] ?? null,
-                                    $flightSearchInput['departure_date'] ?? null,
-                                    $flightSearchInput['return_date'] ?? null,
-                                    (int) ($flightSearchInput['adults'] ?? 1),
-                                    $flightSearchInput['legs'] ?? null
-                                ) }}
-                            </p>
+                            @if(!empty($flightSearchInput))
+                                <p class="mb-0 text-muted">
+                                    {{ \App\Support\FlightDisplay::tripSummary(
+                                        $flightSearchInput['origin'] ?? null,
+                                        $flightSearchInput['destination'] ?? null,
+                                        $flightSearchInput['departure_date'] ?? null,
+                                        $flightSearchInput['return_date'] ?? null,
+                                        (int) ($flightSearchInput['adults'] ?? 1),
+                                        $flightSearchInput['legs'] ?? null
+                                    ) }}
+                                </p>
+                            @endif
+                        </div>
+                        @if(!empty($flightSearchResult['solutions']))
+                            <div class="col-md-3 booking-sort-box">
+                                <select id="flight-price-sort" class="select" aria-label="Sort by price">
+                                    <option value="asc" selected>Price: Low to High</option>
+                                    <option value="desc">Price: High to Low</option>
+                                </select>
+                            </div>
                         @endif
                     </div>
 
                     @if(!empty($flightSearchResult['ok']) && !empty($flightSearchResult['solutions']))
-                        <div class="row">
+                        <div class="row" id="flight-results-list">
                             @foreach($flightSearchResult['solutions'] as $sol)
                                 @include('frontend.partials.flight-result-card', [
                                     'sol' => $sol,
@@ -126,6 +136,25 @@
                 btn.disabled = true;
             }
         });
+    });
+
+    function applyFlightPriceSort(order) {
+        const list = document.getElementById('flight-results-list');
+        if (!list) return;
+        const items = Array.from(list.children);
+        items.sort(function (a, b) {
+            const pa = parseFloat(a.getAttribute('data-price') || 'Infinity');
+            const pb = parseFloat(b.getAttribute('data-price') || 'Infinity');
+            return order === 'desc' ? pb - pa : pa - pb;
+        });
+        items.forEach(function (el) {
+            list.appendChild(el);
+        });
+    }
+
+    const sortSelect = document.getElementById('flight-price-sort');
+    sortSelect?.addEventListener('change', function () {
+        applyFlightPriceSort(this.value);
     });
 })();
 </script>
