@@ -68,6 +68,13 @@ class FlightProvider
             return $fromResult;
         }
 
+        if ($fromResult === 'mixed') {
+            $fromSolution = strtolower((string) data_get($result, 'solutions.0.provider', ''));
+            if (in_array($fromSolution, [self::TRAVELPORT, self::SUNSPRING], true)) {
+                return $fromSolution;
+            }
+        }
+
         $fromSolution = strtolower((string) data_get($result, 'solutions.0.provider', ''));
         if (in_array($fromSolution, [self::TRAVELPORT, self::SUNSPRING], true)) {
             return $fromSolution;

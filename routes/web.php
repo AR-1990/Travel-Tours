@@ -22,6 +22,7 @@ use App\Http\Controllers\Auth\TenantRegistrationController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\Frontend\SitePageController;
 use App\Http\Controllers\PublicFlightController;
+use App\Http\Controllers\PublicHotelController;
 use App\Http\Controllers\SubAgent\DashboardController as SubAgentDashboardController;
 use App\Http\Controllers\SubAgent\FlightController as SubAgentFlightController;
 use App\Http\Controllers\SubAgent\PermissionController as SubAgentPermissionController;
@@ -65,6 +66,17 @@ Route::post('/flights/reservations/{id}/retrieve', [PublicFlightController::clas
 Route::post('/flights/reservations/{id}/cancel', [PublicFlightController::class, 'reservationsCancel'])->name('frontend.flights.reservations.cancel')->whereNumber('id');
 Route::match(['get', 'post'], '/flights/operations/{operation}', [PublicFlightController::class, 'flightOperation'])
     ->name('frontend.flights.operation');
+
+Route::get('/hotels', [PublicHotelController::class, 'hotelHub'])->name('frontend.hotels.hub');
+Route::post('/search/hotels', [PublicHotelController::class, 'hotelSearch'])->name('frontend.hotels.search');
+Route::get('/hotels/results', [PublicHotelController::class, 'hotelResults'])->name('frontend.hotels.results');
+Route::post('/hotels/prebook', [PublicHotelController::class, 'hotelPrebook'])->name('frontend.hotels.prebook');
+Route::get('/hotels/book', [PublicHotelController::class, 'hotelBookShow'])->name('frontend.hotels.book');
+Route::post('/hotels/book', [PublicHotelController::class, 'hotelBookStore'])->name('frontend.hotels.book.store');
+Route::get('/hotels/confirmation', [PublicHotelController::class, 'hotelConfirmation'])->name('frontend.hotels.confirmation');
+Route::get('/hotels/reservations', [PublicHotelController::class, 'reservationsIndex'])->name('frontend.hotels.reservations.index');
+Route::get('/hotels/reservations/{id}', [PublicHotelController::class, 'reservationsShow'])->name('frontend.hotels.reservations.show')->whereNumber('id');
+Route::post('/hotels/reservations/{id}/cancel', [PublicHotelController::class, 'reservationsCancel'])->name('frontend.hotels.reservations.cancel')->whereNumber('id');
 
 /** Marketing / platform hub (Tailwind) — use e.g. for links that need the simple landing */
 Route::get('/platform', function () {

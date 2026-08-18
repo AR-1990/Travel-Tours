@@ -1,0 +1,16 @@
+{
+    "http_status": 200,
+    "body": {
+        "status": "success",
+        "err": [
+            {
+                "code": 0,
+                "msg": ""
+            }
+        ],
+        "outbound": [],
+        "request_id": 5983129,
+        "timestamp": "2026-08-18 16:40:10",
+        "attemptTimes": 1
+    }
+}

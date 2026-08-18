@@ -155,13 +155,15 @@ class SunSpringClient
             $token = (string) ($auth['token'] ?? '');
         }
 
+        $url = $this->url($path);
+
         try {
             $response = $this->http()
                 ->withHeaders([
                     // Swagger Authorize: JWT from data.authorization as Bearer token.
                     'Authorization' => 'Bearer '.$token,
                 ])
-                ->post($this->url($path), $body);
+                ->post($url, $body);
         } catch (\Throwable $e) {
             return [
                 'ok' => false,
@@ -179,7 +181,7 @@ class SunSpringClient
                 try {
                     $response = $this->http()
                         ->withHeaders(['Authorization' => 'Bearer '.$token])
-                        ->post($this->url($path), $body);
+                        ->post($url, $body);
                 } catch (\Throwable $e) {
                     return [
                         'ok' => false,
@@ -195,23 +197,28 @@ class SunSpringClient
         $err = $this->extractError($json);
         $apiFailed = $this->isApiFailure($json);
 
-        if ($response->successful() && $err === null && ! $apiFailed) {
-            return [
+        $result = $response->successful() && $err === null && ! $apiFailed
+            ? [
                 'ok' => true,
                 'message' => 'OK',
                 'http_status' => $response->status(),
                 'data' => $json,
                 'response_excerpt' => $excerpt,
+            ]
+            : [
+                'ok' => false,
+                'message' => $err ?: ('SunSpring request failed (HTTP '.$response->status().').'),
+                'http_status' => $response->status(),
+                'data' => $json,
+                'response_excerpt' => $excerpt,
             ];
-        }
 
-        return [
-            'ok' => false,
-            'message' => $err ?: ('SunSpring request failed (HTTP '.$response->status().').'),
+        SunSpringExchangeLogger::record('POST', $url, $body, [
             'http_status' => $response->status(),
-            'data' => $json,
-            'response_excerpt' => $excerpt,
-        ];
+            'body' => $json ?? $response->body(),
+        ]);
+
+        return $result;
     }
 
     /**

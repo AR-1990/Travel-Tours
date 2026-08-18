@@ -120,8 +120,12 @@ trait HandlesFlightWorkflow
         $this->ensureFlightSearchPermission();
 
         $stored = $this->workflowSearchStore();
-        $adults = (int) ($stored['input']['adults'] ?? 1);
+        $searchInput = is_array($stored['input'] ?? null) ? $stored['input'] : [];
+        $adults = (int) ($searchInput['adults'] ?? 1);
+        $children = (int) ($searchInput['children'] ?? 0);
+        $infants = (int) ($searchInput['infants'] ?? 0);
         $solutionKey = (string) $request->input('solution_key', '');
+        $this->syncProviderForSolution($request, $stored, $solutionKey);
 
         if (FlightProvider::isSunSpring()) {
             $sunspring ??= app(SunSpringAirService::class);
@@ -133,6 +137,8 @@ trait HandlesFlightWorkflow
             }
             $result = $sunspring->airPrice([
                 'adults' => $adults,
+                'children' => $children,
+                'infants' => $infants,
                 'solution_key' => $solutionKey,
             ]);
         } else {
@@ -432,6 +438,36 @@ trait HandlesFlightWorkflow
         }
 
         return 'flights.workflow.'.$page;
+    }
+
+    /**
+     * Price/book must hit the same API that produced the selected fare.
+     *
+     * @param  array<string, mixed>|null  $stored
+     */
+    protected function syncProviderForSolution(Request $request, ?array $stored, string $solutionKey): void
+    {
+        $fromRequest = strtolower(trim((string) $request->input('provider', '')));
+        if (in_array($fromRequest, [FlightProvider::TRAVELPORT, FlightProvider::SUNSPRING], true)) {
+            FlightProvider::set($fromRequest);
+
+            return;
+        }
+
+        foreach (($stored['result']['solutions'] ?? []) as $solution) {
+            if (! is_array($solution)) {
+                continue;
+            }
+            if ((string) ($solution['key'] ?? '') !== $solutionKey) {
+                continue;
+            }
+            $fromSolution = strtolower((string) ($solution['provider'] ?? ''));
+            if (in_array($fromSolution, [FlightProvider::TRAVELPORT, FlightProvider::SUNSPRING], true)) {
+                FlightProvider::set($fromSolution);
+            }
+
+            return;
+        }
     }
 
     /**

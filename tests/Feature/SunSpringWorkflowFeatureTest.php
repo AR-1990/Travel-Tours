@@ -6,7 +6,6 @@ use App\Models\Users\User;
 use App\Services\SunSpring\SunSpringAirService;
 use App\Services\SunSpring\SunSpringClient;
 use App\Services\SunSpring\SunSpringFlightParser;
-use App\Support\FlightProvider;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -146,10 +145,11 @@ class SunSpringWorkflowFeatureTest extends TestCase
             'adults' => 1,
         ])->assertRedirect(route('frontend.flights.results'));
 
-        $this->assertSame(FlightProvider::SUNSPRING, FlightProvider::current());
+        $this->assertSame('sunspring', data_get(session('public.flight_search'), 'result.solutions.0.provider'));
 
         $this->post(route('frontend.flights.price'), [
             'solution_key' => 'WF-100',
+            'provider' => 'sunspring',
         ])->assertRedirect(route('frontend.flights.book'));
 
         $this->get(route('frontend.flights.book'))

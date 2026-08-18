@@ -110,6 +110,8 @@ trait NormalizesFlightSearchInput
     {
         $tripType = $this->normalizeTripType((string) $request->input('trip_type', 'oneway'));
         $adults = max(1, min(9, (int) $request->input('adults', (int) $request->input('adult', 1))));
+        $children = max(0, min(8, (int) $request->input('children', (int) $request->input('child', 0))));
+        $infants = max(0, min(8, (int) $request->input('infants', (int) $request->input('infant', (int) $request->input('inf', 0)))));
 
         if ($tripType === 'multicity') {
             $legs = $this->parseSearchLegs($request);
@@ -130,6 +132,8 @@ trait NormalizesFlightSearchInput
                 'departure_date' => $first['departure_date'],
                 'return_date' => null,
                 'adults' => $adults,
+                'children' => $children,
+                'infants' => $infants,
                 'trip_type' => 'multicity',
                 'legs' => array_values($legs),
             ];
@@ -156,6 +160,8 @@ trait NormalizesFlightSearchInput
             'departure_date' => $departureDate,
             'return_date' => $returnDate,
             'adults' => $adults,
+            'children' => $children,
+            'infants' => $infants,
             'trip_type' => $tripType,
         ];
     }

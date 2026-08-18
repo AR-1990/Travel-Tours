@@ -7,7 +7,6 @@ use App\Services\SunSpring\SunSpringAirService;
 use App\Services\SunSpring\SunSpringClient;
 use App\Services\SunSpring\SunSpringFlightParser;
 use App\Services\Travelport\TravelportAirXmlBuilder;
-use App\Support\FlightProvider;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -197,12 +196,11 @@ class MultiDestinationFlightTest extends TestCase
             ],
         ])->assertRedirect(route('frontend.flights.results'));
 
-        $this->assertSame(FlightProvider::SUNSPRING, FlightProvider::current());
         $stored = session('public.flight_search');
         $this->assertSame('multicity', data_get($stored, 'input.trip_type'));
         $this->assertCount(2, data_get($stored, 'input.legs', []));
         $this->assertTrue((bool) data_get($stored, 'result.ok'));
-        $this->assertSame('sunspring', data_get($stored, 'result.provider'));
+        $this->assertSame('sunspring', data_get($stored, 'result.solutions.0.provider'));
 
         $this->get(route('frontend.flights.results'))
             ->assertOk()

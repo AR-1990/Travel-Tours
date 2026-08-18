@@ -10,6 +10,8 @@ class Integration extends Model
 
     public const SLUG_SUNSPRING = 'sunspring';
 
+    public const SLUG_XCONNECT = 'xconnect';
+
     protected $fillable = [
         'slug',
         'name',

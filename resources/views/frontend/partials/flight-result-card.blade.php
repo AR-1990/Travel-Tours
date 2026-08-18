@@ -7,6 +7,10 @@
     $price = \App\Support\FlightDisplay::parsePrice($sol['total_price'] ?? null);
     $carrier = $sol['plating_carrier'] ?? ($first['carrier'] ?? '—');
     $stops = max(0, count($segments) - 1);
+    $solProvider = strtolower((string) ($sol['provider'] ?? ($flightSearchResult['provider'] ?? 'travelport')));
+    $solReady = $solProvider === 'sunspring'
+        ? (bool) ($sunspringReady ?? false)
+        : (bool) ($travelportReady ?? $providerReady ?? false);
 @endphp
 <div class="col-lg-12">
     <div class="flight-booking-item wow fadeInUp">
@@ -69,8 +73,9 @@
                 <form method="POST" action="{{ route('frontend.flights.price') }}" class="flight-price-form mt-2">
                     @csrf
                     <input type="hidden" name="solution_key" value="{{ $sol['key'] ?? '' }}">
+                    <input type="hidden" name="provider" value="{{ $solProvider }}">
                     <button type="submit" class="theme-btn flight-price-btn"
-                            @disabled(!($providerReady ?? $travelportReady ?? false) || empty($sol['key']))>
+                            @disabled(! $solReady || empty($sol['key']))>
                         Price &amp; hold<i class="fas fa-arrow-circle-right"></i>
                     </button>
                 </form>

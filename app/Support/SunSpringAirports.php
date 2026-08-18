@@ -136,4 +136,44 @@ class SunSpringAirports
     {
         return 'MHD';
     }
+
+    /**
+     * True when every airport in the search is on the Sepehran / SunSpring network.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    public static function supportsSearch(array $input): bool
+    {
+        $codes = [];
+        $legs = $input['legs'] ?? null;
+        if (is_array($legs) && $legs !== []) {
+            foreach ($legs as $leg) {
+                if (! is_array($leg)) {
+                    continue;
+                }
+                $codes[] = (string) ($leg['origin'] ?? '');
+                $codes[] = (string) ($leg['destination'] ?? '');
+            }
+        } else {
+            $codes[] = (string) ($input['origin'] ?? '');
+            $codes[] = (string) ($input['destination'] ?? '');
+        }
+
+        $codes = array_values(array_filter(array_map(
+            static fn (string $code): string => strtoupper(trim($code)),
+            $codes
+        )));
+
+        if ($codes === []) {
+            return false;
+        }
+
+        foreach ($codes as $code) {
+            if (! self::isAllowed($code)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

@@ -1,0 +1,14 @@
+{
+    "method": "POST",
+    "url": "https://sandbox.sunspring.ae/api/v2/flight/FlightSearch",
+    "body": {
+        "outbound": {
+            "departure": "THR",
+            "arrival": "MHD",
+            "date": "2026-11-16"
+        },
+        "adult": "1",
+        "child": "1",
+        "inf": "0"
+    }
+}

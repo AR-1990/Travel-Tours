@@ -1,0 +1,2 @@
+Search returned no fares for THR-MHD on tried dates.
+Search completed — no flights found for this route/date.

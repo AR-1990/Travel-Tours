@@ -46,19 +46,16 @@ class FlightProviderUiTest extends TestCase
             ->assertSee('SunSpring', false);
     }
 
-    public function test_public_home_and_flights_page_show_provider_selector(): void
+    public function test_public_home_and_flights_page_search_without_provider_toggle(): void
     {
         $this->get(route('home'))
             ->assertOk()
-            ->assertSee('Search via API', false)
-            ->assertSee('name="provider"', false)
-            ->assertSee('Travelport', false)
-            ->assertSee('SunSpring', false);
+            ->assertDontSee('Search via API', false)
+            ->assertSee('Find the best routes with flexible trip options', false);
 
         $this->get(route('pages.flights'))
             ->assertOk()
-            ->assertSee('Search via API', false)
-            ->assertSee('SunSpring', false);
+            ->assertDontSee('Search via API', false);
     }
 
     public function test_sunspring_integrations_page_renders(): void
@@ -176,9 +173,8 @@ class FlightProviderUiTest extends TestCase
         ]);
 
         $response->assertRedirect(route('frontend.flights.results'));
-        $this->assertSame('sunspring', session('flight.provider'));
         $this->assertTrue((bool) data_get(session('public.flight_search.result'), 'ok'));
-        $this->assertSame('sunspring', data_get(session('public.flight_search.result'), 'provider'));
+        $this->assertSame('sunspring', data_get(session('public.flight_search'), 'result.solutions.0.provider'));
 
         $this->get(route('frontend.flights.results'))
             ->assertOk()

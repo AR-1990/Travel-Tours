@@ -16,6 +16,24 @@ class SunSpringAirportsTest extends TestCase
         $this->assertFalse(SunSpringAirports::isAllowed('LHR'));
     }
 
+    public function test_supports_search_only_for_network_airports(): void
+    {
+        $this->assertTrue(SunSpringAirports::supportsSearch([
+            'origin' => 'THR',
+            'destination' => 'MHD',
+        ]));
+        $this->assertFalse(SunSpringAirports::supportsSearch([
+            'origin' => 'JFK',
+            'destination' => 'LAX',
+        ]));
+        $this->assertTrue(SunSpringAirports::supportsSearch([
+            'legs' => [
+                ['origin' => 'THR', 'destination' => 'SYZ'],
+                ['origin' => 'SYZ', 'destination' => 'MHD'],
+            ],
+        ]));
+    }
+
     public function test_search_filters_to_allowed_airports(): void
     {
         $results = SunSpringAirports::search('teh', 10);

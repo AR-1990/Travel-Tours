@@ -1,0 +1,49 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Support\AggregatedFlightSearch;
+use PHPUnit\Framework\TestCase;
+
+class AggregatedFlightSearchTest extends TestCase
+{
+    public function test_merge_tags_each_fare_with_its_api(): void
+    {
+        $merged = AggregatedFlightSearch::merge(
+            [
+                'ok' => true,
+                'message' => 'tp',
+                'solutions' => [['key' => 'tp-1', 'total_price' => '100 USD']],
+            ],
+            [
+                'ok' => true,
+                'message' => 'ss',
+                'solutions' => [['key' => 'ss-1', 'total_price' => '90 USD']],
+            ]
+        );
+
+        $this->assertTrue($merged['ok']);
+        $this->assertSame('mixed', $merged['provider']);
+        $this->assertCount(2, $merged['solutions']);
+        $this->assertSame('travelport', $merged['solutions'][0]['provider']);
+        $this->assertSame('sunspring', $merged['solutions'][1]['provider']);
+        $this->assertSame(1, $merged['sources']['travelport']['count']);
+        $this->assertSame(1, $merged['sources']['sunspring']['count']);
+        $this->assertStringContainsString('Travelport: 1', $merged['message']);
+        $this->assertStringContainsString('SunSpring: 1', $merged['message']);
+    }
+
+    public function test_merge_keeps_one_api_when_the_other_is_missing(): void
+    {
+        $merged = AggregatedFlightSearch::merge(null, [
+            'ok' => true,
+            'message' => 'ss',
+            'solutions' => [['key' => 'ss-1']],
+        ]);
+
+        $this->assertTrue($merged['ok']);
+        $this->assertSame('sunspring', $merged['provider']);
+        $this->assertCount(1, $merged['solutions']);
+        $this->assertSame('sunspring', $merged['solutions'][0]['provider']);
+    }
+}

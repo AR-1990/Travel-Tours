@@ -18,5 +18,10 @@ return [
             'description' => 'REST Airline APIs: authorize token, flight search, price, book, ticket, cancel.',
             'coming_soon' => false,
         ],
+        'xconnect' => [
+            'name' => 'Xconnect Hotel API',
+            'description' => 'Technoheaven/Rimo hotel wholesale: Availability → PreBook → Book → Detail → Cancel. (Published collection is hotels only.)',
+            'coming_soon' => false,
+        ],
     ],
 ];

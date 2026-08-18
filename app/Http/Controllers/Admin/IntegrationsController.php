@@ -10,6 +10,9 @@ use App\Services\SunSpring\SunSpringIntegrationConfig;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
 use App\Services\Travelport\TravelportSystemService;
+use App\Services\Xconnect\XconnectClient;
+use App\Services\Xconnect\XconnectHotelService;
+use App\Services\Xconnect\XconnectIntegrationConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -69,7 +72,7 @@ class IntegrationsController extends Controller
         ]);
     }
 
-    public function edit(string $slug, TravelportSystemService $system, SunSpringClient $sunspring)
+    public function edit(string $slug, TravelportSystemService $system, SunSpringClient $sunspring, XconnectClient $xconnect)
     {
         $this->ensureSuperAdmin();
         $this->assertEditableSlug($slug);
@@ -77,6 +80,7 @@ class IntegrationsController extends Controller
         return match ($slug) {
             Integration::SLUG_TRAVELPORT => $this->viewTravelportEdit($system),
             Integration::SLUG_SUNSPRING => $this->viewSunSpringEdit($sunspring),
+            Integration::SLUG_XCONNECT => $this->viewXconnectEdit($xconnect),
             default => abort(404),
         };
     }
@@ -118,6 +122,22 @@ class IntegrationsController extends Controller
         ]);
     }
 
+    private function viewXconnectEdit(XconnectClient $client)
+    {
+        $xc = XconnectIntegrationConfig::merged();
+        $row = Integration::query()
+            ->where('slug', Integration::SLUG_XCONNECT)
+            ->first();
+
+        return view('admin.integrations.xconnect.edit', [
+            'xconnect' => $xc,
+            'xconnectRow' => $row,
+            'xconnectHasDbRow' => $row !== null,
+            'baseUrl' => $client->baseUrl(),
+            'tokenSet' => (string) ($xc['token'] ?? '') !== '',
+        ]);
+    }
+
     public function update(Request $request, string $slug)
     {
         $this->ensureSuperAdmin();
@@ -126,6 +146,7 @@ class IntegrationsController extends Controller
         return match ($slug) {
             Integration::SLUG_TRAVELPORT => $this->updateTravelport($request),
             Integration::SLUG_SUNSPRING => $this->updateSunSpring($request),
+            Integration::SLUG_XCONNECT => $this->updateXconnect($request),
             default => abort(404),
         };
     }
@@ -276,7 +297,66 @@ class IntegrationsController extends Controller
             ->with('success', 'SunSpring integration settings saved. They are stored encrypted in the `integrations` table.');
     }
 
-    public function ping(Request $request, string $slug, TravelportSystemService $system, SunSpringClient $sunspring)
+    private function updateXconnect(Request $request)
+    {
+        $existing = Integration::query()
+            ->where('slug', Integration::SLUG_XCONNECT)
+            ->first();
+        $prev = is_array($existing?->payload) ? $existing->payload : [];
+
+        $hasStoredToken = isset($prev['token']) && (string) $prev['token'] !== '';
+        $hasEnvToken = (string) config('xconnect.token', '') !== '';
+
+        $request->validate([
+            'xconnect.environment' => ['required', Rule::in(['sandbox', 'production'])],
+            'xconnect.base_url' => ['required', 'string', 'max:512'],
+            'xconnect.base_url_override' => ['nullable', 'string', 'max:512'],
+            'xconnect.token' => [
+                'nullable',
+                'string',
+                'max:2000',
+                Rule::requiredIf(! $hasStoredToken && ! $hasEnvToken),
+            ],
+            'xconnect.timeout' => ['required', 'integer', 'min:5', 'max:180'],
+            'xconnect.default_currency' => ['required', 'string', 'max:8'],
+            'xconnect.default_nationality' => ['required', 'string', 'max:80'],
+            'is_enabled' => ['nullable', 'boolean'],
+        ], [], [
+            'xconnect.base_url' => 'base URL',
+            'xconnect.token' => 'API token',
+        ]);
+
+        $x = $request->input('xconnect', []);
+        $updates = [
+            'environment' => $x['environment'],
+            'base_url' => XconnectClient::normalizeHostOnly((string) ($x['base_url'] ?? '')),
+            'base_url_override' => XconnectClient::normalizeHostOnly((string) ($x['base_url_override'] ?? '')),
+            'timeout' => (int) $x['timeout'],
+            'default_currency' => strtoupper((string) $x['default_currency']),
+            'default_nationality' => (string) $x['default_nationality'],
+        ];
+
+        if ($request->filled('xconnect.token')) {
+            $updates['token'] = $x['token'];
+        }
+
+        $catalogName = $this->catalog()[Integration::SLUG_XCONNECT]['name'] ?? 'Xconnect Hotel API';
+
+        Integration::query()->updateOrCreate(
+            ['slug' => Integration::SLUG_XCONNECT],
+            [
+                'name' => $catalogName,
+                'is_enabled' => $request->boolean('is_enabled', true),
+                'payload' => array_merge($prev, $updates),
+            ]
+        );
+
+        return redirect()
+            ->route('admin.integrations.edit', ['slug' => Integration::SLUG_XCONNECT])
+            ->with('success', 'Xconnect integration settings saved. They are stored encrypted in the `integrations` table.');
+    }
+
+    public function ping(Request $request, string $slug, TravelportSystemService $system, SunSpringClient $sunspring, XconnectClient $xconnect)
     {
         $this->ensureSuperAdmin();
         $this->assertEditableSlug($slug);
@@ -311,10 +391,25 @@ class IntegrationsController extends Controller
                 ->with('sunspring_ping', $result);
         }
 
+        if ($slug === Integration::SLUG_XCONNECT) {
+            $result = $xconnect->ping();
+
+            if ($request->wantsJson()) {
+                return response()->json($result);
+            }
+
+            $flash = $result['ok'] ? 'success' : 'error';
+
+            return redirect()
+                ->route('admin.integrations.edit', ['slug' => $slug])
+                ->with($flash, $result['message'])
+                ->with('xconnect_ping', $result);
+        }
+
         abort(404);
     }
 
-    public function testSearch(Request $request, string $slug, TravelportAirService $air, SunSpringAirService $sunspring)
+    public function testSearch(Request $request, string $slug, TravelportAirService $air, SunSpringAirService $sunspring, XconnectHotelService $xconnectHotels)
     {
         $this->ensureSuperAdmin();
         $this->assertEditableSlug($slug);
@@ -352,6 +447,29 @@ class IntegrationsController extends Controller
                 ->route('admin.integrations.edit', ['slug' => $slug])
                 ->with($flash, $result['message'])
                 ->with('sunspring_lfs', $result);
+        }
+
+        if ($slug === Integration::SLUG_XCONNECT) {
+            $result = $xconnectHotels->searchAvailability([
+                'city_id' => (string) $request->input('city_id', ''),
+                'check_in' => (string) $request->input('check_in', now()->addMonths(2)->format('Y-m-d')),
+                'check_out' => (string) $request->input('check_out', now()->addMonths(2)->addDay()->format('Y-m-d')),
+                'adults' => 2,
+                'nationality' => (string) $request->input('nationality', config('xconnect.default_nationality')),
+            ]);
+
+            $flash = $result['ok'] ? 'success' : 'error';
+
+            return redirect()
+                ->route('admin.integrations.edit', ['slug' => $slug])
+                ->with($flash, $result['message'])
+                ->with('xconnect_availability', [
+                    'ok' => $result['ok'],
+                    'message' => $result['message'],
+                    'count' => count($result['solutions'] ?? []),
+                    'search_key' => $result['search_key'] ?? null,
+                    'sample' => array_slice($result['solutions'] ?? [], 0, 3),
+                ]);
         }
 
         abort(404);

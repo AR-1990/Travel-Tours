@@ -10,6 +10,7 @@ use App\Services\SunSpring\SunSpringIntegrationConfig;
 use App\Services\Travelport\TravelportAirCatalog;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
+use App\Support\AggregatedFlightSearch;
 use App\Support\AirportDirectory;
 use App\Support\FlightProvider;
 use Illuminate\Http\Request;
@@ -32,10 +33,6 @@ class PublicFlightController extends Controller
 
     public function flightSearch(Request $request, TravelportAirService $air, SunSpringAirService $sunspring)
     {
-        if ($request->filled('provider')) {
-            FlightProvider::set((string) $request->input('provider'));
-        }
-
         $input = $this->validatedFlightSearchInput($request);
         if ($input === null) {
             $tripType = $this->normalizeTripType((string) $request->input('trip_type', 'oneway'));
@@ -46,10 +43,8 @@ class PublicFlightController extends Controller
             return redirect()->route('home')->with('error', $message);
         }
 
-        $input['provider'] = FlightProvider::current();
-        $searchResult = FlightProvider::isSunSpring()
-            ? $sunspring->lowFareSearch($input)
-            : $air->lowFareSearch($input);
+        $searchResult = AggregatedFlightSearch::search($input, $air, $sunspring);
+        $input['provider'] = (string) ($searchResult['provider'] ?? 'mixed');
 
         session([
             'public.flight_search' => [

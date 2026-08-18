@@ -44,10 +44,20 @@
                             @else
                                 0 Results Found
                             @endif
-                            @include('flights.partials.provider-badge', [
-                                'provider' => \App\Support\FlightProvider::fromResult($flightSearchResult ?? null),
-                            ])
                         </h5>
+                        @php
+                            $searchSources = $flightSearchResult['sources'] ?? [];
+                        @endphp
+                        @if(!empty($searchSources))
+                            <p class="small text-muted mb-2">
+                                @foreach($searchSources as $sourceProvider => $sourceMeta)
+                                    <span class="me-2">
+                                        @include('flights.partials.provider-badge', ['provider' => $sourceProvider, 'size' => 'sm'])
+                                        {{ (int) ($sourceMeta['count'] ?? 0) }}
+                                    </span>
+                                @endforeach
+                            </p>
+                        @endif
                         @if(!empty($flightSearchInput))
                             <p class="mb-0 text-muted">
                                 {{ \App\Support\FlightDisplay::tripSummary(
@@ -68,6 +78,7 @@
                                 @include('frontend.partials.flight-result-card', [
                                     'sol' => $sol,
                                     'travelportReady' => $travelportReady ?? false,
+                                    'sunspringReady' => $sunspringReady ?? false,
                                     'providerReady' => $providerReady ?? false,
                                     'flightSearchResult' => $flightSearchResult ?? null,
                                 ])
