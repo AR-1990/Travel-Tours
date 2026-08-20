@@ -320,6 +320,23 @@ class PublicFlightController extends Controller
                 : app(TravelportAirService::class)->hasStoredPricingContext(),
             'operationGroups' => TravelportAirCatalog::groupedForUi(),
             'canBookFlights' => true,
+            'sunspringActiveRoutes' => $this->sunspringActiveRoutesForPublic(),
         ];
+    }
+
+    /**
+     * @return list<array{origin: string, destination: string, date: string}>
+     */
+    private function sunspringActiveRoutesForPublic(): array
+    {
+        try {
+            if (! SunSpringIntegrationConfig::isReadyForAir()) {
+                return [];
+            }
+
+            return app(SunSpringAirService::class)->activeRoutePairs(8);
+        } catch (\Throwable) {
+            return [];
+        }
     }
 }

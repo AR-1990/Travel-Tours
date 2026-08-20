@@ -43,15 +43,25 @@ class SunSpringAirports
      * @var list<array{0: string, 1: string}>
      */
     public const POPULAR_ROUTES = [
+        ['IKA', 'MCT'],
+        ['MCT', 'IKA'],
+        ['MHD', 'MCT'],
+        ['MCT', 'MHD'],
         ['THR', 'MHD'],
         ['MHD', 'THR'],
         ['THR', 'SYZ'],
-        ['THR', 'AWZ'],
-        ['THR', 'TBZ'],
-        ['IKA', 'MHD'],
-        ['MHD', 'DXB'],
-        ['SYZ', 'MHD'],
+        ['IKA', 'BGW'],
     ];
+
+    public static function defaultOrigin(): string
+    {
+        return 'IKA';
+    }
+
+    public static function defaultDestination(): string
+    {
+        return 'MCT';
+    }
 
     public static function isAllowed(string $code): bool
     {
@@ -125,16 +135,6 @@ class SunSpringAirports
         usort($scored, static fn (array $a, array $b): int => $b['score'] <=> $a['score']);
 
         return array_map(static fn (array $x) => $x['row'], array_slice($scored, 0, $limit));
-    }
-
-    public static function defaultOrigin(): string
-    {
-        return 'THR';
-    }
-
-    public static function defaultDestination(): string
-    {
-        return 'MHD';
     }
 
     /**

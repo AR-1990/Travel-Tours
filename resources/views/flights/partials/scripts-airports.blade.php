@@ -81,6 +81,10 @@
                 const d = window.getAirportPicker('destination');
                 if (o) o.setSelection(this.dataset.origin, this.dataset.oLabel || this.dataset.origin);
                 if (d) d.setSelection(this.dataset.destination, this.dataset.dLabel || this.dataset.destination);
+                if (this.dataset.date) {
+                    const dep = document.getElementById('departure_date') || form.querySelector('input[name="departure_date"]');
+                    if (dep) dep.value = this.dataset.date;
+                }
             });
         });
 

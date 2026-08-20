@@ -1,13 +1,16 @@
 @php
     $idPrefix = $idPrefix ?? '';
     $adults = (int) ($homeFlightInput['adults'] ?? 1);
+    $children = (int) ($homeFlightInput['children'] ?? 0);
+    $infants = (int) ($homeFlightInput['infants'] ?? $homeFlightInput['infant'] ?? 0);
+    $totalPax = max(1, $adults + $children + $infants);
 @endphp
 <div class="form-group dropdown passenger-box">
     <div class="passenger-class" role="menu" data-bs-toggle="dropdown" aria-expanded="false">
         <label>Passenger, Class</label>
         <div class="form-group-icon">
             <div class="passenger-total">
-                <span class="passenger-total-amount">{{ $adults }}</span> Passenger
+                <span class="passenger-total-amount">{{ $totalPax }}</span> Passenger
             </div>
             <i class="fal fa-user-tie-hair"></i>
         </div>
@@ -36,7 +39,7 @@
                 </div>
                 <div class="passenger-qty">
                     <button type="button" class="minus-btn"><i class="far fa-minus"></i></button>
-                    <input type="text" name="children" class="qty-amount passenger-children" value="0" readonly>
+                    <input type="text" name="children" class="qty-amount passenger-children" value="{{ $children }}" readonly>
                     <button type="button" class="plus-btn"><i class="far fa-plus"></i></button>
                 </div>
             </div>
@@ -49,7 +52,7 @@
                 </div>
                 <div class="passenger-qty">
                     <button type="button" class="minus-btn"><i class="far fa-minus"></i></button>
-                    <input type="text" name="infant" class="qty-amount passenger-infant" value="0" readonly>
+                    <input type="text" name="infant" class="qty-amount passenger-infant" value="{{ $infants }}" readonly>
                     <button type="button" class="plus-btn"><i class="far fa-plus"></i></button>
                 </div>
             </div>

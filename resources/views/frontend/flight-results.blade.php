@@ -49,16 +49,28 @@
                             @php
                                 $searchSources = $flightSearchResult['sources'] ?? [];
                             @endphp
-                            @if(!empty($searchSources))
-                                <p class="small text-muted mb-2">
-                                    @foreach($searchSources as $sourceProvider => $sourceMeta)
-                                        <span class="me-2">
-                                            @include('flights.partials.provider-badge', ['provider' => $sourceProvider, 'size' => 'sm'])
-                                            {{ (int) ($sourceMeta['count'] ?? 0) }}
-                                        </span>
-                                    @endforeach
-                                </p>
-                            @endif
+                        @if(!empty($searchSources))
+                            <p class="small text-muted mb-2">
+                                @foreach($searchSources as $sourceProvider => $sourceMeta)
+                                    <span class="me-2">
+                                        @include('flights.partials.provider-badge', ['provider' => $sourceProvider, 'size' => 'sm'])
+                                        {{ (int) ($sourceMeta['count'] ?? 0) }}
+                                    </span>
+                                @endforeach
+                            </p>
+                        @endif
+                        @php
+                            $ssCount = (int) data_get($flightSearchResult, 'sources.sunspring.count', 0);
+                            $activeRoutes = $sunspringActiveRoutes ?? [];
+                        @endphp
+                        @if($ssCount === 0 && !empty($activeRoutes) && ($sunspringReady ?? false))
+                            <div class="alert alert-info py-2 small mb-2">
+                                SunSpring had no fares for this search. Active scheduled routes right now:
+                                @foreach($activeRoutes as $route)
+                                    <strong class="me-2">{{ $route['origin'] }}→{{ $route['destination'] }}@if(!empty($route['date'])) ({{ $route['date'] }})@endif</strong>
+                                @endforeach
+                            </div>
+                        @endif
                             @if(!empty($flightSearchInput))
                                 <p class="mb-0 text-muted">
                                     {{ \App\Support\FlightDisplay::tripSummary(

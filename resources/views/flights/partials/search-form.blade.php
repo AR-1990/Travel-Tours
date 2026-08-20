@@ -4,6 +4,8 @@
     $departure = old('departure_date', $searchInput['departure_date'] ?? now()->addDays(14)->format('Y-m-d'));
     $returnDate = old('return_date', $searchInput['return_date'] ?? '');
     $adults = (int) old('adults', $searchInput['adults'] ?? 1);
+    $children = (int) old('children', $searchInput['children'] ?? 0);
+    $infants = (int) old('infants', $searchInput['infants'] ?? 0);
     $tripType = old('trip_type', $searchInput['trip_type'] ?? ($returnDate !== '' ? 'roundtrip' : 'oneway'));
     $tripType = in_array($tripType, ['oneway', 'roundtrip', 'multicity'], true) ? $tripType : 'oneway';
     $airportSearchUrl = $airportSearchUrl ?? route('api.airports.search');
@@ -37,6 +39,7 @@
         ['NYC', 'LON'],
     ];
     $sunspringPopularRoutes = \App\Support\SunSpringAirports::POPULAR_ROUTES;
+    $sunspringActiveRoutes = $sunspringActiveRoutes ?? [];
     $sunspringAirportCodes = \App\Support\SunSpringAirports::CODES;
     $ssDefaultOrigin = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultOrigin());
     $ssDefaultDest = \App\Support\AirportDirectory::find(\App\Support\SunSpringAirports::defaultDestination());
@@ -167,10 +170,26 @@
 
         <div class="row g-3 align-items-end mt-1">
             <div class="col-md-6 col-lg-2">
-                <label class="flight-field-label" for="adults">Passengers</label>
+                <label class="flight-field-label" for="adults">Adults</label>
                 <select name="adults" id="adults" class="form-select">
                     @for ($i = 1; $i <= 9; $i++)
-                        <option value="{{ $i }}" @selected($adults === $i)>{{ $i }} Passenger{{ $i > 1 ? 's' : '' }}</option>
+                        <option value="{{ $i }}" @selected($adults === $i)>{{ $i }}</option>
+                    @endfor
+                </select>
+            </div>
+            <div class="col-md-6 col-lg-1">
+                <label class="flight-field-label" for="children">Children</label>
+                <select name="children" id="children" class="form-select">
+                    @for ($i = 0; $i <= 8; $i++)
+                        <option value="{{ $i }}" @selected($children === $i)>{{ $i }}</option>
+                    @endfor
+                </select>
+            </div>
+            <div class="col-md-6 col-lg-1">
+                <label class="flight-field-label" for="infants">Infants</label>
+                <select name="infants" id="infants" class="form-select">
+                    @for ($i = 0; $i <= 8; $i++)
+                        <option value="{{ $i }}" @selected($infants === $i)>{{ $i }}</option>
                     @endfor
                 </select>
             </div>
@@ -217,6 +236,25 @@
                         {{ $fromCity }} → {{ $toCity }}
                     </button>
                 @endforeach
+                @if(!empty($sunspringActiveRoutes))
+                    <div class="small text-muted mt-2 mb-1">Active now (FlightSchedule):</div>
+                    @foreach($sunspringActiveRoutes as $active)
+                        @php
+                            $fromCode = $active['origin'];
+                            $toCode = $active['destination'];
+                            $fromAirport = \App\Support\AirportDirectory::find($fromCode);
+                            $toAirport = \App\Support\AirportDirectory::find($toCode);
+                        @endphp
+                        <button type="button"
+                            data-origin="{{ $fromCode }}"
+                            data-destination="{{ $toCode }}"
+                            data-date="{{ $active['date'] ?? '' }}"
+                            data-o-label="{{ $fromAirport['label'] ?? $fromCode }}"
+                            data-d-label="{{ $toAirport['label'] ?? $toCode }}">
+                            {{ $fromCode }} → {{ $toCode }}@if(!empty($active['date'])) ({{ $active['date'] }})@endif
+                        </button>
+                    @endforeach
+                @endif
             </div>
         </div>
     </form>

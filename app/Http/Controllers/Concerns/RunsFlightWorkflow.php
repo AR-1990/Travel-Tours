@@ -423,19 +423,18 @@ trait RunsFlightWorkflow
 
     protected function runSunSpringCancelFlow(FlightReservation $reservation): array
     {
-        if ($reservation->status === FlightReservation::STATUS_TICKETED) {
-            return [
-                'ok' => false,
-                'message' => 'This reservation is ticketed. Cancel via SunSpring void/refund before removing the booking.',
-            ];
-        }
-
         $reference = (string) ($reservation->provider_locator ?: $reservation->universal_locator);
         if ($reference === '') {
             return ['ok' => false, 'message' => 'No SunSpring booking reference on this reservation.'];
         }
 
-        $result = app(SunSpringAirService::class)->cancel(['reference' => $reference]);
+        $tickets = is_array($reservation->ticket_numbers) ? array_values($reservation->ticket_numbers) : [];
+        $result = app(SunSpringAirService::class)->cancel([
+            'reference' => $reference,
+            'type' => 'General',
+            'tickets' => $tickets,
+            'voucher' => [],
+        ]);
         if (! ($result['ok'] ?? false)) {
             return $result;
         }

@@ -17,6 +17,110 @@ class SunSpringAirService
     }
 
     /**
+     * Active scheduled routes for a date range (Help docs: FlightSchedule).
+     *
+     * @param  array{from_date?: string, to_date?: string}  $params
+     * @return array<string, mixed>
+     */
+    public function flightSchedule(array $params = []): array
+    {
+        if (! $this->isReady()) {
+            return [
+                'ok' => false,
+                'message' => 'SunSpring is not configured.',
+                'flights' => [],
+                'provider' => 'sunspring',
+            ];
+        }
+
+        $from = (string) ($params['from_date'] ?? now()->format('Y-m-d'));
+        $to = (string) ($params['to_date'] ?? now()->addDays(30)->format('Y-m-d'));
+        $response = $this->client->post('/api/v2/inventory/FlightSchedule', [
+            'from_date' => $from,
+            'to_date' => $to,
+        ]);
+
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+        $rows = is_array($data['data'] ?? null) ? $data['data'] : [];
+        if ($rows === [] && array_is_list($data)) {
+            $rows = $data;
+        }
+
+        $flights = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $flights[] = $row;
+        }
+
+        return [
+            'ok' => (bool) ($response['ok'] ?? false),
+            'message' => $response['ok'] ?? false
+                ? ('Found '.count($flights).' scheduled flight(s).')
+                : (string) ($response['message'] ?? 'FlightSchedule failed.'),
+            'flights' => $flights,
+            'http_status' => $response['http_status'] ?? null,
+            'raw' => $data,
+            'provider' => 'sunspring',
+        ];
+    }
+
+    /**
+     * Unique origin/destination pairs currently on the FlightSchedule (cached).
+     *
+     * @return list<array{origin: string, destination: string, date: string}>
+     */
+    public function activeRoutePairs(int $limit = 8): array
+    {
+        if (! $this->isReady()) {
+            return [];
+        }
+
+        return Cache::remember('sunspring.active_route_pairs.v1', now()->addMinutes(30), function () use ($limit): array {
+            $schedule = $this->flightSchedule([
+                'from_date' => now()->format('Y-m-d'),
+                'to_date' => now()->addDays(21)->format('Y-m-d'),
+            ]);
+            if (! ($schedule['ok'] ?? false)) {
+                return [];
+            }
+
+            $seen = [];
+            $pairs = [];
+            foreach ($schedule['flights'] ?? [] as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $origin = strtoupper((string) ($row['departure'] ?? ''));
+                $destination = strtoupper((string) ($row['arrival'] ?? ''));
+                $date = (string) ($row['actual_departure_date'] ?? '');
+                if ($origin === '' || $destination === '') {
+                    continue;
+                }
+                if (! \App\Support\SunSpringAirports::isAllowed($origin) || ! \App\Support\SunSpringAirports::isAllowed($destination)) {
+                    continue;
+                }
+                $key = $origin.'-'.$destination;
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $pairs[] = [
+                    'origin' => $origin,
+                    'destination' => $destination,
+                    'date' => $date,
+                ];
+                if (count($pairs) >= $limit) {
+                    break;
+                }
+            }
+
+            return $pairs;
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
@@ -362,12 +466,12 @@ class SunSpringAirService
      */
     public function cancel(array $params): array
     {
-        $body = array_filter([
+        $body = [
             'reference' => (string) ($params['reference'] ?? ''),
-            'voucher' => $params['voucher'] ?? [],
-            'tickets' => $params['tickets'] ?? [],
             'type' => (string) ($params['type'] ?? 'General'),
-        ], static fn ($v) => $v !== '' && $v !== null);
+            'tickets' => is_array($params['tickets'] ?? null) ? array_values($params['tickets']) : [],
+            'voucher' => is_array($params['voucher'] ?? null) ? array_values($params['voucher']) : [],
+        ];
 
         return $this->client->post('/api/v2/flight/Cancel', $body);
     }

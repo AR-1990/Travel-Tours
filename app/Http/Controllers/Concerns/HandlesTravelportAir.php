@@ -42,7 +42,24 @@ trait HandlesTravelportAir
             'sunspringReady' => SunSpringIntegrationConfig::isReadyForAir(),
             'anyProviderReady' => TravelportIntegrationConfig::isReadyForAir() || SunSpringIntegrationConfig::isReadyForAir(),
             'providerReady' => FlightProvider::isReady(),
+            'sunspringActiveRoutes' => $this->sunspringActiveRouteHints(),
         ];
+    }
+
+    /**
+     * @return list<array{origin: string, destination: string, date: string}>
+     */
+    protected function sunspringActiveRouteHints(): array
+    {
+        try {
+            if (! SunSpringIntegrationConfig::isReadyForAir()) {
+                return [];
+            }
+
+            return app(SunSpringAirService::class)->activeRoutePairs(8);
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     protected function flightSearchViewExtras(): array

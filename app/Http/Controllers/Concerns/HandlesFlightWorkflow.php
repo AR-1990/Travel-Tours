@@ -156,7 +156,11 @@ trait HandlesFlightWorkflow
 
         $this->saveWorkflowPrice([
             'solution_key' => $solutionKey,
-            'input' => ['adults' => $adults],
+            'input' => [
+                'adults' => $adults,
+                'children' => $children,
+                'infants' => $infants,
+            ],
             'result' => $result,
             'provider' => FlightProvider::current(),
         ]);
@@ -205,6 +209,19 @@ trait HandlesFlightWorkflow
                 ->with('error', 'Please confirm a fare before booking.');
         }
 
+        // Prefer the provider that produced this priced fare (not a stale session toggle).
+        $pricedProvider = strtolower((string) ($price['provider'] ?? ''));
+        if (! in_array($pricedProvider, [FlightProvider::TRAVELPORT, FlightProvider::SUNSPRING], true)) {
+            $pricedProvider = FlightProvider::fromResult(is_array($price['result'] ?? null) ? $price['result'] : null);
+        }
+        if ($pricedProvider === FlightProvider::SUNSPRING && session('sunspring.last_price')) {
+            FlightProvider::set(FlightProvider::SUNSPRING);
+        } elseif (session('travelport.last_air_price_xml')) {
+            FlightProvider::set(FlightProvider::TRAVELPORT);
+        } elseif (in_array($pricedProvider, [FlightProvider::TRAVELPORT, FlightProvider::SUNSPRING], true)) {
+            FlightProvider::set($pricedProvider);
+        }
+
         if (! FlightProvider::isSunSpring() && ! session('travelport.last_air_price_xml')) {
             return redirect()->to($this->workflowSearchUrl())
                 ->with('error', 'Pricing session expired. Search and price again.');
@@ -225,6 +242,7 @@ trait HandlesFlightWorkflow
         return view($this->workflowView('book'), array_merge($this->workflowViewBase(), [
             'flightPriceResult' => $price['result'],
             'bookInput' => $defaults,
+            'passengerSlots' => $this->passengerSlotsFromSearch(is_array($search['input'] ?? null) ? $search['input'] : []),
             'workflowStep' => 'book',
         ]));
     }
@@ -244,43 +262,72 @@ trait HandlesFlightWorkflow
                 ->with('error', 'Flight booking is not configured.');
         }
 
-        $request->validate([
-            'passenger_first' => ['required', 'string', 'max:80'],
-            'passenger_last' => ['required', 'string', 'max:80'],
-            'passenger_email' => ['required', 'email', 'max:120'],
-            'passenger_phone' => ['required', 'string', 'max:30'],
-            'passenger_dob' => ['required', 'date', 'before:today'],
-            'passenger_gender' => ['required', 'in:M,F'],
-            'passenger_prefix' => ['nullable', 'string', 'max:10'],
-            'form_of_payment' => ['nullable', 'string', 'max:20'],
-            'national_id' => ['nullable', 'string', 'max:32'],
-            'nationality' => ['nullable', 'string', 'max:8'],
-            'country_code' => ['nullable', 'string', 'max:8'],
-        ]);
-
         if (FlightProvider::isSunSpring()) {
             $sunspring ??= app(SunSpringAirService::class);
+            $search = $this->workflowSearchStore() ?? [];
+            $searchInput = is_array($search['input'] ?? null) ? $search['input'] : [];
+            $slots = $this->passengerSlotsFromSearch($searchInput);
+            $expected = max(1, count($slots));
+
+            $request->validate([
+                'passengers' => ['required', 'array', 'min:'.$expected, 'max:'.$expected],
+                'passengers.*.type' => ['required', 'in:ADT,CHD,INF'],
+                'passengers.*.first' => ['required', 'string', 'max:80'],
+                'passengers.*.last' => ['required', 'string', 'max:80'],
+                'passengers.*.dob' => ['required', 'date', 'before:today'],
+                'passengers.*.gender' => ['required', 'in:M,F'],
+                'passengers.*.prefix' => ['nullable', 'string', 'max:10'],
+                'passengers.*.email' => ['nullable', 'email', 'max:120'],
+                'passengers.*.phone' => ['nullable', 'string', 'max:30'],
+                'passengers.*.national_id' => ['required', 'string', 'min:8', 'max:32'],
+                'passengers.*.nationality' => ['nullable', 'string', 'max:8'],
+                'passengers.*.passport_number' => ['required', 'string', 'min:5', 'max:32'],
+                'passengers.*.passport_expire' => ['required', 'date', 'after:today'],
+                'country_code' => ['nullable', 'string', 'max:8'],
+                'form_of_payment' => ['nullable', 'string', 'max:20'],
+            ]);
+
+            $passengers = [];
+            foreach (array_values($request->input('passengers', [])) as $i => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $expectedType = (string) ($slots[$i]['type'] ?? 'ADT');
+                $passengers[] = [
+                    'type' => $expectedType,
+                    'prefix' => (string) ($row['prefix'] ?? ($expectedType === 'CHD' ? 'Miss' : ($expectedType === 'INF' ? 'Mstr' : 'Mr'))),
+                    'first' => (string) ($row['first'] ?? ''),
+                    'last' => (string) ($row['last'] ?? ''),
+                    'email' => (string) ($row['email'] ?? $request->input('passengers.0.email', '')),
+                    'phone' => (string) ($row['phone'] ?? $request->input('passengers.0.phone', '')),
+                    'dob' => (string) ($row['dob'] ?? ''),
+                    'gender' => (string) ($row['gender'] ?? 'M'),
+                    'national_id' => (string) ($row['national_id'] ?? ''),
+                    'nationality' => (string) ($row['nationality'] ?? 'IRN'),
+                    'passport_number' => (string) ($row['passport_number'] ?? ''),
+                    'passport_expire' => (string) ($row['passport_expire'] ?? ''),
+                    'accompanied' => '',
+                ];
+            }
+
+            if ($passengers === []) {
+                return redirect()
+                    ->route($this->flightsRoutePrefix().'.flights.book')
+                    ->withInput()
+                    ->with('error', 'At least one passenger is required.');
+            }
+
+            $lead = $passengers[0];
             $params = [
-                'country_code' => (string) $request->input('country_code', '+96'),
-                'passengers' => [[
-                    'prefix' => (string) $request->input('passenger_prefix', 'Mr'),
-                    'first' => (string) $request->input('passenger_first'),
-                    'last' => (string) $request->input('passenger_last'),
-                    'email' => (string) $request->input('passenger_email'),
-                    'phone' => (string) $request->input('passenger_phone'),
-                    'dob' => (string) $request->input('passenger_dob'),
-                    'gender' => (string) $request->input('passenger_gender'),
-                    'type' => 'ADT',
-                    'national_id' => (string) $request->input('national_id', '0000000000'),
-                    'nationality' => (string) $request->input('nationality', 'USA'),
-                ]],
-                'passenger_prefix' => (string) $request->input('passenger_prefix', 'Mr'),
-                'passenger_first' => (string) $request->input('passenger_first'),
-                'passenger_last' => (string) $request->input('passenger_last'),
-                'passenger_email' => (string) $request->input('passenger_email'),
-                'passenger_phone' => (string) $request->input('passenger_phone'),
-                'passenger_dob' => (string) $request->input('passenger_dob'),
-                'passenger_gender' => (string) $request->input('passenger_gender'),
+                'country_code' => (string) $request->input('country_code', '+98'),
+                'passengers' => $passengers,
+                'passenger_prefix' => (string) ($lead['prefix'] ?? 'Mr'),
+                'passenger_first' => (string) ($lead['first'] ?? ''),
+                'passenger_last' => (string) ($lead['last'] ?? ''),
+                'passenger_email' => (string) ($lead['email'] ?? ''),
+                'passenger_phone' => (string) ($lead['phone'] ?? ''),
+                'passenger_dob' => (string) ($lead['dob'] ?? ''),
+                'passenger_gender' => (string) ($lead['gender'] ?? 'M'),
             ];
 
             $result = $sunspring->book($params);
@@ -297,6 +344,17 @@ trait HandlesFlightWorkflow
                 ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
                 ->with('success', $result['message'] ?? 'Booking created. Your reservation details are below.');
         }
+
+        $request->validate([
+            'passenger_first' => ['required', 'string', 'max:80'],
+            'passenger_last' => ['required', 'string', 'max:80'],
+            'passenger_email' => ['required', 'email', 'max:120'],
+            'passenger_phone' => ['required', 'string', 'max:30'],
+            'passenger_dob' => ['required', 'date', 'before:today'],
+            'passenger_gender' => ['required', 'in:M,F'],
+            'passenger_prefix' => ['nullable', 'string', 'max:10'],
+            'form_of_payment' => ['nullable', 'string', 'max:20'],
+        ]);
 
         $params = $this->flightOperationParams($request, 'air_create_reservation');
         $result = $air->execute('air_create_reservation', $params);
@@ -468,6 +526,45 @@ trait HandlesFlightWorkflow
 
             return;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $searchInput
+     * @return list<array{type: string, label: string, prefix: string, gender: string}>
+     */
+    protected function passengerSlotsFromSearch(array $searchInput): array
+    {
+        $adults = max(1, min(9, (int) ($searchInput['adults'] ?? 1)));
+        $children = max(0, min(8, (int) ($searchInput['children'] ?? 0)));
+        $infants = max(0, min(8, (int) ($searchInput['infants'] ?? 0)));
+
+        $slots = [];
+        for ($i = 1; $i <= $adults; $i++) {
+            $slots[] = [
+                'type' => 'ADT',
+                'label' => 'Adult '.$i,
+                'prefix' => 'Mr',
+                'gender' => 'M',
+            ];
+        }
+        for ($i = 1; $i <= $children; $i++) {
+            $slots[] = [
+                'type' => 'CHD',
+                'label' => 'Child '.$i,
+                'prefix' => 'Miss',
+                'gender' => 'F',
+            ];
+        }
+        for ($i = 1; $i <= $infants; $i++) {
+            $slots[] = [
+                'type' => 'INF',
+                'label' => 'Infant '.$i,
+                'prefix' => 'Mstr',
+                'gender' => 'M',
+            ];
+        }
+
+        return $slots;
     }
 
     /**
