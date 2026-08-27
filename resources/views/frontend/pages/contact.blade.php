@@ -1,6 +1,6 @@
 @extends('frontend.layouts.tavelo')
 
-@section('title', 'Contact — Tavelo')
+@section('title', 'Contact | Wise Trust Travel & Tourism')
 
 @section('content')
 <div class="site-page">
@@ -29,28 +29,28 @@
                             <i class="far fa-phone"></i>
                             <div>
                                 <strong>Phone</strong>
-                                <a href="tel:+21234567897">+2 123 4567 897</a>
+                                <a href="tel:+923162295519">+92 316 2295519</a>
                             </div>
                         </li>
                         <li>
                             <i class="far fa-envelope"></i>
                             <div>
                                 <strong>Email</strong>
-                                <a href="mailto:info@wisetrust.com">info@wisetrust.com</a>
+                                <a href="mailto:info@wisetrusttravel.com">info@wisetrusttravel.com</a>
                             </div>
                         </li>
                         <li>
                             <i class="far fa-location-dot"></i>
                             <div>
                                 <strong>Office</strong>
-                                <span>Travel Hub, Business District</span>
+                                <span>Office#204, Kababjees Fried Chicken Building, Crown square, adjacent to Usmania restaurant, Block 13 A Gulshan-e-Iqbal, Karachi, 76800</span>
                             </div>
                         </li>
                         <li>
                             <i class="far fa-clock"></i>
                             <div>
                                 <strong>Hours</strong>
-                                <span>Mon–Sat, 9:00 AM – 8:00 PM</span>
+                                <span>10:00 AM – 06:00 PM</span>
                             </div>
                         </li>
                     </ul>

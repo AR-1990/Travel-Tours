@@ -7,17 +7,16 @@
                     <div class="col-md-7">
                         <div class="header-top-left">
                             <div class="top-social">
-                                <a href="#"><i class="fab fa-facebook-f"></i></a>
-                                <a href="#"><i class="fab fa-x-twitter"></i></a>
-                                <a href="#"><i class="fab fa-instagram"></i></a>
-                                <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                                <a href="https://www.facebook.com/share/1HjnhgKLtm/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer"><i class="fab fa-facebook-f"></i></a>
+                                <a href="https://x.com/wisetrusttrav?s=11" target="_blank" rel="noopener noreferrer"><i class="fab fa-x-twitter"></i></a>
+                                <a href="https://www.instagram.com/wisetrusttravelandtourismkhi?utm_source=qr" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i></a>
+                                <a href="https://www.tiktok.com/@wisetrusttravel.a" target="_blank" rel="noopener noreferrer"><i class="fab fa-tiktok"></i></a>
                             </div>
                             <div class="top-contact-info">
                                 <ul>
-                                    <li><a href="tel:+21234567897"><i class="far fa-phone-arrow-down-left"></i>+2 123
-                                            4567 897</a></li>
-                                    <li><a href="mailto:info@wisetrust.com"><i
-                                                class="far fa-envelopes"></i><span>info@wisetrust.com</span></a></li>
+                                    <li><a href="tel:+923162295519"><i class="far fa-phone-arrow-down-left"></i>+92 316 2295519</a></li>
+                                    <li><a href="mailto:info@wisetrusttravel.com"><i
+                                                class="far fa-envelopes"></i><span>info@wisetrusttravel.com</span></a></li>
                                 </ul>
                             </div>
                         </div>
@@ -81,13 +80,13 @@
                                 <a class="nav-link {{ request()->routeIs('pages.hotels') ? 'active' : '' }}" href="{{ route('pages.hotels') }}">Hotel</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('pages.about') ? 'active' : '' }}" href="{{ route('pages.about') }}">About Us</a>
-                            </li>
-                            <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('pages.activities') ? 'active' : '' }}" href="{{ route('pages.activities') }}">Activity</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('blogs.*') ? 'active' : '' }}" href="{{ route('blogs.index') }}">Blog</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('pages.about') ? 'active' : '' }}" href="{{ route('pages.about') }}">About Us</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('pages.contact') ? 'active' : '' }}" href="{{ route('pages.contact') }}">Contact</a>
@@ -95,7 +94,7 @@
                         </ul>
                         <div class="header-nav-right">
                             <div class="header-btn">
-                                <a href="{{ route('pages.become-expert') }}" class="theme-btn mt-2">Become An Expert</a>
+                                <a href="{{ route('pages.partner-with-us') }}" class="theme-btn mt-2">Partner With Us</a>
                             </div>
                         </div>
                     </div>

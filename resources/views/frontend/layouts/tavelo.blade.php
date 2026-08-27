@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="keywords" content="">
-    <title>@yield('title', 'Tavelo - Travel Booking')</title>
+    <title>@yield('title', 'Wise Trust Travel & Tourism')</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/logo/favicon.png') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/all-fontawesome.min.css') }}">

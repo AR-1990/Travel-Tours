@@ -1,6 +1,6 @@
 @extends('frontend.layouts.tavelo')
 
-@section('title', 'Flights — Tavelo')
+@section('title', 'Flights | Wise Trust Travel & Tourism')
 
 @section('content')
 <div class="site-page">
@@ -89,8 +89,8 @@
         'text' => 'Use Multi Destination search or contact our experts for a tailored flight plan.',
         'primaryLabel' => 'Contact experts',
         'primaryUrl' => route('pages.contact'),
-        'secondaryLabel' => 'Become an expert',
-        'secondaryUrl' => route('pages.become-expert'),
+        'secondaryLabel' => 'Partner with us',
+        'secondaryUrl' => route('pages.partner-with-us'),
     ])
 </div>
 @endsection

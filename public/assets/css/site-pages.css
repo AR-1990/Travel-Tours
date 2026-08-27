@@ -724,3 +724,202 @@
         padding: 5rem 0 2.75rem;
     }
 }
+
+/* =========================================================
+   Partner With Us — partnership option cards
+   ========================================================= */
+.site-container--wide {
+    max-width: 1280px;
+}
+
+.partner-options {
+    background: #fff;
+}
+
+.partner-options__intro {
+    text-align: center;
+    max-width: 720px;
+    margin: 0 auto 2.75rem;
+}
+
+.partner-options__title {
+    margin: 0 0 0.85rem;
+    font-size: clamp(1.85rem, 3vw, 2.45rem);
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--sp-navy);
+}
+
+.partner-options__subtitle {
+    margin: 0;
+    color: var(--sp-muted);
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+.partner-options__divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    margin-top: 1.35rem;
+    color: var(--sp-navy);
+}
+
+.partner-options__divider span {
+    display: block;
+    width: min(140px, 28vw);
+    height: 1px;
+    background: rgba(5, 55, 80, 0.18);
+}
+
+.partner-options__divider i {
+    font-size: 0.95rem;
+}
+
+.partner-options__grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1.1rem;
+}
+
+.partner-card {
+    --partner-accent: #2563eb;
+    --partner-accent-soft: #dbeafe;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.45rem 1.15rem 1.25rem;
+    background: #fff;
+    border: 1px solid rgba(5, 55, 80, 0.1);
+    border-radius: 16px;
+    box-shadow: 0 10px 28px rgba(5, 55, 80, 0.06);
+    text-align: center;
+}
+
+.partner-card--blue {
+    --partner-accent: #2563eb;
+    --partner-accent-soft: #dbeafe;
+}
+
+.partner-card--green {
+    --partner-accent: #16a34a;
+    --partner-accent-soft: #dcfce7;
+}
+
+.partner-card--purple {
+    --partner-accent: #7c3aed;
+    --partner-accent-soft: #ede9fe;
+}
+
+.partner-card--orange {
+    --partner-accent: #ea580c;
+    --partner-accent-soft: #ffedd5;
+}
+
+.partner-card--teal {
+    --partner-accent: #0891b2;
+    --partner-accent-soft: #cffafe;
+}
+
+.partner-card__icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--partner-accent-soft);
+    color: var(--partner-accent);
+    font-size: 1.35rem;
+}
+
+.partner-card__title {
+    margin: 0 0 0.65rem;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--sp-navy);
+    line-height: 1.3;
+}
+
+.partner-card__text {
+    margin: 0 0 1rem;
+    color: var(--sp-muted);
+    font-size: 0.88rem;
+    line-height: 1.55;
+    min-height: 4.2em;
+}
+
+.partner-card__features {
+    list-style: none;
+    margin: 0 0 1.25rem;
+    padding: 0;
+    text-align: left;
+    flex: 1;
+}
+
+.partner-card__features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    margin-bottom: 0.55rem;
+    color: #334155;
+    font-size: 0.86rem;
+    line-height: 1.4;
+}
+
+.partner-card__features li:last-child {
+    margin-bottom: 0;
+}
+
+.partner-card__features i {
+    margin-top: 0.12rem;
+    color: var(--partner-accent);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.partner-card__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 2.65rem;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    background: var(--sp-navy);
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.partner-card__btn:hover {
+    background: #042a3d;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 1199.98px) {
+    .partner-options__grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991.98px) {
+    .partner-options__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .partner-card__text {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .partner-options__grid {
+        grid-template-columns: 1fr;
+    }
+}

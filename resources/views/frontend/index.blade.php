@@ -11,7 +11,7 @@
     <meta name="keywords" content="">
 
     <!-- title -->
-    <title>Tavelo - Travel Booking </title>
+    <title>Wise Trust Travel & Tourism</title>
 
     <!-- favicon -->
     <link rel="icon" type="image/x-icon" href="assets/img/logo/favicon.png">
