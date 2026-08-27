@@ -150,17 +150,17 @@ XML;
         $n = 0;
         for ($i = 0; $i < $adults; $i++) {
             $n++;
-            $keyAttr = $withKeys ? ' Key="'.$n.'"' : '';
+            $keyAttr = $withKeys ? ' Key="PAX'.$n.'"' : '';
             $xml .= "\n      <com:SearchPassenger{$keyAttr} Code=\"ADT\"/>";
         }
         for ($i = 0; $i < $children; $i++) {
             $n++;
-            $keyAttr = $withKeys ? ' Key="'.$n.'"' : '';
+            $keyAttr = $withKeys ? ' Key="PAX'.$n.'"' : '';
             $xml .= "\n      <com:SearchPassenger{$keyAttr} Code=\"CNN\" Age=\"{$childAge}\"/>";
         }
         for ($i = 0; $i < $infants; $i++) {
             $n++;
-            $keyAttr = $withKeys ? ' Key="'.$n.'"' : '';
+            $keyAttr = $withKeys ? ' Key="PAX'.$n.'"' : '';
             $xml .= "\n      <com:SearchPassenger{$keyAttr} Code=\"INF\" Age=\"{$infantAge}\"/>";
         }
 
@@ -826,7 +826,6 @@ XML;
         }
 
         $solutionBody = self::remapBookingTravelerRefs($solutionBody, $passengers);
-        $solutionBody = self::ensureAirSegmentBookingStatus($solutionBody);
         $solutionBody = self::normalizeEmbeddedTravelportXml($solutionBody);
         $solutionBody = self::stripBookingPayloadBloat($solutionBody);
 
@@ -834,31 +833,8 @@ XML;
     }
 
     /**
-     * AirCreateReservation typically requires Status="NN" on each AirSegment.
-     */
-    public static function ensureAirSegmentBookingStatus(string $xml): string
-    {
-        if ($xml === '') {
-            return $xml;
-        }
-
-        return preg_replace_callback(
-            '/<(?<prefix>[\w]+:)?AirSegment\b(?<attrs>[^>]*?)(?<self>\/?)>/',
-            static function (array $m): string {
-                $attrs = $m['attrs'];
-                if (! preg_match('/\bStatus="/', $attrs)) {
-                    $attrs .= ' Status="NN"';
-                }
-                $prefix = $m['prefix'] ?? '';
-
-                return '<'.$prefix.'AirSegment'.$attrs.$m['self'].'>';
-            },
-            $xml
-        ) ?? $xml;
-    }
-
-    /**
      * Map PassengerType BookingTravelerRef values to BookingTraveler Key 1..N by PTC.
+     * Single-ADT keeps the previous working behaviour (all refs → "1").
      *
      * @param  list<array<string, mixed>>|null  $passengers
      */
@@ -868,21 +844,35 @@ XML;
             return $xml;
         }
 
+        $paxCount = 0;
+        if (is_array($passengers)) {
+            foreach ($passengers as $pax) {
+                if (is_array($pax)) {
+                    $paxCount++;
+                }
+            }
+        }
+
+        // Previous production behaviour that successfully created reservations.
+        if ($paxCount <= 1) {
+            return preg_replace(
+                '/\bBookingTravelerRef="[^"]*"/',
+                'BookingTravelerRef="1"',
+                $xml
+            ) ?? $xml;
+        }
+
         /** @var array<string, list<string>> $keysByType */
         $keysByType = [];
-        if (is_array($passengers) && $passengers !== []) {
-            foreach ($passengers as $i => $pax) {
-                if (! is_array($pax)) {
-                    continue;
-                }
-                $type = strtoupper((string) ($pax['type'] ?? 'ADT'));
-                if ($type === 'CHD') {
-                    $type = 'CNN';
-                }
-                $keysByType[$type][] = (string) ($i + 1);
+        foreach ($passengers as $i => $pax) {
+            if (! is_array($pax)) {
+                continue;
             }
-        } else {
-            $keysByType['ADT'] = ['1'];
+            $type = strtoupper((string) ($pax['type'] ?? 'ADT'));
+            if ($type === 'CHD') {
+                $type = 'CNN';
+            }
+            $keysByType[$type][] = (string) ($i + 1);
         }
 
         return preg_replace_callback(
@@ -914,6 +904,14 @@ XML;
             },
             $xml
         ) ?? $xml;
+    }
+
+    /**
+     * @deprecated Kept for tests; Status is no longer forced (it broke previously working sells).
+     */
+    public static function ensureAirSegmentBookingStatus(string $xml): string
+    {
+        return $xml;
     }
 
     /**
