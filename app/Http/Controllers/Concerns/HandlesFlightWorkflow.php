@@ -443,7 +443,11 @@ trait HandlesFlightWorkflow
                     'status' => FlightReservation::STATUS_TICKETED,
                     'ticket_numbers' => $result['ticket_numbers'] ?? [],
                     'ticketed_at' => now(),
-                    'raw_result' => array_merge((array) $reservation->raw_result, ['ticket' => $result]),
+                    'raw_result' => array_merge((array) $reservation->raw_result, [
+                        'ticket' => $result,
+                        'pnr' => $result['pnr'] ?? null,
+                        'pnrs' => $result['pnrs'] ?? [],
+                    ]),
                 ])->save();
             }
 

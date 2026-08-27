@@ -196,8 +196,12 @@ class SunSpringClient
         $excerpt = $this->excerpt($response->body());
         $err = $this->extractError($json);
         $apiFailed = $this->isApiFailure($json);
+        $rawBody = $response->body();
+        $looksLikeHtmlError = is_string($rawBody)
+            && $json === null
+            && (str_contains($rawBody, '403') || str_contains(strtolower($rawBody), '<html'));
 
-        $result = $response->successful() && $err === null && ! $apiFailed
+        $result = $response->successful() && $err === null && ! $apiFailed && ! $looksLikeHtmlError
             ? [
                 'ok' => true,
                 'message' => 'OK',
@@ -207,7 +211,10 @@ class SunSpringClient
             ]
             : [
                 'ok' => false,
-                'message' => $err ?: ('SunSpring request failed (HTTP '.$response->status().').'),
+                'message' => $err
+                    ?: ($looksLikeHtmlError
+                        ? 'SunSpring Cancel/API returned an HTML error page (often 403 Forbidden).'
+                        : ('SunSpring request failed (HTTP '.$response->status().').')),
                 'http_status' => $response->status(),
                 'data' => $json,
                 'response_excerpt' => $excerpt,
@@ -215,7 +222,7 @@ class SunSpringClient
 
         SunSpringExchangeLogger::record('POST', $url, $body, [
             'http_status' => $response->status(),
-            'body' => $json ?? $response->body(),
+            'body' => $json ?? $rawBody,
         ]);
 
         return $result;

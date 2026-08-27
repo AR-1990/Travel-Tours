@@ -293,11 +293,27 @@ class SunSpringCertRunCommand extends Command
 
         $cancelMsg = 'skipped';
         if ($reference !== '') {
+            $pnrs = [];
+            if (! empty($ticket['pnr'])) {
+                $pnrs[] = (string) $ticket['pnr'];
+            }
+            if (is_array($ticket['pnrs'] ?? null)) {
+                foreach ($ticket['pnrs'] as $pnr) {
+                    $pnr = trim((string) $pnr);
+                    if ($pnr !== '') {
+                        $pnrs[] = $pnr;
+                    }
+                }
+            }
+            $pnrs = array_values(array_unique($pnrs));
+
             $cancel = $air->cancel([
                 'reference' => $reference,
                 'type' => 'General',
                 'tickets' => $ticketNumbers,
-                'voucher' => [],
+                'voucher' => $pnrs,
+                'pnr' => $pnrs[0] ?? '',
+                'pnrs' => $pnrs,
             ]);
             $cancelMsg = (($cancel['ok'] ?? false) ? 'ok' : 'fail').' — '.($cancel['message'] ?? '');
         }

@@ -85,9 +85,17 @@ class SunSpringAirServiceJourneyTest extends TestCase
                 'status' => 'success',
                 'err' => 0,
                 'refrence_id' => 98765,
-                'tickets' => [
-                    ['ticket_number' => '999-1234567890'],
+                'flights' => [
+                    ['pnr' => 'KOFQ4O', 'flight_number' => '123'],
                 ],
+                'tickets' => [
+                    ['ticket_number' => '999-1234567890', 'pnr' => 'KOFQ4O'],
+                ],
+            ], 200),
+            'sandbox.sunspring.ae/api/v2/flight/Cancel' => Http::response([
+                'status' => 'process',
+                'request_id' => '1459',
+                'msg' => 'success.',
             ], 200),
         ]);
 
@@ -174,10 +182,41 @@ class SunSpringAirServiceJourneyTest extends TestCase
         $ticket = $air->issueTicket(['reference' => 98765]);
         $this->assertTrue($ticket['ok'], $ticket['message'] ?? 'ticket failed');
         $this->assertSame(['999-1234567890'], $ticket['ticket_numbers']);
+        $this->assertSame('KOFQ4O', $ticket['pnr']);
+
+        $cancel = $air->cancel([
+            'reference' => '98765',
+            'type' => 'General',
+            'tickets' => $ticket['ticket_numbers'],
+            'pnr' => $ticket['pnr'],
+        ]);
+        $this->assertTrue($cancel['ok'] ?? false, $cancel['message'] ?? 'cancel failed');
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), '/api/v2/flight/FlightSearch')
                 && ($request->header('Authorization')[0] ?? '') === 'Bearer jwt.fake.token';
         });
+
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/api/v2/flight/Cancel')) {
+                return false;
+            }
+            $body = $request->data();
+
+            return ($body['voucher'] ?? null) === ['KOFQ4O']
+                && ($body['reference'] ?? null) === '98765';
+        });
+    }
+
+    public function test_resolve_cancel_vouchers_uses_pnr_as_voucher_value(): void
+    {
+        $air = new SunSpringAirService(new SunSpringClient, new SunSpringFlightParser);
+
+        $this->assertSame(['ABC123'], $air->resolveCancelVouchers(['pnr' => 'ABC123']));
+        $this->assertSame(['ABC123'], $air->resolveCancelVouchers(['voucher' => ['ABC123']]));
+        $this->assertSame(
+            ['ABC123'],
+            $air->resolveCancelVouchers(['voucher' => [['VoucherValue' => 'ABC123']]])
+        );
     }
 }

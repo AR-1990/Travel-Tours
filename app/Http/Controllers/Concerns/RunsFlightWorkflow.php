@@ -388,7 +388,11 @@ trait RunsFlightWorkflow
                 'status' => FlightReservation::STATUS_TICKETED,
                 'ticket_numbers' => $result['ticket_numbers'] ?? [],
                 'ticketed_at' => now(),
-                'raw_result' => array_merge((array) $reservation->raw_result, ['ticket' => $result]),
+                'raw_result' => array_merge((array) $reservation->raw_result, [
+                    'ticket' => $result,
+                    'pnr' => $result['pnr'] ?? null,
+                    'pnrs' => $result['pnrs'] ?? [],
+                ]),
             ])->save();
         }
 
@@ -423,17 +427,46 @@ trait RunsFlightWorkflow
 
     protected function runSunSpringCancelFlow(FlightReservation $reservation): array
     {
+        $air = app(SunSpringAirService::class);
         $reference = (string) ($reservation->provider_locator ?: $reservation->universal_locator);
         if ($reference === '') {
             return ['ok' => false, 'message' => 'No SunSpring booking reference on this reservation.'];
         }
 
         $tickets = is_array($reservation->ticket_numbers) ? array_values($reservation->ticket_numbers) : [];
-        $result = app(SunSpringAirService::class)->cancel([
+        $pnrs = $this->sunSpringPnrsFromReservation($reservation, $air);
+
+        // If PNR was never stored locally, fetch TicketInfo and retry extract.
+        if ($pnrs === [] && $reference !== '') {
+            $info = $air->ticketInfo(['reference' => $reference]);
+            if ($info['ok'] ?? false) {
+                $payload = is_array($info['data'] ?? null) ? $info['data'] : (is_array($info) ? $info : []);
+                $pnrs = $air->extractPnrsFromPayload($payload);
+                $reservation->forceFill([
+                    'raw_result' => array_merge((array) $reservation->raw_result, [
+                        'ticket_info' => $info,
+                        'pnr' => $pnrs[0] ?? null,
+                        'pnrs' => $pnrs,
+                    ]),
+                ])->save();
+            }
+        }
+
+        if ($pnrs === []) {
+            return [
+                'ok' => false,
+                'message' => 'Cannot cancel/refund: airline PNR (voucher value) is missing. Retrieve ticket info first, then retry cancel.',
+                'provider' => 'sunspring',
+            ];
+        }
+
+        $result = $air->cancel([
             'reference' => $reference,
             'type' => 'General',
             'tickets' => $tickets,
-            'voucher' => [],
+            'voucher' => $pnrs,
+            'pnrs' => $pnrs,
+            'pnr' => $pnrs[0],
         ]);
         if (! ($result['ok'] ?? false)) {
             return $result;
@@ -442,7 +475,11 @@ trait RunsFlightWorkflow
         $reservation->update([
             'status' => FlightReservation::STATUS_CANCELLED,
             'cancelled_at' => now(),
-            'raw_result' => array_merge((array) $reservation->raw_result, ['cancel' => $result]),
+            'raw_result' => array_merge((array) $reservation->raw_result, [
+                'cancel' => $result,
+                'pnr' => $pnrs[0],
+                'pnrs' => $pnrs,
+            ]),
         ]);
 
         return array_merge($result, [
@@ -450,6 +487,39 @@ trait RunsFlightWorkflow
             'message' => $result['message'] ?? 'SunSpring reservation cancelled.',
             'cancelled' => true,
             'provider' => 'sunspring',
+            'voucher' => $pnrs,
         ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function sunSpringPnrsFromReservation(FlightReservation $reservation, SunSpringAirService $air): array
+    {
+        $raw = is_array($reservation->raw_result) ? $reservation->raw_result : [];
+        $pnrs = [];
+
+        foreach (['pnr', 'PNR'] as $key) {
+            $value = trim((string) ($raw[$key] ?? ''));
+            if ($value !== '') {
+                $pnrs[] = $value;
+            }
+        }
+        if (is_array($raw['pnrs'] ?? null)) {
+            foreach ($raw['pnrs'] as $pnr) {
+                $value = trim((string) $pnr);
+                if ($value !== '') {
+                    $pnrs[] = $value;
+                }
+            }
+        }
+
+        $pnrs = array_merge(
+            $pnrs,
+            $air->extractPnrsFromPayload($raw),
+            $air->extractPnrsFromPayload(is_array($reservation->gds_snapshot) ? $reservation->gds_snapshot : [])
+        );
+
+        return array_values(array_unique($pnrs));
     }
 }
