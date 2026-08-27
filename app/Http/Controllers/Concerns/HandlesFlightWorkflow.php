@@ -150,6 +150,8 @@ trait HandlesFlightWorkflow
             }
             $result = $air->execute('air_price', [
                 'adults' => $adults,
+                'children' => $children,
+                'infants' => $infants,
                 'solution_key' => $solutionKey,
             ]);
         }

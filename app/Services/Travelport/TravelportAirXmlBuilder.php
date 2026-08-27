@@ -59,12 +59,14 @@ XML;
     }
 
     /**
+     * @param  array<string, mixed>  $params
      * @return array{air: string, com: string, univ: string, target: string, origin: string, gds: string, trace: string}
      */
-    private function ctx(int $schemaVer, ?string $tracePrefix = null): array
+    private function ctx(int $schemaVer, ?string $tracePrefix = null, array $params = []): array
     {
         $c = TravelportIntegrationConfig::merged();
         $prefix = $tracePrefix ?? 'air';
+        $fixedTrace = trim((string) ($params['_trace_id'] ?? ''));
 
         return [
             'air' => 'http://www.travelport.com/schema/air_v'.$schemaVer.'_0',
@@ -74,7 +76,7 @@ XML;
             'target' => $this->esc((string) ($c['target_branch'] ?? '')),
             'origin' => $this->esc((string) ($c['origin_application'] ?? 'UAPI')) ?: 'UAPI',
             'gds' => $this->esc((string) ($c['gds'] ?? '1G')) ?: '1G',
-            'trace' => $this->esc($prefix.'-'.Str::lower(Str::random(10))),
+            'trace' => $this->esc($fixedTrace !== '' ? $fixedTrace : ($prefix.'-'.Str::lower(Str::random(10)))),
         ];
     }
 
@@ -131,14 +133,35 @@ XML;
     }
 
     /**
+     * Build SearchPassenger elements for ADT / CNN (child) / INF.
+     *
      * @param  array<string, mixed>  $params
+     * @param  array<string, string>  $x
      */
-    private function passengers(int $adults, array $x, bool $withKeys = false): string
+    private function passengers(array $params, array $x, bool $withKeys = false): string
     {
+        $adults = max(1, min(9, (int) ($params['adults'] ?? 1)));
+        $children = max(0, min(8, (int) ($params['children'] ?? 0)));
+        $infants = max(0, min(8, (int) ($params['infants'] ?? 0)));
+        $childAge = max(2, min(11, (int) ($params['child_age'] ?? 8)));
+        $infantAge = max(0, min(1, (int) ($params['infant_age'] ?? 1)));
+
         $xml = '';
-        for ($i = 0; $i < max(1, min(9, $adults)); $i++) {
-            $keyAttr = $withKeys ? ' Key="PAX'.($i + 1).'"' : '';
+        $n = 0;
+        for ($i = 0; $i < $adults; $i++) {
+            $n++;
+            $keyAttr = $withKeys ? ' Key="'.$n.'"' : '';
             $xml .= "\n      <com:SearchPassenger{$keyAttr} Code=\"ADT\"/>";
+        }
+        for ($i = 0; $i < $children; $i++) {
+            $n++;
+            $keyAttr = $withKeys ? ' Key="'.$n.'"' : '';
+            $xml .= "\n      <com:SearchPassenger{$keyAttr} Code=\"CNN\" Age=\"{$childAge}\"/>";
+        }
+        for ($i = 0; $i < $infants; $i++) {
+            $n++;
+            $keyAttr = $withKeys ? ' Key="'.$n.'"' : '';
+            $xml .= "\n      <com:SearchPassenger{$keyAttr} Code=\"INF\" Age=\"{$infantAge}\"/>";
         }
 
         return $xml;
@@ -149,8 +172,7 @@ XML;
      */
     public function lowFareSearch(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'lfs');
-        $adults = (int) ($params['adults'] ?? 1);
+        $x = $this->ctx($schemaVer, 'lfs', $params);
         $legs = $this->routeLegs($params, $schemaVer);
 
         $body = <<<XML
@@ -159,7 +181,7 @@ XML;
 {$legs}
       <air:AirSearchModifiers MaxSolutions="50">
         <air:PreferredProviders><com:Provider Code="{$x['gds']}"/></air:PreferredProviders>
-      </air:AirSearchModifiers>{$this->passengers($adults, $x)}
+      </air:AirSearchModifiers>{$this->passengers($params, $x)}
     </air:LowFareSearchReq>
 XML;
 
@@ -171,8 +193,7 @@ XML;
      */
     public function availabilitySearch(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'avail');
-        $adults = (int) ($params['adults'] ?? 1);
+        $x = $this->ctx($schemaVer, 'avail', $params);
         $legs = $this->routeLegs($params, $schemaVer);
 
         $body = <<<XML
@@ -181,7 +202,7 @@ XML;
 {$legs}
       <air:AirSearchModifiers>
         <air:PreferredProviders><com:Provider Code="{$x['gds']}"/></air:PreferredProviders>
-      </air:AirSearchModifiers>{$this->passengers($adults, $x)}
+      </air:AirSearchModifiers>{$this->passengers($params, $x)}
     </air:AvailabilitySearchReq>
 XML;
 
@@ -193,7 +214,7 @@ XML;
      */
     public function airFareDisplay(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'fare');
+        $x = $this->ctx($schemaVer, 'fare', $params);
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
         $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
         $departure = $this->date((string) ($params['departure_date'] ?? ''));
@@ -228,7 +249,7 @@ XML;
      */
     public function flightTimeTable(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'tt');
+        $x = $this->ctx($schemaVer, 'tt', $params);
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
         $destination = $this->esc(strtoupper((string) ($params['destination'] ?? '')));
         $startDate = $this->date((string) ($params['departure_date'] ?? ''));
@@ -265,10 +286,9 @@ XML;
      */
     public function airPrice(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'price');
+        $x = $this->ctx($schemaVer, 'price', $params);
         $solutionXml = (string) ($params['_pricing_solution_xml'] ?? '');
         $lfsXml = (string) ($params['_lfs_xml'] ?? '');
-        $adults = (int) ($params['adults'] ?? 1);
 
         if ($solutionXml === '') {
             return '';
@@ -306,7 +326,7 @@ XML;
     <air:AirPriceReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
 {$airItineraryXml}
-{$this->passengers($adults, $x, true)}
+{$this->passengers($params, $x, true)}
 {$airPricingCommandXml}
     </air:AirPriceReq>
 XML;
@@ -319,7 +339,7 @@ XML;
      */
     public function airFareRules(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'rules');
+        $x = $this->ctx($schemaVer, 'rules', $params);
         $fareRuleKey = (string) ($params['_fare_rule_key_xml'] ?? '');
 
         if ($fareRuleKey === '') {
@@ -344,7 +364,7 @@ XML;
      */
     public function seatMap(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'seat');
+        $x = $this->ctx($schemaVer, 'seat', $params);
         $carrier = $this->esc(strtoupper((string) ($params['carrier'] ?? '')));
         $flight = $this->esc((string) ($params['flight_number'] ?? ''));
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
@@ -368,15 +388,14 @@ XML;
      */
     public function lowFareSearchAsync(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'lfsa');
-        $adults = (int) ($params['adults'] ?? 1);
+        $x = $this->ctx($schemaVer, 'lfsa', $params);
         $legs = $this->routeLegs($params, $schemaVer);
 
         $body = <<<XML
     <air:LowFareSearchAsynchReq TargetBranch="{$x['target']}" TraceId="{$x['trace']}" SolutionResult="true" AuthorizedBy="UAPI" xmlns:air="{$x['air']}" xmlns:com="{$x['com']}">
       <com:BillingPointOfSaleInfo OriginApplication="{$x['origin']}"/>
 {$legs}
-{$this->passengers($adults, $x)}
+{$this->passengers($params, $x)}
       <air:AirSearchModifiers>
         <air:PreferredProviders>
           <com:Provider Code="{$x['gds']}"/>
@@ -393,7 +412,7 @@ XML;
      */
     public function flightDetails(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'fdet');
+        $x = $this->ctx($schemaVer, 'fdet', $params);
         $carrier = $this->esc(strtoupper((string) ($params['carrier'] ?? '')));
         $flight = $this->esc((string) ($params['flight_number'] ?? ''));
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
@@ -421,7 +440,7 @@ XML;
      */
     public function flightInformation(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'finfo');
+        $x = $this->ctx($schemaVer, 'finfo', $params);
         $carrier = $this->esc(strtoupper((string) ($params['carrier'] ?? '')));
         $flight = $this->esc((string) ($params['flight_number'] ?? ''));
         $origin = $this->esc(strtoupper((string) ($params['origin'] ?? '')));
@@ -449,7 +468,7 @@ XML;
      */
     public function airReprice(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'repr');
+        $x = $this->ctx($schemaVer, 'repr', $params);
         $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
 
         $body = <<<XML
@@ -467,7 +486,7 @@ XML;
      */
     public function airCreateReservation(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'book');
+        $x = $this->ctx($schemaVer, 'book', $params);
         $solutionXml = (string) ($params['_air_pricing_solution_xml'] ?? '');
         if ($solutionXml === '') {
             return '';
@@ -494,7 +513,7 @@ XML;
      */
     public function universalRecordModify(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'urmod');
+        $x = $this->ctx($schemaVer, 'urmod', $params);
         $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
         $version = $this->esc((string) ($params['version'] ?? '0'));
 
@@ -513,7 +532,7 @@ XML;
      */
     public function airCancel(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'acan');
+        $x = $this->ctx($schemaVer, 'acan', $params);
         $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
 
         $body = <<<XML
@@ -547,7 +566,7 @@ XML;
      */
     public function airVoidTicket(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'void');
+        $x = $this->ctx($schemaVer, 'void', $params);
         $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
         $ticket = $this->esc((string) ($params['ticket_number'] ?? ''));
 
@@ -594,7 +613,7 @@ XML;
      */
     public function airMerchandising(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'merch');
+        $x = $this->ctx($schemaVer, 'merch', $params);
         $solutionXml = (string) ($params['_air_pricing_solution_xml'] ?? '');
 
         $body = <<<XML
@@ -620,7 +639,7 @@ XML;
      */
     private function locatorAirRequest(string $reqName, array $params, int $schemaVer, string $tracePrefix): string
     {
-        $x = $this->ctx($schemaVer, $tracePrefix);
+        $x = $this->ctx($schemaVer, $tracePrefix, $params);
         $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
 
         $body = <<<XML
@@ -653,7 +672,16 @@ XML;
             ]];
         }
 
+        $hasInfant = false;
+        foreach ($passengers as $pax) {
+            if (is_array($pax) && strtoupper((string) ($pax['type'] ?? '')) === 'INF') {
+                $hasInfant = true;
+                break;
+            }
+        }
+
         $xml = '';
+        $adultIndex = 0;
         foreach ($passengers as $i => $pax) {
             if (! is_array($pax)) {
                 continue;
@@ -666,17 +694,40 @@ XML;
             $phone = $this->esc((string) ($pax['phone'] ?? ''));
             $dob = $this->esc((string) ($pax['dob'] ?? ''));
             $gender = $this->esc((string) ($pax['gender'] ?? 'M'));
-            $type = $this->esc((string) ($pax['type'] ?? 'ADT'));
+            $type = strtoupper((string) ($pax['type'] ?? 'ADT'));
+            if ($type === 'CHD') {
+                $type = 'CNN';
+            }
+            $type = $this->esc($type);
             $age = $this->travelerAge($dob);
+            // Hosts often reject INF with Age="0"; use 1 for under-2 infants.
+            if ($type === 'INF' && ($age === null || $age < 1)) {
+                $age = 1;
+            }
 
             $dobAttr = $dob !== '' ? ' DOB="'.$dob.'"' : '';
             $ageAttr = $age !== null ? ' Age="'.$age.'"' : '';
-            $xml .= <<<XML
+            $accAttr = '';
+            if ($type === 'ADT') {
+                if ($hasInfant && $adultIndex === 0) {
+                    $accAttr = ' AccompaniedByInfant="true"';
+                }
+                $adultIndex++;
+            }
 
-      <com:BookingTraveler Key="{$key}" TravelerType="{$type}" Gender="{$gender}"{$dobAttr}{$ageAttr}>
-        <com:BookingTravelerName Prefix="{$prefix}" First="{$first}" Last="{$last}"/>
+            $contactXml = '';
+            if ($type !== 'INF') {
+                $contactXml = <<<XML
+
         <com:PhoneNumber Type="Mobile" Number="{$phone}"/>
         <com:Email EmailID="{$email}" Type="Home"/>
+XML;
+            }
+
+            $xml .= <<<XML
+
+      <com:BookingTraveler Key="{$key}" TravelerType="{$type}" Gender="{$gender}"{$dobAttr}{$ageAttr}{$accAttr}>
+        <com:BookingTravelerName Prefix="{$prefix}" First="{$first}" Last="{$last}"/>{$contactXml}
       </com:BookingTraveler>
 XML;
         }
@@ -737,7 +788,7 @@ XML;
         return '      '.trim($m[0]);
     }
 
-    public static function prepareAirPricingSolutionForBooking(string $priceXml): ?string
+    public static function prepareAirPricingSolutionForBooking(string $priceXml, ?array $passengers = null): ?string
     {
         $solution = self::extractAirPricingSolutionFromPriceXml($priceXml);
         if ($solution === null) {
@@ -774,16 +825,95 @@ XML;
             }
         }
 
-        $solutionBody = preg_replace(
-            '/\bBookingTravelerRef="[^"]*"/',
-            'BookingTravelerRef="1"',
-            $solutionBody
-        ) ?? $solutionBody;
-
+        $solutionBody = self::remapBookingTravelerRefs($solutionBody, $passengers);
+        $solutionBody = self::ensureAirSegmentBookingStatus($solutionBody);
         $solutionBody = self::normalizeEmbeddedTravelportXml($solutionBody);
         $solutionBody = self::stripBookingPayloadBloat($solutionBody);
 
         return '      '.trim($solutionBody);
+    }
+
+    /**
+     * AirCreateReservation typically requires Status="NN" on each AirSegment.
+     */
+    public static function ensureAirSegmentBookingStatus(string $xml): string
+    {
+        if ($xml === '') {
+            return $xml;
+        }
+
+        return preg_replace_callback(
+            '/<(?<prefix>[\w]+:)?AirSegment\b(?<attrs>[^>]*?)(?<self>\/?)>/',
+            static function (array $m): string {
+                $attrs = $m['attrs'];
+                if (! preg_match('/\bStatus="/', $attrs)) {
+                    $attrs .= ' Status="NN"';
+                }
+                $prefix = $m['prefix'] ?? '';
+
+                return '<'.$prefix.'AirSegment'.$attrs.$m['self'].'>';
+            },
+            $xml
+        ) ?? $xml;
+    }
+
+    /**
+     * Map PassengerType BookingTravelerRef values to BookingTraveler Key 1..N by PTC.
+     *
+     * @param  list<array<string, mixed>>|null  $passengers
+     */
+    public static function remapBookingTravelerRefs(string $xml, ?array $passengers = null): string
+    {
+        if ($xml === '') {
+            return $xml;
+        }
+
+        /** @var array<string, list<string>> $keysByType */
+        $keysByType = [];
+        if (is_array($passengers) && $passengers !== []) {
+            foreach ($passengers as $i => $pax) {
+                if (! is_array($pax)) {
+                    continue;
+                }
+                $type = strtoupper((string) ($pax['type'] ?? 'ADT'));
+                if ($type === 'CHD') {
+                    $type = 'CNN';
+                }
+                $keysByType[$type][] = (string) ($i + 1);
+            }
+        } else {
+            $keysByType['ADT'] = ['1'];
+        }
+
+        return preg_replace_callback(
+            '/(<(?:[\w]+:)?PassengerType\b)([^>]*?)(\/?>)/',
+            static function (array $m) use (&$keysByType): string {
+                $attrs = $m[2];
+                $code = 'ADT';
+                if (preg_match('/\bCode="([^"]+)"/', $attrs, $cm)) {
+                    $code = strtoupper($cm[1]);
+                    if ($code === 'CHD') {
+                        $code = 'CNN';
+                    }
+                }
+
+                $key = '1';
+                if (! empty($keysByType[$code])) {
+                    $key = array_shift($keysByType[$code]);
+                } elseif (! empty($keysByType['ADT'])) {
+                    $key = $keysByType['ADT'][0];
+                }
+
+                if (preg_match('/\bBookingTravelerRef="/', $attrs)) {
+                    $attrs = preg_replace('/\bBookingTravelerRef="[^"]*"/', 'BookingTravelerRef="'.$key.'"', $attrs) ?? $attrs;
+                } else {
+                    $attrs .= ' BookingTravelerRef="'.$key.'"';
+                }
+
+                return $m[1].$attrs.$m[3];
+            },
+            $xml
+        ) ?? $xml;
     }
 
     /**
@@ -885,7 +1015,7 @@ XML;
      */
     public function universalRecordCancel(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'urc');
+        $x = $this->ctx($schemaVer, 'urc', $params);
         $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
         $version = $this->esc((string) ($params['version'] ?? '0'));
 
@@ -903,7 +1033,7 @@ XML;
      */
     public function airTicketing(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'tkt');
+        $x = $this->ctx($schemaVer, 'tkt', $params);
         $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
 
         $body = <<<XML
@@ -921,7 +1051,7 @@ XML;
      */
     public function airRetrieveDocument(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'doc');
+        $x = $this->ctx($schemaVer, 'doc', $params);
         $locator = $this->esc((string) ($params['air_reservation_locator'] ?? $params['universal_locator'] ?? ''));
         $ticket = $this->esc((string) ($params['ticket_number'] ?? ''));
 
@@ -944,7 +1074,7 @@ XML;
      */
     public function universalRecordRetrieve(array $params, int $schemaVer): string
     {
-        $x = $this->ctx($schemaVer, 'ur');
+        $x = $this->ctx($schemaVer, 'ur', $params);
         $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
 
         $body = <<<XML
@@ -971,7 +1101,7 @@ XML;
             return null;
         }
 
-        $x = $this->ctx($schemaVer, 'gen');
+        $x = $this->ctx($schemaVer, 'gen', $params);
         $locator = $this->esc((string) ($params['universal_locator'] ?? ''));
 
         $extra = $locator !== ''

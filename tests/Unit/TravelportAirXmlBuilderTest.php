@@ -82,6 +82,27 @@ class TravelportAirXmlBuilderTest extends TestCase
         $this->assertStringContainsString('Code="ORD"', $xml);
     }
 
+    public function test_low_fare_search_includes_adt_cnn_inf_passengers(): void
+    {
+        $builder = new TravelportAirXmlBuilder;
+        $xml = $builder->build('low_fare_search', [
+            'origin' => 'KWI',
+            'destination' => 'NBO',
+            'departure_date' => '2026-09-01',
+            'return_date' => '2026-09-10',
+            'adults' => 1,
+            'children' => 1,
+            'infants' => 1,
+            '_trace_id' => 'wt-cert-fixedtrace',
+        ], 52);
+
+        $this->assertStringContainsString('Code="ADT"', $xml);
+        $this->assertStringContainsString('Code="CNN"', $xml);
+        $this->assertStringContainsString('Code="INF"', $xml);
+        $this->assertSame(2, preg_match_all('/<air:SearchAirLeg\b/', $xml));
+        $this->assertStringContainsString('TraceId="wt-cert-fixedtrace"', $xml);
+    }
+
     public function test_extract_air_pricing_solution_from_price_xml(): void
     {
         $sample = <<<'XML'
@@ -95,6 +116,64 @@ XML;
         $extracted = TravelportAirXmlBuilder::extractAirPricingSolutionFromPriceXml($sample);
         $this->assertNotNull($extracted);
         $this->assertStringContainsString('AirPricingSolution', $extracted);
+    }
+
+    public function test_prepare_booking_pricing_solution_maps_multi_pax_refs(): void
+    {
+        $priceXml = <<<'XML'
+<air:AirPriceRsp xmlns:air="http://www.travelport.com/schema/air_v52_0">
+  <air:AirItinerary>
+    <air:AirSegment Key="seg1" Carrier="KU" FlightNumber="100" Origin="KWI" Destination="DXB"/>
+  </air:AirItinerary>
+  <air:AirPricingSolution Key="s1" TotalPrice="USD900">
+    <air:AirSegmentRef Key="seg1"/>
+    <air:AirPricingInfo Key="pi1">
+      <air:PassengerType Code="ADT" BookingTravelerRef="PAX1"/>
+    </air:AirPricingInfo>
+    <air:AirPricingInfo Key="pi2">
+      <air:PassengerType Code="CNN" BookingTravelerRef="PAX2"/>
+    </air:AirPricingInfo>
+    <air:AirPricingInfo Key="pi3">
+      <air:PassengerType Code="INF" BookingTravelerRef="PAX3"/>
+    </air:AirPricingInfo>
+  </air:AirPricingSolution>
+  <air:HostToken Key="ht1">TOKENVALUE</air:HostToken>
+</air:AirPriceRsp>
+XML;
+
+        $prepared = TravelportAirXmlBuilder::prepareAirPricingSolutionForBooking($priceXml, [
+            ['type' => 'ADT'],
+            ['type' => 'CNN'],
+            ['type' => 'INF'],
+        ]);
+        $this->assertNotNull($prepared);
+        $this->assertStringContainsString('BookingTravelerRef="1"', $prepared);
+        $this->assertStringContainsString('BookingTravelerRef="2"', $prepared);
+        $this->assertStringContainsString('BookingTravelerRef="3"', $prepared);
+    }
+
+    public function test_air_create_reservation_marks_adult_accompanied_by_infant(): void
+    {
+        $builder = new TravelportAirXmlBuilder;
+        $xml = $builder->build('air_create_reservation', [
+            '_air_pricing_solution_xml' => '      <air:AirPricingSolution Key="s1" TotalPrice="GBP100"/>',
+            'passengers' => [
+                [
+                    'prefix' => 'Mr', 'first' => 'Adult', 'last' => 'One',
+                    'email' => 'a@example.com', 'phone' => '555', 'dob' => '1990-01-01',
+                    'gender' => 'M', 'type' => 'ADT',
+                ],
+                [
+                    'prefix' => 'Mstr', 'first' => 'Baby', 'last' => 'One',
+                    'email' => '', 'phone' => '', 'dob' => '2025-10-01',
+                    'gender' => 'M', 'type' => 'INF',
+                ],
+            ],
+            'form_of_payment' => 'Cash',
+        ], 52);
+
+        $this->assertStringContainsString('AccompaniedByInfant="true"', $xml);
+        $this->assertStringContainsString('TravelerType="INF"', $xml);
     }
 
     public function test_prepare_booking_pricing_solution_injects_segments_and_host_token(): void

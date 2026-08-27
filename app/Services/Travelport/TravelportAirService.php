@@ -80,7 +80,7 @@ class TravelportAirService extends TravelportSoapClient
 
         if ($operation === 'air_price') {
             $solutionKey = (string) ($params['solution_key'] ?? '');
-            $lastLfsXml = (string) session('travelport.last_lfs_xml', '');
+            $lastLfsXml = (string) ($params['_lfs_xml'] ?? session('travelport.last_lfs_xml', ''));
             $params['_lfs_xml'] = $lastLfsXml;
             $params['_pricing_solution_xml'] = $params['_pricing_solution_xml']
                 ?? TravelportAirXmlBuilder::extractPricingSolution($lastLfsXml, $solutionKey !== '' ? $solutionKey : null);
@@ -119,8 +119,14 @@ class TravelportAirService extends TravelportSoapClient
         }
 
         if (in_array($operation, ['air_create_reservation', 'air_merchandising'], true)) {
-            $priceXml = (string) session('travelport.last_air_price_xml', '');
-            $solution = TravelportAirXmlBuilder::prepareAirPricingSolutionForBooking($priceXml);
+            $priceXml = (string) ($params['_air_price_xml'] ?? session('travelport.last_air_price_xml', ''));
+            if ($priceXml !== '') {
+                session(['travelport.last_air_price_xml' => $priceXml]);
+            }
+            $solution = TravelportAirXmlBuilder::prepareAirPricingSolutionForBooking(
+                $priceXml,
+                is_array($params['passengers'] ?? null) ? $params['passengers'] : null
+            );
             if ($solution === null || $solution === '') {
                 return $this->failResult(
                     $operation,
@@ -164,6 +170,7 @@ class TravelportAirService extends TravelportSoapClient
             }
 
             $http = $this->postSoap($endpoint, $body);
+            TravelportExchangeLogger::record($operation, $endpoint, $body, $http);
 
             if (! $http['ok']) {
                 $lastFail = $http;
