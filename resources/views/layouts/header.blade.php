@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ config('app.name', 'Laravel Boilerplate') }}</title>
+    <title>{{ config('app.name', 'Wise Trust Travel & Tourism') }}</title>
     <meta name="description"
-        content="{{ config('app.name', 'Laravel Boilerplate') }} - A clean, production-ready Laravel boilerplate with admin panel, user management, roles & permissions.">
+        content="{{ config('app.name', 'Wise Trust Travel & Tourism') }} - Your trusted travel partner for seamless journeys.">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="{{ config('app.name', 'Laravel Boilerplate') }}">
+    <meta property="og:title" content="{{ config('app.name', 'Wise Trust Travel & Tourism') }}">
     <meta property="og:description"
-        content="A clean, production-ready Laravel boilerplate with admin panel, user management, roles & permissions.">
+        content="Your trusted travel partner for seamless journeys.">
     <meta property="og:url" content="{{ url('/') }}">
     <meta property="og:image" content="{{ asset('favicon.ico') }}">
     <meta property="og:site_name" content="{{ config('app.name') }}">

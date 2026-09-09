@@ -1,6 +1,6 @@
 @extends('frontend.layouts.tavelo')
 
-@section('title', 'Hotels — Tavelo')
+@section('title', 'Hotels | Wise Trust Travel & Tourism')
 
 @section('content')
 <div class="site-page">
@@ -29,7 +29,7 @@
                     <img src="{{ asset('assets/img/hotel/01.jpg') }}" alt="Featured hotel">
                 </div>
             </div>
-        </div>
+        </div> 
     </section>
 
     <section class="site-section site-section--surface">

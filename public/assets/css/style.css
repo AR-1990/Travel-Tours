@@ -9848,7 +9848,7 @@ sidebar css
 
 .footer-list li a:hover {
   padding-left: 10px;
-  color: var(--theme-color);
+  color: var(--theme-color2);
 }
 
 .footer-widget-box p {

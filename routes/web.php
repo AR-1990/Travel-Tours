@@ -91,8 +91,9 @@ Route::get('/activity-grid', [SitePageController::class, 'activities'])->name('p
 Route::get('/about', [SitePageController::class, 'about'])->name('pages.about');
 Route::get('/contact', [SitePageController::class, 'contact'])->name('pages.contact');
 Route::post('/contact', [SitePageController::class, 'contactSubmit'])->name('pages.contact.submit');
-Route::get('/become-expert', [SitePageController::class, 'becomeExpert'])->name('pages.become-expert');
-Route::post('/become-expert', [SitePageController::class, 'becomeExpertSubmit'])->name('pages.become-expert.submit');
+Route::get('/partner-with-us', [SitePageController::class, 'partnerWithUs'])->name('pages.partner-with-us');
+Route::post('/partner-with-us', [SitePageController::class, 'partnerWithUsSubmit'])->name('pages.partner-with-us.submit');
+Route::redirect('/become-expert', '/partner-with-us')->name('pages.become-expert');
 
 /*
 |--------------------------------------------------------------------------

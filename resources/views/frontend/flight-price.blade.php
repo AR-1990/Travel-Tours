@@ -1,6 +1,6 @@
 @extends('frontend.layouts.tavelo')
 
-@section('title', 'Flight Price — Tavelo')
+@section('title', 'Flight Price | Wise Trust Travel & Tourism')
 
 @section('content')
     <div class="hero-section">

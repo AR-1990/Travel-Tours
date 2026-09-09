@@ -1,6 +1,6 @@
 @extends('frontend.layouts.tavelo')
 
-@section('title', 'Activities — Tavelo')
+@section('title', 'Activities | Wise Trust Travel & Tourism')
 
 @section('content')
 <div class="site-page">
@@ -80,8 +80,8 @@
     @include('frontend.partials.site-cta', [
         'title' => 'Build a richer itinerary',
         'text' => 'Combine flights with activities and optional hotel stays for a complete trip plan.',
-        'primaryLabel' => 'Talk to an expert',
-        'primaryUrl' => route('pages.become-expert'),
+        'primaryLabel' => 'Partner with us',
+        'primaryUrl' => route('pages.partner-with-us'),
         'secondaryLabel' => 'Search flights',
         'secondaryUrl' => route('pages.flights'),
     ])

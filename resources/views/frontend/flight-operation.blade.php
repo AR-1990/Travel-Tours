@@ -1,6 +1,6 @@
 @extends('frontend.layouts.tavelo')
 
-@section('title', ($currentOperation['label'] ?? 'Flight') . ' — Tavelo')
+@section('title', ($currentOperation['label'] ?? 'Flight') . ' | Wise Trust Travel & Tourism')
 
 @section('content')
     <div class="hero-section">

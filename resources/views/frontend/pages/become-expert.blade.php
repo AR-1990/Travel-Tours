@@ -1,6 +1,6 @@
 @extends('frontend.layouts.tavelo')
 
-@section('title', 'Become an Expert — Tavelo')
+@section('title', 'Become an Expert | Wise Trust Travel & Tourism')
 
 @section('content')
 <div class="site-page">
