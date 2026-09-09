@@ -423,17 +423,36 @@ trait RunsFlightWorkflow
 
     protected function runSunSpringCancelFlow(FlightReservation $reservation): array
     {
+        $air = app(SunSpringAirService::class);
         $reference = (string) ($reservation->provider_locator ?: $reservation->universal_locator);
         if ($reference === '') {
             return ['ok' => false, 'message' => 'No SunSpring booking reference on this reservation.'];
         }
 
         $tickets = is_array($reservation->ticket_numbers) ? array_values($reservation->ticket_numbers) : [];
-        $result = app(SunSpringAirService::class)->cancel([
+        $pnrs = $this->sunSpringPnrsFromReservation($reservation, $air);
+
+        // If PNR was never stored locally, fetch TicketInfo and extract airline PNR.
+        if ($pnrs === [] && $reference !== '') {
+            $info = $air->ticketInfo(['reference' => $reference]);
+            if ($info['ok'] ?? false) {
+                $payload = is_array($info['data'] ?? null) ? $info['data'] : [];
+                $pnrs = $air->extractPnrsFromPayload($payload);
+                if ($tickets === [] && is_array($payload['tickets'] ?? null)) {
+                    foreach ($payload['tickets'] as $row) {
+                        if (is_array($row) && ! empty($row['ticket_number'])) {
+                            $tickets[] = (string) $row['ticket_number'];
+                        }
+                    }
+                }
+            }
+        }
+
+        $result = $air->cancel([
             'reference' => $reference,
             'type' => 'General',
             'tickets' => $tickets,
-            'voucher' => [],
+            'pnrs' => $pnrs,
         ]);
         if (! ($result['ok'] ?? false)) {
             return $result;
@@ -442,7 +461,10 @@ trait RunsFlightWorkflow
         $reservation->update([
             'status' => FlightReservation::STATUS_CANCELLED,
             'cancelled_at' => now(),
-            'raw_result' => array_merge((array) $reservation->raw_result, ['cancel' => $result]),
+            'raw_result' => array_merge((array) $reservation->raw_result, [
+                'cancel' => $result,
+                'pnrs' => $pnrs,
+            ]),
         ]);
 
         return array_merge($result, [
@@ -451,5 +473,37 @@ trait RunsFlightWorkflow
             'cancelled' => true,
             'provider' => 'sunspring',
         ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function sunSpringPnrsFromReservation(FlightReservation $reservation, SunSpringAirService $air): array
+    {
+        $raw = is_array($reservation->raw_result) ? $reservation->raw_result : [];
+
+        $stored = $raw['pnrs'] ?? null;
+        if (is_array($stored) && $stored !== []) {
+            return array_values(array_filter(array_map('strval', $stored)));
+        }
+
+        $ticket = is_array($raw['ticket'] ?? null) ? $raw['ticket'] : [];
+        if ($ticket !== []) {
+            $fromTicket = $air->extractPnrsFromPayload($ticket);
+            if ($fromTicket !== []) {
+                return $fromTicket;
+            }
+            if (! empty($ticket['pnrs']) && is_array($ticket['pnrs'])) {
+                return array_values(array_filter(array_map('strval', $ticket['pnrs'])));
+            }
+            if (! empty($ticket['pnr'])) {
+                return [(string) $ticket['pnr']];
+            }
+            if (is_array($ticket['raw'] ?? null)) {
+                return $air->extractPnrsFromPayload($ticket['raw']);
+            }
+        }
+
+        return $air->extractPnrsFromPayload($raw);
     }
 }

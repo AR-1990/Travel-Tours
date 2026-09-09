@@ -85,9 +85,17 @@ class SunSpringAirServiceJourneyTest extends TestCase
                 'status' => 'success',
                 'err' => 0,
                 'refrence_id' => 98765,
-                'tickets' => [
-                    ['ticket_number' => '999-1234567890'],
+                'flights' => [
+                    ['pnr' => 'KOFQ4O', 'flight_number' => '123'],
                 ],
+                'tickets' => [
+                    ['ticket_number' => '999-1234567890', 'pnr' => 'KOFQ4O'],
+                ],
+            ], 200),
+            'sandbox.sunspring.ae/api/v2/flight/Cancel' => Http::response([
+                'status' => 'process',
+                'request_id' => '1459',
+                'msg' => 'success.',
             ], 200),
         ]);
 
@@ -174,10 +182,30 @@ class SunSpringAirServiceJourneyTest extends TestCase
         $ticket = $air->issueTicket(['reference' => 98765]);
         $this->assertTrue($ticket['ok'], $ticket['message'] ?? 'ticket failed');
         $this->assertSame(['999-1234567890'], $ticket['ticket_numbers']);
+        $this->assertSame('KOFQ4O', $ticket['pnr']);
+        $this->assertSame(['KOFQ4O'], $ticket['pnrs']);
+
+        $cancel = $air->cancel([
+            'reference' => '98765',
+            'tickets' => $ticket['ticket_numbers'],
+            'pnrs' => $ticket['pnrs'],
+            'ticket_rows' => $ticket['tickets'],
+        ]);
+        $this->assertTrue($cancel['ok'], $cancel['message'] ?? 'cancel failed');
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), '/api/v2/flight/FlightSearch')
                 && ($request->header('Authorization')[0] ?? '') === 'Bearer jwt.fake.token';
+        });
+
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/api/v2/flight/Cancel')) {
+                return false;
+            }
+            $data = $request->data();
+
+            return ($data['voucher'] ?? null) === ['KOFQ4O']
+                && ($data['tickets'] ?? null) === ['999-1234567890'];
         });
     }
 }

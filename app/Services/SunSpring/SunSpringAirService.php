@@ -434,12 +434,16 @@ class SunSpringAirService
             }
         }
 
+        $pnrs = $this->extractPnrsFromPayload($data);
+
         return [
             'ok' => true,
             'message' => $numbers === [] ? 'Ticket request accepted.' : 'Ticketed: '.implode(', ', $numbers),
             'ticket_numbers' => $numbers,
             'tickets' => $tickets,
             'flights' => $data['flights'] ?? [],
+            'pnr' => $pnrs[0] ?? '',
+            'pnrs' => $pnrs,
             'reference_id' => $data['refrence_id'] ?? $reference,
             'raw' => $data,
             'provider' => 'sunspring',
@@ -466,14 +470,119 @@ class SunSpringAirService
      */
     public function cancel(array $params): array
     {
+        $tickets = is_array($params['tickets'] ?? null) ? array_values($params['tickets']) : [];
         $body = [
             'reference' => (string) ($params['reference'] ?? ''),
             'type' => (string) ($params['type'] ?? 'General'),
-            'tickets' => is_array($params['tickets'] ?? null) ? array_values($params['tickets']) : [],
-            'voucher' => is_array($params['voucher'] ?? null) ? array_values($params['voucher']) : [],
+            'tickets' => $tickets,
+            // Fly Sepehran: voucher value must be the airline PNR (same as ticket PNR).
+            'voucher' => $this->resolveCancelVouchers($params, $tickets),
         ];
 
         return $this->client->post('/api/v2/flight/Cancel', $body);
+    }
+
+    /**
+     * Collect airline PNRs from TicketInfo / AirDemandTicket payloads.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return list<string>
+     */
+    public function extractPnrsFromPayload(array $payload): array
+    {
+        $pnrs = [];
+
+        foreach (['tickets', 'flights'] as $key) {
+            $rows = $payload[$key] ?? null;
+            if (! is_array($rows)) {
+                continue;
+            }
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $pnr = trim((string) ($row['pnr'] ?? $row['PNR'] ?? ''));
+                if ($pnr !== '') {
+                    $pnrs[] = $pnr;
+                }
+            }
+        }
+
+        foreach (['pnr', 'PNR', 'provider_pnr'] as $key) {
+            $single = trim((string) ($payload[$key] ?? ''));
+            if ($single !== '') {
+                $pnrs[] = $single;
+            }
+        }
+
+        return array_values(array_unique($pnrs));
+    }
+
+    /**
+     * Build Cancel voucher list: one airline PNR per ticket when possible.
+     *
+     * @param  array<string, mixed>  $params
+     * @param  list<mixed>  $tickets
+     * @return list<string>
+     */
+    public function resolveCancelVouchers(array $params, array $tickets = []): array
+    {
+        $explicit = $params['voucher'] ?? null;
+        if (is_array($explicit)) {
+            $normalized = [];
+            foreach ($explicit as $value) {
+                $value = trim((string) $value);
+                if ($value !== '') {
+                    $normalized[] = $value;
+                }
+            }
+            if ($normalized !== []) {
+                return array_values($normalized);
+            }
+        }
+
+        $ticketRows = is_array($params['ticket_rows'] ?? null) ? $params['ticket_rows'] : [];
+        if ($ticketRows !== []) {
+            $fromRows = [];
+            foreach ($ticketRows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $pnr = trim((string) ($row['pnr'] ?? $row['PNR'] ?? ''));
+                if ($pnr !== '') {
+                    $fromRows[] = $pnr;
+                }
+            }
+            if ($fromRows !== []) {
+                return array_values($fromRows);
+            }
+        }
+
+        $pnrs = [];
+        if (is_array($params['pnrs'] ?? null)) {
+            foreach ($params['pnrs'] as $pnr) {
+                $pnr = trim((string) $pnr);
+                if ($pnr !== '') {
+                    $pnrs[] = $pnr;
+                }
+            }
+        }
+        $single = trim((string) ($params['pnr'] ?? ''));
+        if ($single !== '') {
+            $pnrs[] = $single;
+        }
+        $pnrs = array_values(array_unique($pnrs));
+
+        if ($pnrs === []) {
+            return [];
+        }
+
+        // Align voucher count with tickets when the API expects one voucher per ticket.
+        if ($tickets !== [] && count($pnrs) === 1) {
+            return array_fill(0, count($tickets), $pnrs[0]);
+        }
+
+        return $pnrs;
     }
 
     public function myCredit(): array

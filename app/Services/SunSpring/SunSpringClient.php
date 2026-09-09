@@ -193,11 +193,16 @@ class SunSpringClient
         }
 
         $json = $this->jsonOrNull($response);
-        $excerpt = $this->excerpt($response->body());
+        $rawBody = $response->body();
+        $excerpt = $this->excerpt($rawBody);
         $err = $this->extractError($json);
         $apiFailed = $this->isApiFailure($json);
+        $looksLikeHtmlError = is_string($rawBody)
+            && $json === null
+            && (str_contains($rawBody, '403') || str_contains(strtolower($rawBody), '<html'));
+        $emptyNonJsonSuccess = $response->successful() && $json === null && trim((string) $rawBody) === '';
 
-        $result = $response->successful() && $err === null && ! $apiFailed
+        $result = $response->successful() && $err === null && ! $apiFailed && ! $looksLikeHtmlError && ! $emptyNonJsonSuccess
             ? [
                 'ok' => true,
                 'message' => 'OK',
@@ -207,7 +212,12 @@ class SunSpringClient
             ]
             : [
                 'ok' => false,
-                'message' => $err ?: ('SunSpring request failed (HTTP '.$response->status().').'),
+                'message' => $err
+                    ?: ($looksLikeHtmlError
+                        ? 'SunSpring returned an HTML/403 error page.'
+                        : ($emptyNonJsonSuccess
+                            ? 'SunSpring returned an empty response body.'
+                            : ('SunSpring request failed (HTTP '.$response->status().').'))),
                 'http_status' => $response->status(),
                 'data' => $json,
                 'response_excerpt' => $excerpt,
@@ -215,7 +225,7 @@ class SunSpringClient
 
         SunSpringExchangeLogger::record('POST', $url, $body, [
             'http_status' => $response->status(),
-            'body' => $json ?? $response->body(),
+            'body' => $json ?? $rawBody,
         ]);
 
         return $result;

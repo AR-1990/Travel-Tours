@@ -290,6 +290,10 @@ class SunSpringCertRunCommand extends Command
         $reference = (string) ($book['reference_id'] ?? '');
         $ticket = $air->issueTicket(['reference_id' => $reference]);
         $ticketNumbers = is_array($ticket['ticket_numbers'] ?? null) ? $ticket['ticket_numbers'] : [];
+        $pnrs = is_array($ticket['pnrs'] ?? null) ? $ticket['pnrs'] : [];
+        if ($pnrs === [] && is_array($ticket['raw'] ?? null)) {
+            $pnrs = $air->extractPnrsFromPayload($ticket['raw']);
+        }
 
         $cancelMsg = 'skipped';
         if ($reference !== '') {
@@ -297,7 +301,8 @@ class SunSpringCertRunCommand extends Command
                 'reference' => $reference,
                 'type' => 'General',
                 'tickets' => $ticketNumbers,
-                'voucher' => [],
+                'pnrs' => $pnrs,
+                'ticket_rows' => is_array($ticket['tickets'] ?? null) ? $ticket['tickets'] : [],
             ]);
             $cancelMsg = (($cancel['ok'] ?? false) ? 'ok' : 'fail').' — '.($cancel['message'] ?? '');
         }
