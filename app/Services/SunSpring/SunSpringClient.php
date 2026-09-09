@@ -193,15 +193,16 @@ class SunSpringClient
         }
 
         $json = $this->jsonOrNull($response);
-        $excerpt = $this->excerpt($response->body());
+        $rawBody = $response->body();
+        $excerpt = $this->excerpt($rawBody);
         $err = $this->extractError($json);
         $apiFailed = $this->isApiFailure($json);
-        $rawBody = $response->body();
         $looksLikeHtmlError = is_string($rawBody)
             && $json === null
             && (str_contains($rawBody, '403') || str_contains(strtolower($rawBody), '<html'));
+        $emptyNonJsonSuccess = $response->successful() && $json === null && trim((string) $rawBody) === '';
 
-        $result = $response->successful() && $err === null && ! $apiFailed && ! $looksLikeHtmlError
+        $result = $response->successful() && $err === null && ! $apiFailed && ! $looksLikeHtmlError && ! $emptyNonJsonSuccess
             ? [
                 'ok' => true,
                 'message' => 'OK',
@@ -214,7 +215,9 @@ class SunSpringClient
                 'message' => $err
                     ?: ($looksLikeHtmlError
                         ? 'SunSpring Cancel/API returned an HTML error page (often 403 Forbidden).'
-                        : ('SunSpring request failed (HTTP '.$response->status().').')),
+                        : ($emptyNonJsonSuccess
+                            ? 'SunSpring returned an empty response body.'
+                            : ('SunSpring request failed (HTTP '.$response->status().').'))),
                 'http_status' => $response->status(),
                 'data' => $json,
                 'response_excerpt' => $excerpt,
