@@ -4,6 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Integration;
+use App\Services\DowntownTravel\DowntownTravelClient;
+use App\Services\DowntownTravel\DowntownTravelHotelsClient;
+use App\Services\DowntownTravel\DowntownTravelHotelsIntegrationConfig;
+use App\Services\DowntownTravel\DowntownTravelIntegrationConfig;
 use App\Services\SunSpring\SunSpringAirService;
 use App\Services\SunSpring\SunSpringClient;
 use App\Services\SunSpring\SunSpringIntegrationConfig;
@@ -72,7 +76,7 @@ class IntegrationsController extends Controller
         ]);
     }
 
-    public function edit(string $slug, TravelportSystemService $system, SunSpringClient $sunspring, XconnectClient $xconnect)
+    public function edit(string $slug, TravelportSystemService $system, SunSpringClient $sunspring, XconnectClient $xconnect, DowntownTravelClient $downtown, DowntownTravelHotelsClient $downtownHotels)
     {
         $this->ensureSuperAdmin();
         $this->assertEditableSlug($slug);
@@ -81,6 +85,8 @@ class IntegrationsController extends Controller
             Integration::SLUG_TRAVELPORT => $this->viewTravelportEdit($system),
             Integration::SLUG_SUNSPRING => $this->viewSunSpringEdit($sunspring),
             Integration::SLUG_XCONNECT => $this->viewXconnectEdit($xconnect),
+            Integration::SLUG_DOWNTOWN_TRAVEL => $this->viewDowntownTravelEdit($downtown),
+            Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS => $this->viewDowntownTravelHotelsEdit($downtownHotels),
             default => abort(404),
         };
     }
@@ -138,6 +144,48 @@ class IntegrationsController extends Controller
         ]);
     }
 
+    private function viewDowntownTravelEdit(DowntownTravelClient $client)
+    {
+        $dt = DowntownTravelIntegrationConfig::merged();
+        $row = Integration::query()
+            ->where('slug', Integration::SLUG_DOWNTOWN_TRAVEL)
+            ->first();
+
+        return view('admin.integrations.downtown_travel.edit', [
+            'downtown' => $dt,
+            'downtownRow' => $row,
+            'downtownHasDbRow' => $row !== null,
+            'ssoBaseUrl' => $client->ssoBaseUrl(),
+            'airBaseUrl' => $client->airBaseUrl(),
+            'tokenUrl' => $client->ssoBaseUrl().'/oauth/token',
+            'clientIdSet' => (string) ($dt['client_id'] ?? '') !== '',
+            'clientSecretSet' => (string) ($dt['client_secret'] ?? '') !== '',
+            'usernameSet' => (string) ($dt['username'] ?? '') !== '',
+            'passwordSet' => (string) ($dt['password'] ?? '') !== '',
+        ]);
+    }
+
+    private function viewDowntownTravelHotelsEdit(DowntownTravelHotelsClient $client)
+    {
+        $dt = DowntownTravelHotelsIntegrationConfig::merged();
+        $row = Integration::query()
+            ->where('slug', Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS)
+            ->first();
+
+        return view('admin.integrations.downtown_travel_hotels.edit', [
+            'downtown' => $dt,
+            'downtownRow' => $row,
+            'downtownHasDbRow' => $row !== null,
+            'ssoBaseUrl' => $client->ssoBaseUrl(),
+            'hotelsBaseUrl' => $client->hotelsBaseUrl(),
+            'tokenUrl' => $client->ssoBaseUrl().'/oauth/token',
+            'clientIdSet' => (string) ($dt['client_id'] ?? '') !== '',
+            'clientSecretSet' => (string) ($dt['client_secret'] ?? '') !== '',
+            'usernameSet' => (string) ($dt['username'] ?? '') !== '',
+            'passwordSet' => (string) ($dt['password'] ?? '') !== '',
+        ]);
+    }
+
     public function update(Request $request, string $slug)
     {
         $this->ensureSuperAdmin();
@@ -147,6 +195,8 @@ class IntegrationsController extends Controller
             Integration::SLUG_TRAVELPORT => $this->updateTravelport($request),
             Integration::SLUG_SUNSPRING => $this->updateSunSpring($request),
             Integration::SLUG_XCONNECT => $this->updateXconnect($request),
+            Integration::SLUG_DOWNTOWN_TRAVEL => $this->updateDowntownTravel($request),
+            Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS => $this->updateDowntownTravelHotels($request),
             default => abort(404),
         };
     }
@@ -356,7 +406,171 @@ class IntegrationsController extends Controller
             ->with('success', 'Xconnect integration settings saved. They are stored encrypted in the `integrations` table.');
     }
 
-    public function ping(Request $request, string $slug, TravelportSystemService $system, SunSpringClient $sunspring, XconnectClient $xconnect)
+    private function updateDowntownTravel(Request $request)
+    {
+        $existing = Integration::query()
+            ->where('slug', Integration::SLUG_DOWNTOWN_TRAVEL)
+            ->first();
+        $prev = is_array($existing?->payload) ? $existing->payload : [];
+
+        $hasEnvClientSecret = (string) config('downtown_travel.client_secret', '') !== '';
+        $hasDbClientSecret = (string) ($prev['client_secret'] ?? '') !== '';
+        $hasEnvPassword = (string) config('downtown_travel.password', '') !== '';
+        $hasDbPassword = (string) ($prev['password'] ?? '') !== '';
+
+        $request->validate([
+            'downtown.environment' => ['required', Rule::in(['sandbox', 'production'])],
+            'downtown.client_id' => ['required', 'string', 'max:255'],
+            'downtown.client_secret' => [
+                Rule::requiredIf(! $hasEnvClientSecret && ! $hasDbClientSecret),
+                'nullable',
+                'string',
+                'max:512',
+            ],
+            'downtown.username' => ['required', 'string', 'max:255'],
+            'downtown.password' => [
+                Rule::requiredIf(! $hasEnvPassword && ! $hasDbPassword),
+                'nullable',
+                'string',
+                'max:512',
+            ],
+            'downtown.timeout' => ['required', 'integer', 'min:5', 'max:120'],
+            'downtown.sso_base_url_override' => ['nullable', 'string', 'max:512'],
+            'downtown.air_base_url_override' => ['nullable', 'string', 'max:512'],
+        ], [], [
+            'downtown.environment' => 'environment',
+            'downtown.client_id' => 'client ID',
+            'downtown.client_secret' => 'client secret',
+            'downtown.username' => 'username',
+            'downtown.password' => 'password',
+            'downtown.timeout' => 'timeout',
+            'downtown.sso_base_url_override' => 'SSO base URL override',
+            'downtown.air_base_url_override' => 'Air base URL override',
+        ]);
+
+        $d = $request->input('downtown', []);
+        $updates = [
+            'environment' => (string) ($d['environment'] ?? 'sandbox'),
+            'client_id' => (string) ($d['client_id'] ?? ''),
+            'username' => (string) ($d['username'] ?? ''),
+            'timeout' => (int) ($d['timeout'] ?? 60),
+            'sso_base_url_override' => DowntownTravelClient::normalizeHostOnly((string) ($d['sso_base_url_override'] ?? '')),
+            'air_base_url_override' => DowntownTravelClient::normalizeHostOnly((string) ($d['air_base_url_override'] ?? '')),
+        ];
+
+        if ($request->filled('downtown.client_secret')) {
+            $updates['client_secret'] = (string) $request->input('downtown.client_secret');
+        } elseif ($hasDbClientSecret) {
+            $updates['client_secret'] = (string) $prev['client_secret'];
+        }
+
+        if ($request->filled('downtown.password')) {
+            $updates['password'] = (string) $request->input('downtown.password');
+        } elseif ($hasDbPassword) {
+            $updates['password'] = (string) $prev['password'];
+        }
+
+        $catalogName = $this->catalog()[Integration::SLUG_DOWNTOWN_TRAVEL]['name'] ?? 'Downtown Travel Air API';
+
+        Integration::query()->updateOrCreate(
+            ['slug' => Integration::SLUG_DOWNTOWN_TRAVEL],
+            [
+                'name' => $catalogName,
+                'is_enabled' => $request->boolean('is_enabled'),
+                'payload' => array_merge($prev, $updates),
+            ]
+        );
+
+        DowntownTravelClient::clearTokenCache();
+
+        return redirect()
+            ->route('admin.integrations.edit', ['slug' => Integration::SLUG_DOWNTOWN_TRAVEL])
+            ->with('success', 'Downtown Travel integration settings saved. They are stored encrypted in the `integrations` table.');
+    }
+
+    private function updateDowntownTravelHotels(Request $request)
+    {
+        $existing = Integration::query()
+            ->where('slug', Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS)
+            ->first();
+        $prev = is_array($existing?->payload) ? $existing->payload : [];
+
+        $hasEnvClientSecret = (string) config('downtown_travel_hotels.client_secret', '') !== '';
+        $hasDbClientSecret = (string) ($prev['client_secret'] ?? '') !== '';
+        $hasEnvPassword = (string) config('downtown_travel_hotels.password', '') !== '';
+        $hasDbPassword = (string) ($prev['password'] ?? '') !== '';
+
+        $request->validate([
+            'downtown.environment' => ['required', Rule::in(['sandbox', 'production'])],
+            'downtown.client_id' => ['required', 'string', 'max:255'],
+            'downtown.client_secret' => [
+                Rule::requiredIf(! $hasEnvClientSecret && ! $hasDbClientSecret),
+                'nullable',
+                'string',
+                'max:512',
+            ],
+            'downtown.username' => ['required', 'string', 'max:255'],
+            'downtown.password' => [
+                Rule::requiredIf(! $hasEnvPassword && ! $hasDbPassword),
+                'nullable',
+                'string',
+                'max:512',
+            ],
+            'downtown.timeout' => ['required', 'integer', 'min:5', 'max:120'],
+            'downtown.sso_base_url_override' => ['nullable', 'string', 'max:512'],
+            'downtown.hotels_base_url_override' => ['nullable', 'string', 'max:512'],
+        ], [], [
+            'downtown.environment' => 'environment',
+            'downtown.client_id' => 'client ID',
+            'downtown.client_secret' => 'client secret',
+            'downtown.username' => 'username',
+            'downtown.password' => 'password',
+            'downtown.timeout' => 'timeout',
+            'downtown.sso_base_url_override' => 'SSO base URL override',
+            'downtown.hotels_base_url_override' => 'Hotels base URL override',
+        ]);
+
+        $d = $request->input('downtown', []);
+        $updates = [
+            'environment' => (string) ($d['environment'] ?? 'sandbox'),
+            'client_id' => (string) ($d['client_id'] ?? ''),
+            'username' => (string) ($d['username'] ?? ''),
+            'timeout' => (int) ($d['timeout'] ?? 90),
+            'sso_base_url_override' => DowntownTravelHotelsClient::normalizeHostOnly((string) ($d['sso_base_url_override'] ?? '')),
+            'hotels_base_url_override' => DowntownTravelHotelsClient::normalizeHostOnly((string) ($d['hotels_base_url_override'] ?? '')),
+        ];
+
+        if ($request->filled('downtown.client_secret')) {
+            $updates['client_secret'] = (string) $request->input('downtown.client_secret');
+        } elseif ($hasDbClientSecret) {
+            $updates['client_secret'] = (string) $prev['client_secret'];
+        }
+
+        if ($request->filled('downtown.password')) {
+            $updates['password'] = (string) $request->input('downtown.password');
+        } elseif ($hasDbPassword) {
+            $updates['password'] = (string) $prev['password'];
+        }
+
+        $catalogName = $this->catalog()[Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS]['name'] ?? 'Downtown Travel Hotels API';
+
+        Integration::query()->updateOrCreate(
+            ['slug' => Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS],
+            [
+                'name' => $catalogName,
+                'is_enabled' => $request->boolean('is_enabled'),
+                'payload' => array_merge($prev, $updates),
+            ]
+        );
+
+        DowntownTravelHotelsClient::clearTokenCache();
+
+        return redirect()
+            ->route('admin.integrations.edit', ['slug' => Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS])
+            ->with('success', 'Downtown Travel Hotels integration settings saved. They are stored encrypted in the `integrations` table.');
+    }
+
+    public function ping(Request $request, string $slug, TravelportSystemService $system, SunSpringClient $sunspring, XconnectClient $xconnect, DowntownTravelClient $downtown, DowntownTravelHotelsClient $downtownHotels)
     {
         $this->ensureSuperAdmin();
         $this->assertEditableSlug($slug);
@@ -406,10 +620,40 @@ class IntegrationsController extends Controller
                 ->with('xconnect_ping', $result);
         }
 
+        if ($slug === Integration::SLUG_DOWNTOWN_TRAVEL) {
+            $result = $downtown->ping();
+
+            if ($request->wantsJson()) {
+                return response()->json($result);
+            }
+
+            $flash = $result['ok'] ? 'success' : 'error';
+
+            return redirect()
+                ->route('admin.integrations.edit', ['slug' => $slug])
+                ->with($flash, $result['message'])
+                ->with('downtown_ping', $result);
+        }
+
+        if ($slug === Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS) {
+            $result = $downtownHotels->ping();
+
+            if ($request->wantsJson()) {
+                return response()->json($result);
+            }
+
+            $flash = $result['ok'] ? 'success' : 'error';
+
+            return redirect()
+                ->route('admin.integrations.edit', ['slug' => $slug])
+                ->with($flash, $result['message'])
+                ->with('downtown_hotels_ping', $result);
+        }
+
         abort(404);
     }
 
-    public function testSearch(Request $request, string $slug, TravelportAirService $air, SunSpringAirService $sunspring, XconnectHotelService $xconnectHotels)
+    public function testSearch(Request $request, string $slug, TravelportAirService $air, SunSpringAirService $sunspring, XconnectHotelService $xconnectHotels, DowntownTravelClient $downtown, DowntownTravelHotelsClient $downtownHotels)
     {
         $this->ensureSuperAdmin();
         $this->assertEditableSlug($slug);
@@ -470,6 +714,40 @@ class IntegrationsController extends Controller
                     'search_key' => $result['search_key'] ?? null,
                     'sample' => array_slice($result['solutions'] ?? [], 0, 3),
                 ]);
+        }
+
+        if ($slug === Integration::SLUG_DOWNTOWN_TRAVEL) {
+            $result = $downtown->testSearch([
+                'origin' => strtoupper((string) $request->input('origin', 'NYC')),
+                'destination' => strtoupper((string) $request->input('destination', 'ZRH')),
+                'departure_date' => (string) $request->input('departure_date', now()->addDays(21)->format('Y-m-d')),
+                'adults' => (int) $request->input('adults', 1),
+            ]);
+
+            $flash = $result['ok'] ? 'success' : 'error';
+
+            return redirect()
+                ->route('admin.integrations.edit', ['slug' => $slug])
+                ->with($flash, $result['message'])
+                ->with('downtown_search', $result);
+        }
+
+        if ($slug === Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS) {
+            $result = $downtownHotels->testAvailability([
+                'check_in' => (string) $request->input('check_in', now()->addMonths(2)->format('Y-m-d')),
+                'check_out' => (string) $request->input('check_out', now()->addMonths(2)->addDays(2)->format('Y-m-d')),
+                'latitude' => (float) $request->input('latitude', 51.50735),
+                'longitude' => (float) $request->input('longitude', -0.12776),
+                'radius' => (int) $request->input('radius', 30000),
+                'adults' => (int) $request->input('adults', 1),
+            ]);
+
+            $flash = $result['ok'] ? 'success' : 'error';
+
+            return redirect()
+                ->route('admin.integrations.edit', ['slug' => $slug])
+                ->with($flash, $result['message'])
+                ->with('downtown_hotels_availability', $result);
         }
 
         abort(404);

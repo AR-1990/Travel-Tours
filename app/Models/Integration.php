@@ -12,6 +12,10 @@ class Integration extends Model
 
     public const SLUG_XCONNECT = 'xconnect';
 
+    public const SLUG_DOWNTOWN_TRAVEL = 'downtown_travel';
+
+    public const SLUG_DOWNTOWN_TRAVEL_HOTELS = 'downtown_travel_hotels';
+
     protected $fillable = [
         'slug',
         'name',

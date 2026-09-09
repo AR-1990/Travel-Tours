@@ -23,5 +23,15 @@ return [
             'description' => 'Technoheaven/Rimo hotel wholesale: Availability → PreBook → Book → Detail → Cancel. (Published collection is hotels only.)',
             'coming_soon' => false,
         ],
+        'downtown_travel' => [
+            'name' => 'Downtown Travel Air API',
+            'description' => 'REST Air API (OAuth2): Get Token → Search → Preliminary Booking → Book → Issue / Cancel / Void / Refund.',
+            'coming_soon' => false,
+        ],
+        'downtown_travel_hotels' => [
+            'name' => 'Downtown Travel Hotels API',
+            'description' => 'Hotels API v2 (OAuth2): Check Availability → Offers → Validate → Create/Book Order → Cancel. Docs: dtt-hotels.readme.io',
+            'coming_soon' => false,
+        ],
     ],
 ];
