@@ -226,7 +226,13 @@ class DowntownTravelAirService
 
         $data = is_array($book['data'] ?? null) ? $book['data'] : [];
         $orderId = (string) ($data['order_id'] ?? $data['id'] ?? data_get($data, 'order.id', ''));
-        $readable = (string) ($data['readable_id'] ?? '');
+        $readable = trim((string) ($data['readable_id'] ?? ''));
+        $airlinePnr = trim((string) (
+            data_get($data, 'booking_records.0.airline_record_locator')
+            ?? data_get($data, 'booking_records.0.record_locator')
+            ?? data_get($data, 'booking_records.0.source_reference')
+            ?? ''
+        ));
 
         session([
             'downtown_travel.last_booking' => [
@@ -237,7 +243,7 @@ class DowntownTravelAirService
             ],
         ]);
 
-        $label = $readable !== '' ? $readable : $orderId;
+        $label = $readable !== '' ? $readable : ($airlinePnr !== '' ? $airlinePnr : $orderId);
 
         return [
             'ok' => true,
@@ -245,9 +251,11 @@ class DowntownTravelAirService
                 ? 'Downtown Travel booking created (order '.$label.').'
                 : 'Downtown Travel booking created.',
             'provider' => 'downtown_travel',
-            'universal_locator' => $orderId !== '' ? $orderId : $readable,
-            'provider_locator' => $orderId !== '' ? $orderId : $readable,
-            'air_locator' => $orderId !== '' ? $orderId : $readable,
+            // Keep the Downtown order UUID as the universal key; prefer airline PNR for GDS-style fields.
+            'universal_locator' => $orderId !== '' ? $orderId : ($readable !== '' ? $readable : $airlinePnr),
+            'provider_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
+            'air_reservation_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
+            'air_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
             'raw' => $data,
         ];
     }

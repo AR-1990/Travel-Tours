@@ -351,7 +351,25 @@ trait HandlesFlightWorkflow
                     ->with('error', $result['message'] ?? 'Booking failed.');
             }
 
-            $reservation = $this->persistFlightBooking($result, $params);
+            try {
+                $reservation = $this->persistFlightBooking($result, $params);
+            } catch (\Throwable $e) {
+                report($e);
+                $locator = (string) ($result['provider_locator']
+                    ?? $result['air_reservation_locator']
+                    ?? $result['universal_locator']
+                    ?? '');
+
+                return redirect()
+                    ->route($this->flightsRoutePrefix().'.flights.book')
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'The fare was booked with the airline'
+                        .($locator !== '' ? ' (ref '.$locator.')' : '')
+                        .', but saving the reservation locally failed. Contact support with this reference.'
+                    );
+            }
 
             return redirect()
                 ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
