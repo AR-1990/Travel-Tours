@@ -63,18 +63,6 @@
                                 @endforeach
                             </p>
                         @endif
-                        @php
-                            $ssCount = (int) data_get($flightSearchResult, 'sources.sunspring.count', 0);
-                            $activeRoutes = $sunspringActiveRoutes ?? [];
-                        @endphp
-                        @if($ssCount === 0 && !empty($activeRoutes) && ($sunspringReady ?? false))
-                            <div class="alert alert-info py-2 small mb-2">
-                                SunSpring had no fares for this search. Active scheduled routes right now:
-                                @foreach($activeRoutes as $route)
-                                    <strong class="me-2">{{ $route['origin'] }}→{{ $route['destination'] }}@if(!empty($route['date'])) ({{ $route['date'] }})@endif</strong>
-                                @endforeach
-                            </div>
-                        @endif
                             @if(!empty($flightSearchInput))
                                 <p class="mb-0 text-muted">
                                     {{ \App\Support\FlightDisplay::tripSummary(
@@ -91,7 +79,7 @@
                         @if(!empty($flightSearchResult['solutions']))
                             <div class="col-md-3 booking-sort-box">
                                 <label class="visually-hidden" for="flight-price-sort">Sort by price</label>
-                                <select id="flight-price-sort" class="flight-price-sort" aria-label="Sort by price">
+                                <select id="flight-price-sort" class="select flight-price-sort" aria-label="Sort by price">
                                     <option value="asc" selected>Price: Low to High</option>
                                     <option value="desc">Price: High to Low</option>
                                 </select>
@@ -180,35 +168,55 @@
     function applyFlightPriceSort(order) {
         const list = document.getElementById('flight-results-list');
         if (!list) return;
-        const items = Array.from(list.querySelectorAll(':scope > [data-price]'));
+        const items = Array.from(list.querySelectorAll('.js-flight-result'));
+        if (items.length < 2) return;
+
         items.sort(function (a, b) {
-            const pa = parseFloat(a.getAttribute('data-price') || 'Infinity');
-            const pb = parseFloat(b.getAttribute('data-price') || 'Infinity');
-            return order === 'desc' ? pb - pa : pa - pb;
+            const pa = parseFloat(a.getAttribute('data-price'));
+            const pb = parseFloat(b.getAttribute('data-price'));
+            const aBad = !Number.isFinite(pa);
+            const bBad = !Number.isFinite(pb);
+            if (aBad && bBad) return 0;
+            if (aBad) return 1;
+            if (bBad) return -1;
+            return order === 'desc' ? (pb - pa) : (pa - pb);
         });
+
+        const frag = document.createDocumentFragment();
         items.forEach(function (el) {
-            list.appendChild(el);
+            frag.appendChild(el);
         });
+        list.appendChild(frag);
     }
 
-    const sortSelect = document.getElementById('flight-price-sort');
-    if (sortSelect) {
+    function bindPriceSort() {
+        const sortSelect = document.getElementById('flight-price-sort');
+        if (!sortSelect || sortSelect.dataset.sortBound === '1') return;
+        sortSelect.dataset.sortBound = '1';
+
         const onSort = function () {
-            applyFlightPriceSort(sortSelect.value);
+            applyFlightPriceSort(sortSelect.value === 'desc' ? 'desc' : 'asc');
         };
+
         sortSelect.addEventListener('change', onSort);
-        sortSelect.addEventListener('input', onSort);
+
         if (window.jQuery) {
-            window.jQuery(sortSelect).on('change', onSort);
+            const $select = window.jQuery(sortSelect);
+            $select.on('change', onSort);
+
+            // Theme nice-select: click option → update value → sort
             window.jQuery(document).on('click', '.booking-sort-box .nice-select .option', function () {
-                const value = this.getAttribute('data-value') || '';
-                if (value) {
-                    sortSelect.value = value;
-                    applyFlightPriceSort(value);
-                }
+                window.setTimeout(function () {
+                    const value = sortSelect.value || this.getAttribute('data-value') || 'asc';
+                    applyFlightPriceSort(value === 'desc' ? 'desc' : 'asc');
+                }.bind(this), 0);
             });
         }
     }
+
+    bindPriceSort();
+    // main.js may init nice-select slightly later on .select
+    window.setTimeout(bindPriceSort, 50);
 })();
 </script>
 @endpush

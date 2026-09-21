@@ -4,6 +4,8 @@
 
 @section('content')
 <div class="container-fluid">
+    @include('hotels.partials.nav')
+
     <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0 small">
             <li class="breadcrumb-item active">Hotel reservations</li>
@@ -13,10 +15,10 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
             <h1 class="h3 mb-1 text-gray-800"><i class="fas fa-hotel me-2"></i>Hotel reservations</h1>
-            <p class="text-muted mb-0">Bookings created from the public hotel search (Downtown Travel / Xconnect).</p>
+            <p class="text-muted mb-0">Bookings from panel and public hotel search (Downtown Travel / Xconnect).</p>
         </div>
-        <a href="{{ route('frontend.hotels.hub') }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">
-            <i class="fas fa-external-link-alt me-1"></i> Open web hotel search
+        <a href="{{ route($hotelsRoutePrefix . '.hotels.search') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-search me-1"></i> Search hotels
         </a>
     </div>
 

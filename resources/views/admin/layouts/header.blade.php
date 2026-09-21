@@ -77,8 +77,14 @@
                     </a>
                 </li>
                 <li>
-                    <a href="{{ route($isSuperAdmin ? 'admin.hotels.reservations.index' : $panelPrefix . '.hotels.reservations.index') }}" class="{{ request()->routeIs('admin.hotels.reservations*') || request()->routeIs('agent.hotels.reservations*') || request()->routeIs('subagent.hotels.reservations*') ? 'active' : '' }}">
+                    <a href="{{ route($isSuperAdmin ? 'admin.hotels.search' : $panelPrefix . '.hotels.search') }}" class="{{ (request()->routeIs('admin.hotels*') || request()->routeIs('agent.hotels*') || request()->routeIs('subagent.hotels*')) && ! request()->routeIs('*.hotels.reservations*') ? 'active' : '' }}">
                         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg>
+                        <span class="menu-text">Hotels</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route($isSuperAdmin ? 'admin.hotels.reservations.index' : $panelPrefix . '.hotels.reservations.index') }}" class="{{ request()->routeIs('admin.hotels.reservations*') || request()->routeIs('agent.hotels.reservations*') || request()->routeIs('subagent.hotels.reservations*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h16v2H4V4zm0 4h16v12H4V8zm4 2v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>
                         <span class="menu-text">Hotel reservations</span>
                     </a>
                 </li>

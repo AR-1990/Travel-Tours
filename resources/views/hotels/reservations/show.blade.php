@@ -4,6 +4,8 @@
 
 @section('content')
 <div class="container-fluid" style="max-width: 920px;">
+    @include('hotels.partials.nav')
+
     <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0 small">
             <li class="breadcrumb-item">

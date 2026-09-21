@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\SubAgent;
 
+use App\Http\Controllers\Concerns\HandlesHotelWorkflow;
 use App\Http\Controllers\Concerns\ManagesHotelReservations;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 
 class HotelController extends Controller
 {
+    use HandlesHotelWorkflow;
     use ManagesHotelReservations;
 
     protected function ensureHotelAccess(): void

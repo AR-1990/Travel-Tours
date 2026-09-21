@@ -275,6 +275,12 @@ Route::middleware(['auth', RoleMiddleware::class.':1'])->prefix('admin')->name('
     Route::post('/flights/reservations/{id}/cancel-track', [AdminFlightController::class, 'reservationsCancelTrack'])->name('flights.reservations.cancel-track')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AdminFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 
+    Route::get('/hotels', [AdminHotelController::class, 'hub'])->name('hotels.index');
+    Route::match(['get', 'post'], '/hotels/search', [AdminHotelController::class, 'search'])->name('hotels.search');
+    Route::post('/hotels/prebook', [AdminHotelController::class, 'prebook'])->name('hotels.prebook');
+    Route::get('/hotels/book', [AdminHotelController::class, 'bookShow'])->name('hotels.book');
+    Route::post('/hotels/book', [AdminHotelController::class, 'bookStore'])->name('hotels.book.store');
+    Route::get('/hotels/confirmation', [AdminHotelController::class, 'confirmation'])->name('hotels.confirmation');
     Route::get('/hotels/reservations', [AdminHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
     Route::get('/hotels/reservations/{id}', [AdminHotelController::class, 'reservationsShow'])->name('hotels.reservations.show')->whereNumber('id');
     Route::post('/hotels/reservations/{id}/cancel', [AdminHotelController::class, 'reservationsCancel'])->name('hotels.reservations.cancel')->whereNumber('id');
@@ -326,6 +332,12 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('agent')->na
     Route::post('/flights/reservations/{id}/cancel-track', [AgentFlightController::class, 'reservationsCancelTrack'])->name('flights.reservations.cancel-track')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 
+    Route::get('/hotels', [AgentHotelController::class, 'hub'])->name('hotels.index');
+    Route::match(['get', 'post'], '/hotels/search', [AgentHotelController::class, 'search'])->name('hotels.search');
+    Route::post('/hotels/prebook', [AgentHotelController::class, 'prebook'])->name('hotels.prebook');
+    Route::get('/hotels/book', [AgentHotelController::class, 'bookShow'])->name('hotels.book');
+    Route::post('/hotels/book', [AgentHotelController::class, 'bookStore'])->name('hotels.book.store');
+    Route::get('/hotels/confirmation', [AgentHotelController::class, 'confirmation'])->name('hotels.confirmation');
     Route::get('/hotels/reservations', [AgentHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
     Route::get('/hotels/reservations/{id}', [AgentHotelController::class, 'reservationsShow'])->name('hotels.reservations.show')->whereNumber('id');
     Route::post('/hotels/reservations/{id}/cancel', [AgentHotelController::class, 'reservationsCancel'])->name('hotels.reservations.cancel')->whereNumber('id');
@@ -359,6 +371,12 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('sub-agent')
     Route::post('/flights/reservations/{id}/cancel-track', [SubAgentFlightController::class, 'reservationsCancelTrack'])->name('flights.reservations.cancel-track')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [SubAgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 
+    Route::get('/hotels', [SubAgentHotelController::class, 'hub'])->name('hotels.index');
+    Route::match(['get', 'post'], '/hotels/search', [SubAgentHotelController::class, 'search'])->name('hotels.search');
+    Route::post('/hotels/prebook', [SubAgentHotelController::class, 'prebook'])->name('hotels.prebook');
+    Route::get('/hotels/book', [SubAgentHotelController::class, 'bookShow'])->name('hotels.book');
+    Route::post('/hotels/book', [SubAgentHotelController::class, 'bookStore'])->name('hotels.book.store');
+    Route::get('/hotels/confirmation', [SubAgentHotelController::class, 'confirmation'])->name('hotels.confirmation');
     Route::get('/hotels/reservations', [SubAgentHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
     Route::get('/hotels/reservations/{id}', [SubAgentHotelController::class, 'reservationsShow'])->name('hotels.reservations.show')->whereNumber('id');
     Route::post('/hotels/reservations/{id}/cancel', [SubAgentHotelController::class, 'reservationsCancel'])->name('hotels.reservations.cancel')->whereNumber('id');
