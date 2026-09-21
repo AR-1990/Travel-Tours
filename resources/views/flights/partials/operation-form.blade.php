@@ -93,8 +93,12 @@
 @endif
 
 @if($key === 'air_create_reservation')
+    @php
+        $opSpec = \App\Support\FlightProvider::bookFieldSpecs(\App\Support\FlightProvider::TRAVELPORT);
+        $opToday = now()->subDay()->format('Y-m-d');
+    @endphp
     <div class="col-12">
-        <p class="small text-muted mb-2">Uses your last <strong>Price</strong> in this session. Enter lead passenger details.</p>
+        <p class="small text-muted mb-2">{{ $opSpec['hint'] }} Uses your last <strong>Price</strong> in this session.</p>
     </div>
     <div class="col-md-2">
         <label class="form-label">Title</label>
@@ -106,30 +110,37 @@
     </div>
     <div class="col-md-3">
         <label class="form-label">First name</label>
-        <input type="text" name="passenger_first" class="form-control" value="{{ $input['passenger_first'] ?? '' }}" required>
+        <input type="text" name="passenger_first" class="form-control" value="{{ $input['passenger_first'] ?? '' }}"
+            required minlength="{{ $opSpec['name_min'] }}" maxlength="{{ $opSpec['name_max'] }}"
+            pattern="{{ $opSpec['name_pattern'] }}" title="{{ $opSpec['name_title'] }}">
     </div>
     <div class="col-md-3">
         <label class="form-label">Last name</label>
-        <input type="text" name="passenger_last" class="form-control" value="{{ $input['passenger_last'] ?? '' }}" required>
+        <input type="text" name="passenger_last" class="form-control" value="{{ $input['passenger_last'] ?? '' }}"
+            required minlength="{{ $opSpec['name_min'] }}" maxlength="{{ $opSpec['name_max'] }}"
+            pattern="{{ $opSpec['name_pattern'] }}" title="{{ $opSpec['name_title'] }}">
     </div>
     <div class="col-md-2">
         <label class="form-label">Gender</label>
-        <select name="passenger_gender" class="form-control">
+        <select name="passenger_gender" class="form-control" required>
             <option value="M" @selected(($input['passenger_gender'] ?? 'M') === 'M')>Male</option>
             <option value="F" @selected(($input['passenger_gender'] ?? '') === 'F')>Female</option>
         </select>
     </div>
     <div class="col-md-2">
         <label class="form-label">Date of birth</label>
-        <input type="date" name="passenger_dob" class="form-control" value="{{ $input['passenger_dob'] ?? '' }}" required>
+        <input type="date" name="passenger_dob" class="form-control" value="{{ $input['passenger_dob'] ?? '' }}"
+            required max="{{ $opToday }}" min="{{ now()->subYears(100)->format('Y-m-d') }}">
     </div>
     <div class="col-md-4">
         <label class="form-label">Email</label>
-        <input type="email" name="passenger_email" class="form-control" value="{{ $input['passenger_email'] ?? '' }}" required>
+        <input type="email" name="passenger_email" class="form-control" value="{{ $input['passenger_email'] ?? '' }}" required maxlength="120">
     </div>
     <div class="col-md-4">
         <label class="form-label">Phone</label>
-        <input type="text" name="passenger_phone" class="form-control" value="{{ $input['passenger_phone'] ?? '' }}" required>
+        <input type="tel" name="passenger_phone" class="form-control" value="{{ $input['passenger_phone'] ?? '' }}"
+            required minlength="{{ $opSpec['phone_min'] }}" maxlength="{{ $opSpec['phone_max'] }}"
+            pattern="{{ $opSpec['phone_pattern'] }}" title="{{ $opSpec['phone_title'] }}">
     </div>
     <div class="col-md-4">
         <label class="form-label">Form of payment</label>

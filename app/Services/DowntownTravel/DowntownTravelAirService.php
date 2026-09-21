@@ -209,6 +209,13 @@ class DowntownTravelAirService
 
         $book = $this->client->postAir('/api/public/v2/orders/booking', $bookBody);
         if (! ($book['ok'] ?? false)) {
+            $confirmed = $this->confirmPriceChangeIfNeeded($book);
+            if ($confirmed !== null) {
+                $book = $confirmed;
+            }
+        }
+
+        if (! ($book['ok'] ?? false)) {
             return [
                 'ok' => false,
                 'message' => $book['message'] ?? 'Downtown Travel booking failed.',
@@ -219,6 +226,7 @@ class DowntownTravelAirService
 
         $data = is_array($book['data'] ?? null) ? $book['data'] : [];
         $orderId = (string) ($data['order_id'] ?? $data['id'] ?? data_get($data, 'order.id', ''));
+        $readable = (string) ($data['readable_id'] ?? '');
 
         session([
             'downtown_travel.last_booking' => [
@@ -229,15 +237,73 @@ class DowntownTravelAirService
             ],
         ]);
 
+        $label = $readable !== '' ? $readable : $orderId;
+
         return [
             'ok' => true,
-            'message' => $orderId !== '' ? 'Downtown Travel booking created (order '.$orderId.').' : 'Downtown Travel booking created.',
+            'message' => $label !== ''
+                ? 'Downtown Travel booking created (order '.$label.').'
+                : 'Downtown Travel booking created.',
             'provider' => 'downtown_travel',
-            'universal_locator' => $orderId,
-            'provider_locator' => $orderId,
-            'air_locator' => $orderId,
+            'universal_locator' => $orderId !== '' ? $orderId : $readable,
+            'provider_locator' => $orderId !== '' ? $orderId : $readable,
+            'air_locator' => $orderId !== '' ? $orderId : $readable,
             'raw' => $data,
         ];
+    }
+
+    /**
+     * Downtown returns HTTP 400 + reason=price_changed with a temporary order_id.
+     * Confirm with the new agent_net from the response pricing.
+     *
+     * @param  array<string, mixed>  $book
+     * @return array<string, mixed>|null  Successful confirm response, or null if not applicable / failed
+     */
+    protected function confirmPriceChangeIfNeeded(array $book): ?array
+    {
+        $payload = is_array($book['data'] ?? null) ? $book['data'] : null;
+        if ($payload === null || ($payload['reason'] ?? '') !== 'price_changed') {
+            return null;
+        }
+
+        $tmpOrderId = trim((string) ($payload['order_id'] ?? ''));
+        if ($tmpOrderId === '') {
+            return null;
+        }
+
+        $newNet = data_get($payload, 'pricing.pricing_options.agent_cash.agent_net_total');
+        if ($newNet === null) {
+            $newNet = data_get($payload, 'pricing.pricing_options.passenger_cc.agent_net_total');
+        }
+        if ($newNet === null) {
+            $newNet = data_get($payload, 'pricing.pricing_options.agent_cash.passenger_total');
+        }
+        if ($newNet === null) {
+            return [
+                'ok' => false,
+                'message' => 'Fare price changed, but Downtown Travel did not return the new agent net. Search and price again.',
+                'http_status' => $book['http_status'] ?? 400,
+                'data' => $payload,
+            ];
+        }
+
+        $confirm = $this->client->postAir('/api/public/v2/orders/confirm_price_change/'.$tmpOrderId, [
+            'expected_agent_net_price' => round((float) $newNet, 2),
+        ]);
+
+        if (! ($confirm['ok'] ?? false)) {
+            $oldMsg = (string) ($payload['display_message'] ?? $payload['message'] ?? 'Price changed');
+            $confirmMsg = (string) ($confirm['message'] ?? 'Could not confirm the new fare.');
+
+            return [
+                'ok' => false,
+                'message' => $oldMsg.': '.$confirmMsg,
+                'http_status' => $confirm['http_status'] ?? null,
+                'data' => ['price_changed' => $payload, 'confirm' => $confirm],
+            ];
+        }
+
+        return $confirm;
     }
 
     /**
@@ -356,7 +422,7 @@ class DowntownTravelAirService
 
             $passportNumber = trim((string) ($p['passport_number'] ?? data_get($p, 'travel_document.number', '')));
             $passportExpire = trim((string) ($p['passport_expire'] ?? data_get($p, 'travel_document.expires_at', '')));
-            if ($passportNumber !== '' && $passportExpire !== '') {
+            if (strlen($passportNumber) >= 5 && $passportExpire !== '') {
                 $person['travel_document'] = [
                     'type' => 'passport',
                     'number' => $passportNumber,
@@ -419,6 +485,7 @@ class DowntownTravelAirService
     protected function normalizeNationality(string $value): string
     {
         $value = strtoupper(trim($value));
+        $value = preg_replace('/[^A-Z]/', '', $value) ?? '';
         if ($value === '') {
             return 'US';
         }
@@ -447,6 +514,15 @@ class DowntownTravelAirService
             return $map[$value];
         }
 
-        return strlen($value) > 2 ? substr($value, 0, 2) : $value;
+        if (strlen($value) === 2) {
+            return $value;
+        }
+
+        if (strlen($value) === 3 && isset($map[$value])) {
+            return $map[$value];
+        }
+
+        // Unknown free-text → default US rather than inventing a fake ISO code.
+        return 'US';
     }
 }

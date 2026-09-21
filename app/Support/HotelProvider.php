@@ -76,6 +76,71 @@ class HotelProvider
     }
 
     /**
+     * @return array{
+     *   hint: string,
+     *   name_pattern: string,
+     *   name_title: string,
+     *   name_min: int,
+     *   name_max: int,
+     *   phone_pattern: string,
+     *   phone_title: string,
+     *   phone_min: int,
+     *   phone_max: int
+     * }
+     */
+    public static function bookFieldSpecs(?string $provider = null): array
+    {
+        $provider = strtolower((string) ($provider ?? self::current()));
+
+        return match ($provider) {
+            self::DOWNTOWN_TRAVEL_HOTELS => [
+                'hint' => 'Lead guest details for Downtown Travel Hotels. Use letters-only names and a real phone number.',
+                'name_pattern' => '[A-Za-z][A-Za-z \\-\']{0,78}[A-Za-z]?',
+                'name_title' => 'Letters, spaces, hyphen or apostrophe only',
+                'name_min' => 2,
+                'name_max' => 80,
+                'phone_pattern' => '\\+?[0-9() \\-]{7,20}',
+                'phone_title' => 'Phone with digits (e.g. +15551234567)',
+                'phone_min' => 7,
+                'phone_max' => 20,
+            ],
+            default => [
+                'hint' => 'Lead guest details for Xconnect hotel booking.',
+                'name_pattern' => '[A-Za-z][A-Za-z \\-\']{0,78}[A-Za-z]?',
+                'name_title' => 'Letters, spaces, hyphen or apostrophe only',
+                'name_min' => 2,
+                'name_max' => 80,
+                'phone_pattern' => '[0-9+() \\-]{7,30}',
+                'phone_title' => 'Phone digits (7–30 characters)',
+                'phone_min' => 7,
+                'phone_max' => 30,
+            ],
+        };
+    }
+
+    /**
+     * @return array<string, list<string>|string>
+     */
+    public static function bookValidationRules(?string $provider = null): array
+    {
+        $provider = strtolower((string) ($provider ?? self::current()));
+        $spec = self::bookFieldSpecs($provider);
+        $nameRegex = '/^[A-Za-z][A-Za-z \\-\']{0,78}$/';
+        $phoneRegex = '/^[0-9+() \\-]{'.$spec['phone_min'].','.$spec['phone_max'].'}$/';
+
+        return [
+            'provider' => ['nullable', 'in:'.implode(',', self::all())],
+            'prefix' => ['required', 'in:Mr.,Mrs.,Ms.,Miss.'],
+            'first_name' => ['required', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex],
+            'last_name' => ['required', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex],
+            'email' => ['required', 'email', 'max:120'],
+            'phone' => ['required', 'string', 'min:'.$spec['phone_min'], 'max:'.$spec['phone_max'], 'regex:'.$phoneRegex],
+            'guest2_first' => ['nullable', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex],
+            'guest2_last' => ['nullable', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex, 'required_with:guest2_first'],
+        ];
+    }
+
+    /**
      * @return array{key: string, label: string, css: string}
      */
     public static function normalizeEnvironment(mixed $raw): array

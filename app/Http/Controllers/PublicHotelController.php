@@ -191,16 +191,7 @@ class PublicHotelController extends Controller
         }
         HotelProvider::set($bookProvider);
 
-        $data = $request->validate([
-            'provider' => ['nullable', Rule::in(HotelProvider::all())],
-            'prefix' => ['required', 'string', 'max:10'],
-            'first_name' => ['required', 'string', 'max:80'],
-            'last_name' => ['required', 'string', 'max:80'],
-            'email' => ['required', 'email', 'max:120'],
-            'phone' => ['required', 'string', 'max:40'],
-            'guest2_first' => ['nullable', 'string', 'max:80'],
-            'guest2_last' => ['nullable', 'string', 'max:80'],
-        ]);
+        $data = $request->validate(HotelProvider::bookValidationRules($bookProvider));
 
         $guests = [[
             'room_no' => '1',

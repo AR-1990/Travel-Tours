@@ -162,7 +162,7 @@ class DowntownTravelBookFormFeatureTest extends TestCase
                 'phone' => '+12236826712',
                 'dob' => '1990-11-24',
                 'gender' => 'M',
-                'nationality' => 'USA',
+                'nationality' => 'US',
             ]],
         ]);
 
