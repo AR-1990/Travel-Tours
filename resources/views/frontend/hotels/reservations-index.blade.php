@@ -33,7 +33,12 @@
                     @forelse($reservations as $row)
                         <tr>
                             <td>{{ $row->reference_no ?: $row->internal_reference }}</td>
-                            <td>{{ $row->hotel_name }}</td>
+                            <td>
+                                {{ $row->hotel_name }}
+                                @if($row->city_id)
+                                    <div class="small text-muted">{{ $row->city_id }}</div>
+                                @endif
+                            </td>
                             <td>{{ optional($row->check_in)->toDateString() }} → {{ optional($row->check_out)->toDateString() }}</td>
                             <td>{{ $row->status }}</td>
                             <td>{{ $row->total_price }} {{ $row->currency }}</td>

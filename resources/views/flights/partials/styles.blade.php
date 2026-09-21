@@ -380,6 +380,32 @@
         color: #065f46;
         border-color: #a7f3d0;
     }
+    .provider-badge--downtown {
+        background: #fff7ed;
+        color: #9a3412;
+        border-color: #fed7aa;
+    }
+    .env-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+    .env-badge--live {
+        background: #dcfce7;
+        color: #166534;
+        border-color: #86efac;
+    }
+    .env-badge--sandbox {
+        background: #dbeafe;
+        color: #1e40af;
+        border-color: #93c5fd;
+    }
     .provider-select-label {
         font-size: 0.75rem;
         font-weight: 600;

@@ -48,7 +48,16 @@
                 $journeys = [['travel_time' => null, 'segments' => $sol['segments']]];
             }
             $carrier = $sol['plating_carrier'] ?? ($sol['segments'][0]['carrier'] ?? '—');
-            $carrierName = \App\Support\FlightDisplay::airlineName($carrier);
+            $carrierName = trim((string) ($sol['airline_name'] ?? $sol['segments'][0]['airline_name'] ?? ''));
+            if ($carrierName === '') {
+                $carrierName = \App\Support\FlightDisplay::airlineName($carrier);
+            }
+            $solProvider = strtolower((string) ($sol['provider'] ?? ($searchResult['provider'] ?? 'travelport')));
+            $solReady = match ($solProvider) {
+                'sunspring' => (bool) ($sunspringReady ?? false),
+                'downtown_travel' => (bool) ($downtownTravelReady ?? false),
+                default => (bool) ($providerReady ?? $travelportReady ?? false),
+            };
         @endphp
         <article class="flight-result-card">
             <div class="row align-items-start g-3">
@@ -73,20 +82,35 @@
                             @php
                                 $dep = \App\Support\FlightDisplay::parseDateTime($seg['departure'] ?? null);
                                 $arr = \App\Support\FlightDisplay::parseDateTime($seg['arrival'] ?? null);
+                                $segOrigin = trim((string) ($seg['origin_city'] ?? ''));
+                                if ($segOrigin === '') {
+                                    $segOrigin = \App\Support\FlightDisplay::airportCity($seg['origin'] ?? null);
+                                }
+                                $segDest = trim((string) ($seg['destination_city'] ?? ''));
+                                if ($segDest === '') {
+                                    $segDest = \App\Support\FlightDisplay::airportCity($seg['destination'] ?? null);
+                                }
+                                $segFlight = trim((string) ($seg['airline_name'] ?? ''));
+                                if ($segFlight === '') {
+                                    $segFlight = \App\Support\FlightDisplay::flightLabel($seg['carrier'] ?? null, $seg['flight_number'] ?? null);
+                                } else {
+                                    $fn = trim((string) ($seg['flight_number'] ?? ''));
+                                    $segFlight = $fn !== '' ? $segFlight.' '.$fn : $segFlight;
+                                }
                             @endphp
                             <div class="d-flex flex-wrap align-items-center gap-3 mb-2 pb-2 {{ !$loop->last ? 'border-bottom border-light' : '' }}">
                                 <div>
                                     <div class="flight-time">{{ $dep['time'] ?? '—' }}</div>
-                                    <div class="flight-airport-code">{{ \App\Support\FlightDisplay::airportCity($seg['origin'] ?? null) }}</div>
+                                    <div class="flight-airport-code">{{ $segOrigin }}</div>
                                     <div class="small text-muted">{{ $dep['date'] ?? '' }}</div>
                                 </div>
                                 <div class="text-muted small text-center px-2">
                                     <i class="fas fa-plane text-primary"></i>
-                                    <div>{{ \App\Support\FlightDisplay::flightLabel($seg['carrier'] ?? null, $seg['flight_number'] ?? null) }}</div>
+                                    <div>{{ $segFlight }}</div>
                                 </div>
                                 <div>
                                     <div class="flight-time">{{ $arr['time'] ?? '—' }}</div>
-                                    <div class="flight-airport-code">{{ \App\Support\FlightDisplay::airportCity($seg['destination'] ?? null) }}</div>
+                                    <div class="flight-airport-code">{{ $segDest }}</div>
                                     <div class="small text-muted">{{ $arr['date'] ?? '' }}</div>
                                 </div>
                             </div>
@@ -107,7 +131,8 @@
                         <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.price') }}" class="mt-2">
                             @csrf
                             <input type="hidden" name="solution_key" value="{{ $sol['key'] ?? '' }}">
-                            <button type="submit" class="btn btn-primary btn-sm" @disabled(!($providerReady ?? $travelportReady ?? false) || empty($sol['key']))>
+                            <input type="hidden" name="provider" value="{{ $solProvider }}">
+                            <button type="submit" class="btn btn-primary btn-sm" @disabled(! $solReady || empty($sol['key']))>
                                 Price &amp; hold
                             </button>
                         </form>

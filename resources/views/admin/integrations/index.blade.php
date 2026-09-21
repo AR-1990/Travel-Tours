@@ -22,15 +22,22 @@
                 <div class="card-modern h-100 p-4 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                         <h2 class="h5 mb-0">{{ $item['name'] }}</h2>
-                        @if($item['coming_soon'])
-                            <span class="badge bg-secondary">Coming soon</span>
-                        @elseif($item['configured'])
-                            <span class="badge {{ $item['is_enabled'] ? 'bg-success' : 'bg-warning text-dark' }}">
-                                {{ $item['is_enabled'] ? 'Enabled' : 'Disabled' }}
-                            </span>
-                        @else
-                            <span class="badge bg-light text-dark border">Not configured</span>
-                        @endif
+                        <div class="d-flex flex-wrap justify-content-end gap-1">
+                            @unless($item['coming_soon'])
+                                @if(!($item['configured'] ?? false))
+                                    <span class="badge bg-danger">Not configured</span>
+                                @else
+                                    <span class="badge {{ ($item['environment'] ?? '') === 'live' ? 'bg-success' : 'bg-primary' }}">
+                                        {{ $item['environment_label'] ?? 'Sandbox' }}
+                                    </span>
+                                    <span class="badge {{ $item['is_enabled'] ? 'bg-success' : 'bg-warning text-dark' }}">
+                                        {{ $item['is_enabled'] ? 'Enabled' : 'Disabled' }}
+                                    </span>
+                                @endif
+                            @else
+                                <span class="badge bg-secondary">Coming soon</span>
+                            @endunless
+                        </div>
                     </div>
                     <p class="text-muted small flex-grow-1">{{ $item['description'] }}</p>
                     <div class="mt-3">

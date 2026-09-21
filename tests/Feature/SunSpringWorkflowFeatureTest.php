@@ -158,7 +158,7 @@ class SunSpringWorkflowFeatureTest extends TestCase
 
         $this->get(route('frontend.flights.book'))
             ->assertOk()
-            ->assertSee('API: SunSpring', false)
+            ->assertSee('SunSpring', false)
             ->assertSee('passengers[0][national_id]', false)
             ->assertSee('passengers[0][passport_number]', false);
 
@@ -186,7 +186,7 @@ class SunSpringWorkflowFeatureTest extends TestCase
 
         $this->get(route('frontend.flights.reservations.show', ['id' => $reservationId]))
             ->assertOk()
-            ->assertSee('API: SunSpring', false)
+            ->assertSee('SunSpring', false)
             ->assertSee('55501', false);
 
         $this->post(route('frontend.flights.reservations.ticket', ['id' => $reservationId]))
@@ -224,7 +224,7 @@ class SunSpringWorkflowFeatureTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.flights.book'))
             ->assertOk()
-            ->assertSee('API: SunSpring', false);
+            ->assertSee('SunSpring', false);
 
         $book = $this->actingAs($user)->post(route('admin.flights.book.store'), [
             'country_code' => '+98',
@@ -251,12 +251,12 @@ class SunSpringWorkflowFeatureTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.flights.reservations.show', ['id' => $reservationId]))
             ->assertOk()
-            ->assertSee('API: SunSpring', false);
+            ->assertSee('SunSpring', false);
 
         $this->actingAs($user)
             ->get(route('admin.flights.reservations.index'))
             ->assertOk()
-            ->assertSee('API: SunSpring', false);
+            ->assertSee('SunSpring', false);
     }
 
     public function test_public_multi_passenger_book_form_matches_search(): void

@@ -61,6 +61,7 @@ class IntegrationsController extends Controller
         $items = [];
         foreach ($catalog as $slug => $meta) {
             $row = $rows->get($slug);
+            $environment = $this->resolvedEnvironmentLabel($slug);
             $items[] = [
                 'slug' => $slug,
                 'name' => $meta['name'] ?? $slug,
@@ -68,12 +69,39 @@ class IntegrationsController extends Controller
                 'coming_soon' => (bool) ($meta['coming_soon'] ?? false),
                 'configured' => $row !== null,
                 'is_enabled' => $row?->is_enabled ?? false,
+                'environment' => $environment['key'],
+                'environment_label' => $environment['label'],
             ];
         }
 
         return view('admin.integrations.index', [
             'items' => $items,
         ]);
+    }
+
+    /**
+     * Effective Live / Sandbox label for the integrations index cards.
+     *
+     * @return array{key: string, label: string}
+     */
+    protected function resolvedEnvironmentLabel(string $slug): array
+    {
+        $raw = match ($slug) {
+            Integration::SLUG_TRAVELPORT => (string) (TravelportIntegrationConfig::merged()['environment'] ?? 'pp'),
+            Integration::SLUG_SUNSPRING => (string) (SunSpringIntegrationConfig::merged()['environment'] ?? 'sandbox'),
+            Integration::SLUG_XCONNECT => (string) (XconnectIntegrationConfig::merged()['environment'] ?? 'sandbox'),
+            Integration::SLUG_DOWNTOWN_TRAVEL => (string) (DowntownTravelIntegrationConfig::merged()['environment'] ?? 'sandbox'),
+            Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS => (string) (DowntownTravelHotelsIntegrationConfig::merged()['environment'] ?? 'sandbox'),
+            default => 'sandbox',
+        };
+
+        $raw = strtolower(trim($raw));
+        $isLive = in_array($raw, ['production', 'prod', 'live'], true);
+
+        return [
+            'key' => $isLive ? 'live' : 'sandbox',
+            'label' => $isLive ? 'Live' : 'Sandbox',
+        ];
     }
 
     public function edit(string $slug, TravelportSystemService $system, SunSpringClient $sunspring, XconnectClient $xconnect, DowntownTravelClient $downtown, DowntownTravelHotelsClient $downtownHotels)

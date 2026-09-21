@@ -20,6 +20,9 @@
         <div class="border rounded p-3 mb-4 bg-white">
             <h5 class="mb-1">{{ $prebook['hotel_name'] ?? $solution['hotel_name'] ?? 'Hotel' }}</h5>
             <p class="mb-0 text-muted">
+                @if(!empty($prebook['city']) || !empty($solution['city']) || !empty($solution['destination_label']))
+                    {{ $prebook['city'] ?? $solution['city'] ?? $solution['destination_label'] }} ·
+                @endif
                 {{ $solution['check_in'] ?? '' }} → {{ $solution['check_out'] ?? '' }}
                 · {{ number_format((float) ($priced['total_price'] ?? 0), 2) }} {{ $priced['currency'] ?? '' }}
             </p>

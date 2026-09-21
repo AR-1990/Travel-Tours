@@ -11,7 +11,7 @@
                     <div class="hero-content text-center">
                         <div class="hero-content-wrapper">
                             <h1 class="hero-title">Find your stay</h1>
-                            <p>Search hotels via Xconnect wholesale inventory</p>
+                            <p>Search hotels via Downtown Travel or Xconnect</p>
                         </div>
                     </div>
                 </div>
@@ -23,6 +23,9 @@
 @include('frontend.hotels.partials.search-form', [
     'hotelSearchInput' => $hotelSearchInput ?? [],
     'hotelReady' => $hotelReady ?? false,
+    'providerOptions' => $providerOptions ?? [],
+    'hotelProvider' => $hotelProvider ?? null,
+    'downtownDestinations' => $downtownDestinations ?? [],
     'searchSubmitLabel' => 'Search Hotels',
 ])
 @endsection

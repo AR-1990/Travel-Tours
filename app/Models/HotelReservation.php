@@ -68,10 +68,12 @@ class HotelReservation extends Model
 
     public function providerLabel(): string
     {
-        return match (strtolower((string) $this->provider)) {
-            'xconnect' => 'Xconnect',
-            default => (string) $this->provider,
-        };
+        return \App\Support\HotelProvider::label((string) $this->provider);
+    }
+
+    public function isDowntownTravel(): bool
+    {
+        return strtolower((string) $this->provider) === \App\Support\HotelProvider::DOWNTOWN_TRAVEL_HOTELS;
     }
 
     public function isCancelled(): bool

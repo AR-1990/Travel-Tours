@@ -89,7 +89,7 @@ class XconnectHotelWorkflowFeatureTest extends TestCase
                     'BookRS' => [
                         'BookingId' => 61405,
                         'ReferenceNo' => 'JUNIMA091901633',
-                        'InternalReference' => 'INTREF1',
+                        'InternalReference' => 'INTREF-'.uniqid('', true),
                         'Currency' => 'USD',
                     ],
                 ], 200);

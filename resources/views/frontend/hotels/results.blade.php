@@ -3,9 +3,17 @@
 @section('title', 'Hotel Results')
 
 @section('content')
+@php
+    $resultProvider = strtolower((string) ($hotelSearchResult['provider'] ?? ($hotelSearchInput['provider'] ?? 'xconnect')));
+    $providerBadge = \App\Support\HotelProvider::badge($resultProvider);
+    $envBadge = \App\Support\HotelProvider::environmentMode($resultProvider);
+@endphp
 @include('frontend.hotels.partials.search-form', [
     'hotelSearchInput' => $hotelSearchInput ?? [],
     'hotelReady' => $hotelReady ?? false,
+    'providerOptions' => $providerOptions ?? [],
+    'hotelProvider' => $hotelProvider ?? $resultProvider,
+    'downtownDestinations' => $downtownDestinations ?? [],
     'searchSubmitLabel' => 'Update Search',
 ])
 
@@ -19,9 +27,10 @@
         @endif
 
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
-            <h4 class="mb-0">
+            <h4 class="mb-0 d-flex flex-wrap align-items-center gap-2">
                 {{ count($hotelSearchResult['solutions'] ?? []) }} hotel option(s)
-                <span class="badge bg-secondary">API: Xconnect</span>
+                <span class="{{ $providerBadge['css'] }} provider-badge--sm">{{ $providerBadge['label'] }}</span>
+                <span class="{{ $envBadge['css'] }}">{{ $envBadge['label'] }}</span>
             </h4>
             <a href="{{ route('frontend.hotels.hub') }}" class="btn btn-sm btn-outline-secondary">New search</a>
         </div>
@@ -29,12 +38,33 @@
         @if(!empty($hotelSearchResult['ok']) && !empty($hotelSearchResult['solutions']))
             <div class="row g-3">
                 @foreach($hotelSearchResult['solutions'] as $sol)
+                    @php
+                        $hotelName = trim((string) ($sol['hotel_name'] ?? ''));
+                        if ($hotelName === '') {
+                            $hotelName = 'Hotel';
+                        }
+                        $cityLabel = trim((string) ($sol['city'] ?? $sol['destination_label'] ?? ''));
+                        $stars = trim((string) ($sol['star_rating'] ?? ''));
+                        $solEnv = ! empty($sol['environment'])
+                            ? \App\Support\HotelProvider::normalizeEnvironment($sol['environment'])
+                            : $envBadge;
+                    @endphp
                     <div class="col-lg-6">
                         <div class="border rounded p-3 h-100 bg-white">
                             <div class="d-flex justify-content-between gap-2">
                                 <div>
-                                    <h5 class="mb-1">{{ $sol['hotel_name'] ?? ('Hotel #'.($sol['hotel_id'] ?? '')) }}</h5>
-                                    <p class="small text-muted mb-1">Hotel ID {{ $sol['hotel_id'] ?? '—' }} · Option {{ $sol['hotel_option_id'] ?? '—' }}</p>
+                                    <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                        <h5 class="mb-0">{{ $hotelName }}</h5>
+                                        <span class="{{ $solEnv['css'] }}">{{ $solEnv['label'] }}</span>
+                                    </div>
+                                    @if($cityLabel !== '')
+                                        <p class="small text-muted mb-1">
+                                            <i class="fas fa-map-marker-alt me-1"></i>{{ $cityLabel }}
+                                            @if($stars !== '') · {{ $stars }}★ @endif
+                                        </p>
+                                    @elseif(!empty($sol['hotel_id']))
+                                        <p class="small text-muted mb-1">Hotel ID {{ $sol['hotel_id'] }}</p>
+                                    @endif
                                     <p class="small mb-2">
                                         {{ $sol['check_in'] ?? '' }} → {{ $sol['check_out'] ?? '' }}
                                         @if(!empty($sol['nights'])) · {{ $sol['nights'] }} night(s) @endif
@@ -73,4 +103,13 @@
         @endif
     </div>
 </div>
+<style>
+.provider-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .7rem;border-radius:999px;font-size:.75rem;font-weight:600;letter-spacing:.02em;border:1px solid transparent;white-space:nowrap}
+.provider-badge--sm{font-size:.68rem;padding:.2rem .55rem}
+.provider-badge--downtown{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+.provider-badge--xconnect{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+.env-badge{display:inline-flex;align-items:center;padding:.2rem .55rem;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.03em;border:1px solid transparent;white-space:nowrap}
+.env-badge--live{background:#dcfce7;color:#166534;border-color:#86efac}
+.env-badge--sandbox{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+</style>
 @endsection

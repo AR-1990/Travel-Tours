@@ -85,7 +85,7 @@
             ];
         @endphp
         <div class="mb-3">
-            <div class="provider-select-label">Search via API</div>
+            <div class="provider-select-label">Search via</div>
             <div class="trip-type-tabs" role="group" aria-label="Flight provider">
                 @foreach($providers as $option)
                     <label>
@@ -94,7 +94,7 @@
                     </label>
                 @endforeach
             </div>
-            <p class="small text-muted mb-0 mt-1">Results will show which API they came from (Travelport or SunSpring).</p>
+            <p class="small text-muted mb-0 mt-1">Results show the source (Travelport, SunSpring, or Downtown Travel).</p>
         </div>
 
         <p class="small text-muted mb-3">

@@ -13,6 +13,9 @@
         @endif
 
         <h2 class="mb-3">{{ $reservation->hotel_name }}</h2>
+        @if($reservation->city_id)
+            <p class="text-muted mb-2"><i class="fas fa-map-marker-alt me-1"></i>{{ $reservation->city_id }}</p>
+        @endif
         <div class="border rounded p-4 bg-white mb-3">
             <p><strong>Status:</strong> {{ $reservation->status }}</p>
             <p><strong>Provider:</strong> {{ $reservation->providerLabel() }}</p>

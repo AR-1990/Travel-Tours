@@ -53,7 +53,11 @@
                             <p class="small text-muted mb-2">
                                 @foreach($searchSources as $sourceProvider => $sourceMeta)
                                     <span class="me-2">
-                                        @include('flights.partials.provider-badge', ['provider' => $sourceProvider, 'size' => 'sm'])
+                                        @include('flights.partials.provider-badge', [
+                                            'provider' => $sourceProvider,
+                                            'sourceMeta' => $sourceMeta,
+                                            'size' => 'sm',
+                                        ])
                                         {{ (int) ($sourceMeta['count'] ?? 0) }}
                                     </span>
                                 @endforeach

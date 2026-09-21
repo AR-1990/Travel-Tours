@@ -11,9 +11,12 @@
         </ol>
     </nav>
 
-    <div class="mb-4">
-        <h1 class="h3 mb-1 text-gray-800">Downtown Travel Hotels API</h1>
-        <p class="text-muted mb-0">
+    <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
+        <h1 class="h3 mb-0 text-gray-800">Downtown Travel Hotels API</h1>
+        @include('admin.integrations.partials.environment-badge', [
+            'environment' => $downtown['environment'] ?? 'sandbox',
+        ])
+        <p class="text-muted mb-0 w-100">
             Hotels API v2 (OAuth2).
             Docs:
             <a href="https://dtt-hotels.readme.io/reference/workflow" target="_blank" rel="noopener">Workflow</a>

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\HandlesFlightWorkflow;
 use App\Http\Controllers\Concerns\NormalizesFlightSearchInput;
 use App\Models\FlightReservation;
+use App\Services\DowntownTravel\DowntownTravelAirService;
+use App\Services\DowntownTravel\DowntownTravelIntegrationConfig;
 use App\Services\SunSpring\SunSpringAirService;
 use App\Services\SunSpring\SunSpringIntegrationConfig;
 use App\Services\Travelport\TravelportAirCatalog;
@@ -158,9 +160,11 @@ class PublicFlightController extends Controller
             ],
             'gdsSnapshot' => $reservation->gds_snapshot,
             'workflowStep' => $reservation->status === FlightReservation::STATUS_TICKETED ? 'done' : 'ticket',
-            'providerReady' => $reservation->isSunSpring()
-                ? SunSpringIntegrationConfig::isReadyForAir()
-                : TravelportIntegrationConfig::isReadyForAir(),
+            'providerReady' => $reservation->isDowntownTravel()
+                ? DowntownTravelIntegrationConfig::isReadyForAir()
+                : ($reservation->isSunSpring()
+                    ? SunSpringIntegrationConfig::isReadyForAir()
+                    : TravelportIntegrationConfig::isReadyForAir()),
             'ticketActionRoute' => route('frontend.flights.reservations.ticket', $reservation),
             'retrieveActionRoute' => route('frontend.flights.reservations.retrieve', $reservation),
             'cancelActionRoute' => route('frontend.flights.reservations.cancel', $reservation),
@@ -311,13 +315,18 @@ class PublicFlightController extends Controller
             'airportOptions' => $airportOptions,
             'travelportReady' => TravelportIntegrationConfig::isReadyForAir(),
             'sunspringReady' => SunSpringIntegrationConfig::isReadyForAir(),
-            'anyProviderReady' => TravelportIntegrationConfig::isReadyForAir() || SunSpringIntegrationConfig::isReadyForAir(),
+            'downtownTravelReady' => DowntownTravelIntegrationConfig::isReadyForAir(),
+            'anyProviderReady' => TravelportIntegrationConfig::isReadyForAir()
+                || SunSpringIntegrationConfig::isReadyForAir()
+                || DowntownTravelIntegrationConfig::isReadyForAir(),
             'providerReady' => FlightProvider::isReady(),
             'flightProvider' => FlightProvider::current(),
             'flightProviders' => FlightProvider::options(),
-            'hasPricingContext' => FlightProvider::isSunSpring()
-                ? app(SunSpringAirService::class)->hasStoredPricingContext()
-                : app(TravelportAirService::class)->hasStoredPricingContext(),
+            'hasPricingContext' => match (FlightProvider::current()) {
+                FlightProvider::SUNSPRING => app(SunSpringAirService::class)->hasStoredPricingContext(),
+                FlightProvider::DOWNTOWN_TRAVEL => app(DowntownTravelAirService::class)->hasStoredPricingContext(),
+                default => app(TravelportAirService::class)->hasStoredPricingContext(),
+            },
             'operationGroups' => TravelportAirCatalog::groupedForUi(),
             'canBookFlights' => true,
             'sunspringActiveRoutes' => $this->sunspringActiveRoutesForPublic(),

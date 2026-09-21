@@ -19,7 +19,7 @@ class FlightProviderUiTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.flights.search'))
             ->assertOk()
-            ->assertSee('Search via API', false)
+            ->assertSee('Search via', false)
             ->assertSee('name="provider"', false)
             ->assertSee('Travelport', false)
             ->assertSee('SunSpring', false);
@@ -36,13 +36,13 @@ class FlightProviderUiTest extends TestCase
         $this->actingAs($tenantAdmin)
             ->get(route('agent.flights.search'))
             ->assertOk()
-            ->assertSee('Search via API', false)
+            ->assertSee('Search via', false)
             ->assertSee('SunSpring', false);
 
         $this->actingAs($salesAgent)
             ->get(route('subagent.flights.search'))
             ->assertOk()
-            ->assertSee('Search via API', false)
+            ->assertSee('Search via', false)
             ->assertSee('SunSpring', false);
     }
 
@@ -50,12 +50,12 @@ class FlightProviderUiTest extends TestCase
     {
         $this->get(route('home'))
             ->assertOk()
-            ->assertDontSee('Search via API', false)
+            ->assertDontSee('Search via', false)
             ->assertSee('Find the best routes with flexible trip options', false);
 
         $this->get(route('pages.flights'))
             ->assertOk()
-            ->assertDontSee('Search via API', false);
+            ->assertDontSee('Search via', false);
     }
 
     public function test_sunspring_integrations_page_renders(): void
@@ -178,7 +178,7 @@ class FlightProviderUiTest extends TestCase
 
         $this->get(route('frontend.flights.results'))
             ->assertOk()
-            ->assertSee('API: SunSpring', false)
+            ->assertSee('SunSpring', false)
             ->assertSee('REF-UI-1', false)
             ->assertSee('Price: Low to High', false)
             ->assertSee('Price: High to Low', false);
@@ -272,7 +272,7 @@ class FlightProviderUiTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.flights.search'))
             ->assertOk()
-            ->assertSee('API: SunSpring', false)
+            ->assertSee('SunSpring', false)
             ->assertSee('ADM-SS-1', false);
     }
 
@@ -281,8 +281,8 @@ class FlightProviderUiTest extends TestCase
         $this->assertSame('Travelport', FlightProvider::label('travelport'));
         $this->assertSame('SunSpring', FlightProvider::label('sunspring'));
         $this->assertSame('sunspring', FlightProvider::fromResult(['provider' => 'sunspring']));
-        $this->assertSame('API: Travelport', FlightProvider::badge('travelport')['short']);
-        $this->assertSame('API: SunSpring', FlightProvider::badge('sunspring')['short']);
+        $this->assertSame('Travelport', FlightProvider::badge('travelport')['short']);
+        $this->assertSame('SunSpring', FlightProvider::badge('sunspring')['short']);
     }
 
     public function test_public_workflow_guards_still_redirect_cleanly(): void

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\HotelReservation;
+use App\Services\DowntownTravel\DowntownTravelHotelService;
+use App\Services\DowntownTravel\DowntownTravelHotelsIntegrationConfig;
 use App\Services\Xconnect\XconnectHotelService;
+use App\Services\Xconnect\XconnectIntegrationConfig;
 use App\Support\HotelProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,18 +16,18 @@ class PublicHotelController extends Controller
 {
     public function hotelHub()
     {
-        return view('frontend.hotels.hub', [
-            'hotelReady' => HotelProvider::isReady(),
-            'providerOptions' => HotelProvider::options(),
+        return view('frontend.hotels.hub', $this->hotelViewBase([
             'hotelSearchInput' => session('public.hotel_search.input', []),
-        ]);
+        ]));
     }
 
-    public function hotelSearch(Request $request, XconnectHotelService $hotels)
+    public function hotelSearch(Request $request, XconnectHotelService $xconnect, DowntownTravelHotelService $downtown)
     {
+        $providerIds = HotelProvider::all();
         $data = $request->validate([
-            'provider' => ['nullable', Rule::in(['xconnect'])],
-            'city_id' => ['required', 'string', 'max:64'],
+            'provider' => ['nullable', Rule::in($providerIds)],
+            'destination' => ['nullable', 'string', 'max:64'],
+            'city_id' => ['nullable', 'string', 'max:64'],
             'check_in' => ['required', 'date'],
             'check_out' => ['required', 'date', 'after:check_in'],
             'nationality' => ['nullable', 'string', 'max:80'],
@@ -35,34 +38,83 @@ class PublicHotelController extends Controller
             'star_max' => ['nullable', 'integer', 'min:0', 'max:5'],
         ]);
 
-        HotelProvider::set((string) ($data['provider'] ?? HotelProvider::XCONNECT));
-
-        if (! $hotels->isReady()) {
-            return redirect()
-                ->route('frontend.hotels.hub')
-                ->with('error', 'Hotel API is not configured yet. Ask the admin to set Xconnect Token + Base URL.');
+        $provider = trim((string) ($data['provider'] ?? ''));
+        if ($provider === '') {
+            $hasCityId = trim((string) ($data['city_id'] ?? '')) !== '';
+            $hasDestination = trim((string) ($data['destination'] ?? '')) !== '';
+            if ($hasCityId && ! $hasDestination) {
+                $provider = HotelProvider::XCONNECT;
+            } elseif ($hasDestination && ! $hasCityId) {
+                $provider = HotelProvider::DOWNTOWN_TRAVEL_HOTELS;
+            } else {
+                $provider = HotelProvider::current();
+            }
         }
+        HotelProvider::set($provider);
 
         $adults = (int) ($data['adults'] ?? 2);
         $children = (int) ($data['children'] ?? 0);
-        $result = $hotels->searchAvailability([
-            'city_id' => $data['city_id'],
-            'check_in' => $data['check_in'],
-            'check_out' => $data['check_out'],
-            'nationality' => $data['nationality'] ?? config('xconnect.default_nationality'),
-            'currency' => $data['currency'] ?? config('xconnect.default_currency'),
-            'star_min' => $data['star_min'] ?? 0,
-            'star_max' => $data['star_max'] ?? 5,
-            'rooms' => [[
+
+        if (HotelProvider::isDowntownTravel()) {
+            if (! $downtown->isReady()) {
+                return redirect()
+                    ->route('frontend.hotels.hub')
+                    ->with('error', 'Downtown Travel Hotels is not configured yet. Ask the admin to set credentials under Integrations.');
+            }
+
+            $destination = strtolower(trim((string) ($data['destination'] ?? '')));
+            if ($destination === '' || ! isset(DowntownTravelHotelService::DESTINATIONS[$destination])) {
+                return redirect()
+                    ->route('frontend.hotels.hub')
+                    ->withInput()
+                    ->with('error', 'Choose a city destination for Downtown Travel hotel search.');
+            }
+
+            $result = $downtown->searchAvailability([
+                'destination' => $destination,
+                'check_in' => $data['check_in'],
+                'check_out' => $data['check_out'],
                 'adults' => $adults,
                 'children' => $children,
-                'child_ages' => array_fill(0, $children, 5),
-            ]],
-        ]);
+            ]);
+        } else {
+            if (! $xconnect->isReady()) {
+                return redirect()
+                    ->route('frontend.hotels.hub')
+                    ->with('error', 'Hotel API is not configured yet. Ask the admin to set Xconnect Token + Base URL.');
+            }
+
+            $cityId = trim((string) ($data['city_id'] ?? ''));
+            if ($cityId === '') {
+                return redirect()
+                    ->route('frontend.hotels.hub')
+                    ->withInput()
+                    ->with('error', 'City ID is required for Xconnect hotel search.');
+            }
+
+            $result = $xconnect->searchAvailability([
+                'city_id' => $cityId,
+                'check_in' => $data['check_in'],
+                'check_out' => $data['check_out'],
+                'nationality' => $data['nationality'] ?? config('xconnect.default_nationality'),
+                'currency' => $data['currency'] ?? config('xconnect.default_currency'),
+                'star_min' => $data['star_min'] ?? 0,
+                'star_max' => $data['star_max'] ?? 5,
+                'rooms' => [[
+                    'adults' => $adults,
+                    'children' => $children,
+                    'child_ages' => array_fill(0, $children, 5),
+                ]],
+            ]);
+        }
 
         session([
             'public.hotel_search' => [
-                'input' => $data + ['adults' => $adults, 'children' => $children],
+                'input' => $data + [
+                    'adults' => $adults,
+                    'children' => $children,
+                    'provider' => HotelProvider::current(),
+                ],
                 'result' => $result,
             ],
         ]);
@@ -79,24 +131,26 @@ class PublicHotelController extends Controller
             return redirect()->route('frontend.hotels.hub')->with('error', 'Search for hotels first.');
         }
 
-        return view('frontend.hotels.results', [
+        return view('frontend.hotels.results', $this->hotelViewBase([
             'hotelSearchInput' => $stored['input'] ?? [],
             'hotelSearchResult' => $stored['result'] ?? [],
-            'hotelReady' => HotelProvider::isReady(),
-        ]);
+        ]));
     }
 
-    public function hotelPrebook(Request $request, XconnectHotelService $hotels)
+    public function hotelPrebook(Request $request, XconnectHotelService $xconnect, DowntownTravelHotelService $downtown)
     {
         $data = $request->validate([
             'solution_key' => ['required', 'string', 'max:128'],
         ]);
 
-        $result = $hotels->recheckAndPreBook($data['solution_key']);
-        if (! $result['ok']) {
+        $result = HotelProvider::isDowntownTravel()
+            ? $downtown->recheckAndPreBook($data['solution_key'])
+            : $xconnect->recheckAndPreBook($data['solution_key']);
+
+        if (! ($result['ok'] ?? false)) {
             return redirect()
                 ->route('frontend.hotels.results')
-                ->with('error', $result['message']);
+                ->with('error', $result['message'] ?? 'Could not select this hotel rate.');
         }
 
         session(['public.hotel_prebook' => $result]);
@@ -113,13 +167,12 @@ class PublicHotelController extends Controller
             return redirect()->route('frontend.hotels.hub')->with('error', 'Select a hotel rate first.');
         }
 
-        return view('frontend.hotels.book', [
+        return view('frontend.hotels.book', $this->hotelViewBase([
             'priced' => $priced,
-            'hotelReady' => HotelProvider::isReady(),
-        ]);
+        ]));
     }
 
-    public function hotelBookStore(Request $request, XconnectHotelService $hotels)
+    public function hotelBookStore(Request $request, XconnectHotelService $xconnect, DowntownTravelHotelService $downtown)
     {
         $data = $request->validate([
             'prefix' => ['required', 'string', 'max:10'],
@@ -153,23 +206,30 @@ class PublicHotelController extends Controller
             ];
         }
 
-        $result = $hotels->book([
+        $bookParams = [
             'guests' => $guests,
             'email' => $data['email'] ?? '',
             'phone' => $data['phone'] ?? '',
-        ]);
+            'prefix' => $data['prefix'],
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
+        ];
 
-        if (! $result['ok'] || empty($result['booking'])) {
+        $result = HotelProvider::isDowntownTravel()
+            ? $downtown->book($bookParams)
+            : $xconnect->book($bookParams);
+
+        if (! ($result['ok'] ?? false) || empty($result['booking'])) {
             return redirect()
                 ->route('frontend.hotels.book')
-                ->with('error', $result['message']);
+                ->with('error', $result['message'] ?? 'Hotel booking failed.');
         }
 
         $booking = $result['booking'];
         $reservation = HotelReservation::query()->create([
             'user_id' => Auth::id(),
             'channel' => 'public',
-            'provider' => 'xconnect',
+            'provider' => HotelProvider::current(),
             'status' => 'confirmed',
             'booking_id' => isset($booking['booking_id']) ? (string) $booking['booking_id'] : null,
             'reference_no' => $booking['reference_no'] ?? null,
@@ -243,7 +303,8 @@ class PublicHotelController extends Controller
     {
         $reservation = HotelReservation::query()->findOrFail($id);
         $detail = null;
-        if ($reservation->internal_reference || $reservation->reference_no) {
+
+        if ($reservation->isXconnect() && ($reservation->internal_reference || $reservation->reference_no)) {
             $detailResult = $hotels->bookingDetail(
                 $reservation->internal_reference,
                 $reservation->reference_no,
@@ -267,6 +328,14 @@ class PublicHotelController extends Controller
         $reservation = HotelReservation::query()->findOrFail($id);
         if ($reservation->isCancelled()) {
             return back()->with('error', 'This booking is already cancelled.');
+        }
+
+        if (! $reservation->isXconnect()) {
+            $reservation->status = 'cancelled';
+            $reservation->cancelled_at = now();
+            $reservation->save();
+
+            return back()->with('success', 'Hotel booking cancelled locally.');
         }
 
         $charges = $hotels->checkCancellationCharges(
@@ -299,5 +368,22 @@ class PublicHotelController extends Controller
         $reservation->save();
 
         return back()->with('success', 'Hotel booking cancelled.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    protected function hotelViewBase(array $extra = []): array
+    {
+        return array_merge([
+            'hotelReady' => HotelProvider::anyReady(),
+            'providerReady' => HotelProvider::isReady(),
+            'providerOptions' => HotelProvider::options(),
+            'hotelProvider' => HotelProvider::current(),
+            'downtownDestinations' => DowntownTravelHotelService::destinationOptions(),
+            'xconnectReady' => XconnectIntegrationConfig::isReadyForHotels(),
+            'downtownHotelsReady' => DowntownTravelHotelsIntegrationConfig::isReadyForHotels(),
+        ], $extra);
     }
 }

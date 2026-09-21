@@ -11,9 +11,12 @@
         </ol>
     </nav>
 
-    <div class="mb-4">
-        <h1 class="h3 mb-1 text-gray-800">SunSpring Airline API</h1>
-        <p class="text-muted mb-0">REST credentials and endpoints. Step 1: Authorize token. Later: FlightSearch, AirPrice, Book, Ticket.</p>
+    <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
+        <h1 class="h3 mb-0 text-gray-800">SunSpring Airline API</h1>
+        @include('admin.integrations.partials.environment-badge', [
+            'environment' => $sunspring['environment'] ?? 'sandbox',
+        ])
+        <p class="text-muted mb-0 w-100">REST credentials and endpoints. Step 1: Authorize token. Later: FlightSearch, AirPrice, Book, Ticket.</p>
     </div>
 
     @if(session('success'))

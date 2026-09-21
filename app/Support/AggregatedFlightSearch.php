@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Services\DowntownTravel\DowntownTravelAirService;
+use App\Services\DowntownTravel\DowntownTravelIntegrationConfig;
 use App\Services\SunSpring\SunSpringAirService;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
@@ -10,21 +12,25 @@ use Throwable;
 class AggregatedFlightSearch
 {
     /**
-     * Run Travelport and SunSpring against the same user search, then merge fares.
+     * Run configured flight APIs against the same user search, then merge fares.
      *
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    public static function search(array $input, TravelportAirService $travelport, SunSpringAirService $sunspring): array
-    {
-        $travelportResult = null;
-        $sunspringResult = null;
+    public static function search(
+        array $input,
+        TravelportAirService $travelport,
+        SunSpringAirService $sunspring,
+        ?DowntownTravelAirService $downtown = null,
+    ): array {
+        $downtown ??= app(DowntownTravelAirService::class);
+        $results = [];
 
         if (TravelportIntegrationConfig::isReadyForAir()) {
             try {
-                $travelportResult = $travelport->lowFareSearch($input);
+                $results[FlightProvider::TRAVELPORT] = $travelport->lowFareSearch($input);
             } catch (Throwable $e) {
-                $travelportResult = [
+                $results[FlightProvider::TRAVELPORT] = [
                     'ok' => false,
                     'message' => 'Travelport search failed: '.$e->getMessage(),
                     'solutions' => [],
@@ -35,9 +41,9 @@ class AggregatedFlightSearch
 
         if ($sunspring->isReady() && SunSpringAirports::supportsSearch($input)) {
             try {
-                $sunspringResult = $sunspring->lowFareSearch($input);
+                $results[FlightProvider::SUNSPRING] = $sunspring->lowFareSearch($input);
             } catch (Throwable $e) {
-                $sunspringResult = [
+                $results[FlightProvider::SUNSPRING] = [
                     'ok' => false,
                     'message' => 'SunSpring search failed: '.$e->getMessage(),
                     'solutions' => [],
@@ -45,7 +51,7 @@ class AggregatedFlightSearch
                 ];
             }
         } elseif ($sunspring->isReady()) {
-            $sunspringResult = [
+            $results[FlightProvider::SUNSPRING] = [
                 'ok' => true,
                 'message' => 'SunSpring does not cover this route.',
                 'solutions' => [],
@@ -53,33 +59,45 @@ class AggregatedFlightSearch
             ];
         }
 
-        return self::merge($travelportResult, $sunspringResult);
+        if (DowntownTravelIntegrationConfig::isReadyForAir() && $downtown->isReady()) {
+            try {
+                $results[FlightProvider::DOWNTOWN_TRAVEL] = $downtown->lowFareSearch($input);
+            } catch (Throwable $e) {
+                $results[FlightProvider::DOWNTOWN_TRAVEL] = [
+                    'ok' => false,
+                    'message' => 'Downtown Travel search failed: '.$e->getMessage(),
+                    'solutions' => [],
+                    'provider' => FlightProvider::DOWNTOWN_TRAVEL,
+                ];
+            }
+        }
+
+        return self::merge($results);
     }
 
     /**
-     * @param  array<string, mixed>|null  $travelport
-     * @param  array<string, mixed>|null  $sunspring
+     * @param  array<string, array<string, mixed>|null>  $results
      * @return array<string, mixed>
      */
-    public static function merge(?array $travelport, ?array $sunspring): array
+    public static function merge(array $results): array
     {
         $sources = [];
         $solutions = [];
 
-        foreach ([
-            FlightProvider::TRAVELPORT => $travelport,
-            FlightProvider::SUNSPRING => $sunspring,
-        ] as $provider => $result) {
+        foreach ($results as $provider => $result) {
             if ($result === null) {
                 continue;
             }
 
             $rows = is_array($result['solutions'] ?? null) ? $result['solutions'] : [];
+            $env = FlightProvider::environmentMode((string) $provider);
             foreach ($rows as $row) {
                 if (! is_array($row)) {
                     continue;
                 }
                 $row['provider'] = $provider;
+                $row['environment'] = $env['key'];
+                $row['environment_label'] = $env['label'];
                 $solutions[] = $row;
             }
 
@@ -87,13 +105,15 @@ class AggregatedFlightSearch
                 'ok' => (bool) ($result['ok'] ?? false),
                 'message' => (string) ($result['message'] ?? ''),
                 'count' => count($rows),
+                'environment' => $env['key'],
+                'environment_label' => $env['label'],
             ];
         }
 
         if ($sources === []) {
             return [
                 'ok' => false,
-                'message' => 'No flight API is configured. Ask the admin to enable Travelport or SunSpring.',
+                'message' => 'No flight API is configured. Ask the admin to enable Travelport, SunSpring, or Downtown Travel.',
                 'solutions' => [],
                 'provider' => FlightProvider::TRAVELPORT,
                 'sources' => [],
@@ -154,7 +174,7 @@ class AggregatedFlightSearch
     protected static function failureMessage(array $sources): string
     {
         if ($sources === []) {
-            return 'No flight API is configured. Ask the admin to enable Travelport or SunSpring.';
+            return 'No flight API is configured. Ask the admin to enable Travelport, SunSpring, or Downtown Travel.';
         }
 
         $parts = [];

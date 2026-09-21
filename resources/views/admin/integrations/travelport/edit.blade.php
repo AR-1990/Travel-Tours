@@ -11,9 +11,12 @@
         </ol>
     </nav>
 
-    <div class="mb-4">
-        <h1 class="h3 mb-1 text-gray-800">Travelport Universal API</h1>
-        <p class="text-muted mb-0">SOAP credentials and endpoints. Step 1: Ping. Later: Air shopping, availability, booking.</p>
+    <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
+        <h1 class="h3 mb-0 text-gray-800">Travelport Universal API</h1>
+        @include('admin.integrations.partials.environment-badge', [
+            'environment' => $travelport['environment'] ?? 'pp',
+        ])
+        <p class="text-muted mb-0 w-100">SOAP credentials and endpoints. Step 1: Ping. Later: Air shopping, availability, booking.</p>
     </div>
 
     @if(session('success'))

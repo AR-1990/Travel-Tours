@@ -44,7 +44,7 @@ class FlightsSmokeTest extends TestCase
             ->assertSee('Journey Date')
             ->assertSee('Search Now')
             ->assertSee('Search → Price → Book → Reservation')
-            ->assertSee('Search via API')
+            ->assertSee('Search via')
             ->assertSee('Travelport')
             ->assertSee('SunSpring');
     }

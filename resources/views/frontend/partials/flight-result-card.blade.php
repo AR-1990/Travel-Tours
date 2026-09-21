@@ -6,11 +6,28 @@
     $arr = \App\Support\FlightDisplay::parseDateTime($last['arrival'] ?? null);
     $price = \App\Support\FlightDisplay::parsePrice($sol['total_price'] ?? null);
     $carrier = $sol['plating_carrier'] ?? ($first['carrier'] ?? '—');
+    $airlineLabel = trim((string) ($sol['airline_name'] ?? $first['airline_name'] ?? ''));
+    if ($airlineLabel === '') {
+        $airlineLabel = \App\Support\FlightDisplay::flightLabel($carrier, $first['flight_number'] ?? null);
+    } else {
+        $flightNo = trim((string) ($first['flight_number'] ?? ''));
+        $airlineLabel = $flightNo !== '' ? $airlineLabel.' '.$flightNo : $airlineLabel;
+    }
+    $originLabel = trim((string) ($first['origin_city'] ?? ''));
+    if ($originLabel === '') {
+        $originLabel = \App\Support\FlightDisplay::airportCity($first['origin'] ?? null);
+    }
+    $destLabel = trim((string) ($last['destination_city'] ?? ''));
+    if ($destLabel === '') {
+        $destLabel = \App\Support\FlightDisplay::airportCity($last['destination'] ?? null);
+    }
     $stops = max(0, count($segments) - 1);
     $solProvider = strtolower((string) ($sol['provider'] ?? ($flightSearchResult['provider'] ?? 'travelport')));
-    $solReady = $solProvider === 'sunspring'
-        ? (bool) ($sunspringReady ?? false)
-        : (bool) ($travelportReady ?? $providerReady ?? false);
+    $solReady = match ($solProvider) {
+        'sunspring' => (bool) ($sunspringReady ?? false),
+        'downtown_travel' => (bool) ($downtownTravelReady ?? false),
+        default => (bool) ($travelportReady ?? $providerReady ?? false),
+    };
     $sortPrice = \App\Support\FlightDisplay::priceSortKey($sol['total_price'] ?? null);
     if (! is_finite($sortPrice) || $sortPrice >= 999999999) {
         $sortPrice = 999999999;
@@ -26,7 +43,7 @@
                             <span class="flight-airline-code">{{ $carrier }}</span>
                         </div>
                         <div>
-                            <h5 class="flight-airline-name mb-1">{{ \App\Support\FlightDisplay::flightLabel($carrier, $first['flight_number'] ?? null) }}</h5>
+                            <h5 class="flight-airline-name mb-1">{{ $airlineLabel }}</h5>
                             @include('flights.partials.provider-badge', [
                                 'provider' => $sol['provider'] ?? ($flightSearchResult['provider'] ?? null),
                                 'sol' => $sol,
@@ -41,7 +58,7 @@
                             </div>
                             <div class="start-time-info">
                                 <h6 class="start-time-text">{{ $dep['time'] ?? '—' }}</h6>
-                                <span class="flight-destination">{{ \App\Support\FlightDisplay::airportCity($first['origin'] ?? null) }}</span>
+                                <span class="flight-destination">{{ $originLabel }}</span>
                             </div>
                         </div>
                         <div class="flight-stop">
@@ -54,7 +71,7 @@
                             </div>
                             <div class="start-time-info">
                                 <h6 class="end-time-text">{{ $arr['time'] ?? '—' }}</h6>
-                                <span class="flight-destination">{{ \App\Support\FlightDisplay::airportCity($last['destination'] ?? null) }}</span>
+                                <span class="flight-destination">{{ $destLabel }}</span>
                             </div>
                         </div>
                     </div>

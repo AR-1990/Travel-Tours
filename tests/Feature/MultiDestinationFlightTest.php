@@ -204,7 +204,7 @@ class MultiDestinationFlightTest extends TestCase
 
         $this->get(route('frontend.flights.results'))
             ->assertOk()
-            ->assertSee('API: SunSpring', false)
+            ->assertSee('SunSpring', false)
             ->assertSee('MC-1', false);
     }
 

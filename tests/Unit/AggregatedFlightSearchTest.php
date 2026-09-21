@@ -9,18 +9,18 @@ class AggregatedFlightSearchTest extends TestCase
 {
     public function test_merge_tags_each_fare_with_its_api(): void
     {
-        $merged = AggregatedFlightSearch::merge(
-            [
+        $merged = AggregatedFlightSearch::merge([
+            'travelport' => [
                 'ok' => true,
                 'message' => 'tp',
                 'solutions' => [['key' => 'tp-1', 'total_price' => '100 USD']],
             ],
-            [
+            'sunspring' => [
                 'ok' => true,
                 'message' => 'ss',
                 'solutions' => [['key' => 'ss-1', 'total_price' => '90 USD']],
-            ]
-        );
+            ],
+        ]);
 
         $this->assertTrue($merged['ok']);
         $this->assertSame('mixed', $merged['provider']);
@@ -31,12 +31,14 @@ class AggregatedFlightSearchTest extends TestCase
         $this->assertSame(1, $merged['sources']['sunspring']['count']);
         $this->assertStringContainsString('Travelport: 1', $merged['message']);
         $this->assertStringContainsString('SunSpring: 1', $merged['message']);
+        $this->assertArrayHasKey('environment', $merged['solutions'][0]);
+        $this->assertContains($merged['solutions'][0]['environment'], ['live', 'sandbox']);
     }
 
     public function test_merge_sorts_fares_low_to_high(): void
     {
-        $merged = AggregatedFlightSearch::merge(
-            [
+        $merged = AggregatedFlightSearch::merge([
+            'travelport' => [
                 'ok' => true,
                 'message' => 'tp',
                 'solutions' => [
@@ -44,12 +46,12 @@ class AggregatedFlightSearchTest extends TestCase
                     ['key' => 'tp-low', 'total_price' => 'USD80.00'],
                 ],
             ],
-            [
+            'sunspring' => [
                 'ok' => true,
                 'message' => 'ss',
                 'solutions' => [['key' => 'ss-mid', 'total_price' => 'USD90.00']],
-            ]
-        );
+            ],
+        ]);
 
         $this->assertSame(['tp-low', 'ss-mid', 'tp-high'], array_column($merged['solutions'], 'key'));
     }
@@ -66,10 +68,13 @@ class AggregatedFlightSearchTest extends TestCase
 
     public function test_merge_keeps_one_api_when_the_other_is_missing(): void
     {
-        $merged = AggregatedFlightSearch::merge(null, [
-            'ok' => true,
-            'message' => 'ss',
-            'solutions' => [['key' => 'ss-1']],
+        $merged = AggregatedFlightSearch::merge([
+            'travelport' => null,
+            'sunspring' => [
+                'ok' => true,
+                'message' => 'ss',
+                'solutions' => [['key' => 'ss-1']],
+            ],
         ]);
 
         $this->assertTrue($merged['ok']);

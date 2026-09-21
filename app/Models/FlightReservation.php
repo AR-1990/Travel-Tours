@@ -82,8 +82,13 @@ class FlightReservation extends Model
     public function provider(): string
     {
         $fromRaw = strtolower((string) data_get($this->raw_result, 'provider', ''));
-        if ($fromRaw === 'sunspring') {
-            return 'sunspring';
+        if (in_array($fromRaw, \App\Support\FlightProvider::all(), true)) {
+            return $fromRaw;
+        }
+
+        $fromSnapshot = strtolower((string) data_get($this->price_snapshot, 'provider', ''));
+        if (in_array($fromSnapshot, \App\Support\FlightProvider::all(), true)) {
+            return $fromSnapshot;
         }
 
         return 'travelport';
@@ -92,6 +97,11 @@ class FlightReservation extends Model
     public function isSunSpring(): bool
     {
         return $this->provider() === 'sunspring';
+    }
+
+    public function isDowntownTravel(): bool
+    {
+        return $this->provider() === 'downtown_travel';
     }
 
     public function providerLabel(): string
