@@ -88,6 +88,16 @@
                         autocomplete="tel"
                         placeholder="+15551234567">
                 </div>
+                @if(!empty($spec['requires_nationality']))
+                    <div class="col-md-6">
+                        <label class="form-label">Nationality</label>
+                        <select name="nationality" class="form-select" required>
+                            @foreach(\App\Support\HotelProvider::nationalityOptions() as $code => $label)
+                                <option value="{{ $code }}" @selected(old('nationality', 'US') === $code)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
                 <div class="col-md-6">
                     <label class="form-label">2nd adult first (optional)</label>
                     <input type="text" name="guest2_first" class="form-control"

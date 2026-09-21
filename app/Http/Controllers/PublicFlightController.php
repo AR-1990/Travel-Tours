@@ -155,6 +155,11 @@ class PublicFlightController extends Controller
     public function reservationsShow(int $id)
     {
         $reservation = $this->findPublicAccessibleReservation($id);
+        $provider = $reservation->provider();
+        $workflowStep = $reservation->status === FlightReservation::STATUS_TICKETED
+            || $reservation->status === FlightReservation::STATUS_CANCELLED
+            ? 'done'
+            : 'ticket';
 
         return view('frontend.flight-reservation-show', array_merge($this->publicFlightViewData(session('public.flight_search', [])), [
             'reservation' => $reservation,
@@ -171,15 +176,30 @@ class PublicFlightController extends Controller
                 'ticket_numbers' => $reservation->ticket_numbers ?? [],
             ],
             'gdsSnapshot' => $reservation->gds_snapshot,
-            'workflowStep' => $reservation->status === FlightReservation::STATUS_TICKETED ? 'done' : 'ticket',
+            'workflowStep' => $workflowStep,
             'providerReady' => $reservation->isDowntownTravel()
                 ? DowntownTravelIntegrationConfig::isReadyForAir()
                 : ($reservation->isSunSpring()
                     ? SunSpringIntegrationConfig::isReadyForAir()
                     : TravelportIntegrationConfig::isReadyForAir()),
-            'ticketActionRoute' => route('frontend.flights.reservations.ticket', $reservation),
-            'retrieveActionRoute' => route('frontend.flights.reservations.retrieve', $reservation),
-            'cancelActionRoute' => route('frontend.flights.reservations.cancel', $reservation),
+            'ticketActionRoute' => FlightProvider::supportsSeparateTicketing($provider)
+                ? route('frontend.flights.reservations.ticket', $reservation)
+                : null,
+            'retrieveActionRoute' => FlightProvider::supportsStatusRefresh($provider)
+                ? route('frontend.flights.reservations.retrieve', $reservation)
+                : null,
+            'cancelActionRoute' => FlightProvider::supportsRemoteCancel($provider)
+                ? route('frontend.flights.reservations.cancel', $reservation)
+                : null,
+            'voidActionRoute' => FlightProvider::supportsVoid($provider)
+                ? route('frontend.flights.reservations.void', $reservation)
+                : null,
+            'refundActionRoute' => FlightProvider::supportsRefund($provider)
+                ? route('frontend.flights.reservations.refund', $reservation)
+                : null,
+            'cancelTrackActionRoute' => $reservation->isSunSpring()
+                ? route('frontend.flights.reservations.cancel-track', $reservation)
+                : null,
         ]));
     }
 
@@ -229,6 +249,54 @@ class PublicFlightController extends Controller
         return redirect()
             ->route('frontend.flights.reservations.show', $reservation)
             ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Cancel complete.');
+    }
+
+    public function reservationsVoid(int $id, TravelportAirService $air)
+    {
+        $reservation = $this->findPublicAccessibleReservation($id);
+        if (! $reservation->isDowntownTravel()) {
+            return redirect()
+                ->route('frontend.flights.reservations.show', $reservation)
+                ->with('error', 'Void is only available for Downtown Travel bookings.');
+        }
+
+        $result = $this->runDowntownVoidFlow($reservation);
+
+        return redirect()
+            ->route('frontend.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Void complete.');
+    }
+
+    public function reservationsRefund(int $id, TravelportAirService $air)
+    {
+        $reservation = $this->findPublicAccessibleReservation($id);
+        if (! $reservation->isDowntownTravel()) {
+            return redirect()
+                ->route('frontend.flights.reservations.show', $reservation)
+                ->with('error', 'Refund is only available for Downtown Travel bookings.');
+        }
+
+        $result = $this->runDowntownRefundFlow($reservation);
+
+        return redirect()
+            ->route('frontend.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Refund complete.');
+    }
+
+    public function reservationsCancelTrack(int $id)
+    {
+        $reservation = $this->findPublicAccessibleReservation($id);
+        if (! $reservation->isSunSpring()) {
+            return redirect()
+                ->route('frontend.flights.reservations.show', $reservation)
+                ->with('error', 'Cancel tracking is only available for SunSpring bookings.');
+        }
+
+        $result = $this->runSunSpringCancelTrackingFlow($reservation);
+
+        return redirect()
+            ->route('frontend.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Cancel tracking complete.');
     }
 
     protected function findPublicAccessibleReservation(int $id): FlightReservation

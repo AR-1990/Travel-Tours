@@ -3,12 +3,20 @@
     $reservationId = session('public.last_reservation_id') ?? session('travelport.last_reservation_id');
     $reservationRoute = $reservationId ? 'frontend.flights.reservations.show' : 'frontend.flights.confirmation';
     $reservationParams = $reservationId ? ['id' => $reservationId] : [];
+    $providerForSteps = strtolower((string) (
+        $workflowProvider
+        ?? (isset($reservation) && is_object($reservation) && method_exists($reservation, 'provider') ? $reservation->provider() : null)
+        ?? data_get($flightPriceResult ?? [], 'provider')
+        ?? data_get(session('public.flight_price.result'), 'provider')
+        ?? \App\Support\FlightProvider::current()
+    ));
+    $reservationLabel = \App\Support\FlightProvider::reservationStepLabel($providerForSteps);
     $steps = [
         'search' => ['label' => 'Search', 'route' => 'frontend.flights.results'],
         'price' => ['label' => 'Price', 'route' => 'frontend.flights.price.show'],
         'book' => ['label' => 'Book', 'route' => 'frontend.flights.book'],
-        'ticket' => ['label' => 'Reservation', 'route' => $reservationRoute, 'params' => $reservationParams],
-        'done' => ['label' => 'Done', 'route' => $reservationRoute, 'params' => $reservationParams],
+        'ticket' => ['label' => $reservationLabel, 'route' => $reservationRoute, 'params' => $reservationParams],
+        'done' => ['label' => $reservationLabel, 'route' => $reservationRoute, 'params' => $reservationParams],
     ];
     $order = ['search', 'price', 'book', 'ticket', 'done'];
     $currentIndex = array_search($step, $order, true);

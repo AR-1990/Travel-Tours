@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\FlightReservation;
+use App\Services\DowntownTravel\DowntownTravelAirService;
 use App\Services\SunSpring\SunSpringAirService;
 use App\Services\Travelport\TravelportAirService;
 use App\Support\FlightDisplay;
@@ -154,6 +155,10 @@ trait RunsFlightWorkflow
      */
     protected function runIssueTicketFlow(TravelportAirService $air, array $locators, ?FlightReservation $reservation = null): array
     {
+        if ($reservation !== null && $reservation->isDowntownTravel()) {
+            return $this->runDowntownTicketFlow($reservation);
+        }
+
         if ($reservation !== null && $reservation->isSunSpring()) {
             return $this->runSunSpringTicketFlow($reservation);
         }
@@ -207,6 +212,10 @@ trait RunsFlightWorkflow
      */
     protected function runRetrieveUniversalRecordFlow(TravelportAirService $air, FlightReservation $reservation): array
     {
+        if ($reservation->isDowntownTravel()) {
+            return $this->runDowntownOrderRefreshFlow($reservation);
+        }
+
         if ($reservation->isSunSpring()) {
             return $this->runSunSpringTicketInfoFlow($reservation);
         }
@@ -258,6 +267,10 @@ trait RunsFlightWorkflow
                 'message' => 'Reservation is already cancelled.',
                 'cancelled' => true,
             ];
+        }
+
+        if ($reservation->isDowntownTravel()) {
+            return $this->runDowntownCancelFlow($reservation);
         }
 
         if ($reservation->isSunSpring()) {
@@ -477,6 +490,7 @@ trait RunsFlightWorkflow
             'cancelled_at' => now(),
             'raw_result' => array_merge((array) $reservation->raw_result, [
                 'cancel' => $result,
+                'cancel_request_id' => $result['request_id'] ?? data_get($result, 'raw.request_id'),
                 'pnr' => $pnrs[0],
                 'pnrs' => $pnrs,
             ]),
@@ -488,7 +502,285 @@ trait RunsFlightWorkflow
             'cancelled' => true,
             'provider' => 'sunspring',
             'voucher' => $pnrs,
+            'request_id' => $result['request_id'] ?? null,
         ]);
+    }
+
+    protected function runSunSpringCancelTrackingFlow(FlightReservation $reservation): array
+    {
+        $requestId = trim((string) data_get($reservation->raw_result, 'cancel_request_id',
+            data_get($reservation->raw_result, 'cancel.request_id',
+                data_get($reservation->raw_result, 'cancel.raw.request_id', '')
+            )
+        ));
+        if ($requestId === '') {
+            return [
+                'ok' => false,
+                'message' => 'No SunSpring cancel request_id on this file. Cancel first, then track.',
+                'provider' => 'sunspring',
+            ];
+        }
+
+        $result = app(SunSpringAirService::class)->cancelTracking($requestId);
+        if ($result['ok'] ?? false) {
+            $reservation->forceFill([
+                'raw_result' => array_merge((array) $reservation->raw_result, [
+                    'cancel_tracking' => $result,
+                ]),
+                'gds_snapshot' => array_merge(
+                    is_array($reservation->gds_snapshot) ? $reservation->gds_snapshot : [],
+                    ['cancel_tracking' => $result]
+                ),
+            ])->save();
+        }
+
+        return $result;
+    }
+
+    protected function runDowntownTicketFlow(FlightReservation $reservation): array
+    {
+        $dt = app(DowntownTravelAirService::class);
+        $resolved = $this->resolveDowntownBookingContext($reservation, $dt);
+        if (! ($resolved['ok'] ?? false)) {
+            return $resolved;
+        }
+
+        $result = $dt->issueTickets([
+            'booking_record_id' => $resolved['booking_record_id'],
+            'email' => (string) ($reservation->passenger_email ?? ''),
+            'phone' => (string) ($reservation->passenger_phone ?? ''),
+            'payment_option' => 'agent_cash',
+            'passengers' => [[
+                'type' => 'ADT',
+                'prefix' => (string) ($reservation->passenger_prefix ?? 'Mr'),
+                'first' => (string) ($reservation->passenger_first ?? ''),
+                'last' => (string) ($reservation->passenger_last ?? ''),
+                'dob' => optional($reservation->passenger_dob)?->format('Y-m-d') ?: '1990-01-01',
+                'gender' => (string) ($reservation->passenger_gender ?? 'M'),
+                'nationality' => 'US',
+                'email' => (string) ($reservation->passenger_email ?? ''),
+                'phone' => (string) ($reservation->passenger_phone ?? ''),
+            ]],
+        ]);
+
+        session([
+            'travelport.flight_ticket' => $result,
+            'public.flight_ticket' => $result,
+        ]);
+
+        if ($result['ok'] ?? false) {
+            $reservation->forceFill([
+                'status' => FlightReservation::STATUS_TICKETED,
+                'ticket_numbers' => $result['ticket_numbers'] ?? [],
+                'ticketed_at' => now(),
+                'raw_result' => array_merge((array) $reservation->raw_result, [
+                    'ticket' => $result,
+                    'booking_record_id' => $resolved['booking_record_id'],
+                ]),
+            ])->save();
+        }
+
+        return $result;
+    }
+
+    protected function runDowntownOrderRefreshFlow(FlightReservation $reservation): array
+    {
+        $dt = app(DowntownTravelAirService::class);
+        $orderId = trim((string) ($reservation->universal_locator ?? ''));
+        if ($orderId === '') {
+            return ['ok' => false, 'message' => 'No Downtown Travel order id on this reservation.', 'provider' => 'downtown_travel'];
+        }
+
+        $result = $dt->getOrder($orderId);
+        if (! ($result['ok'] ?? false)) {
+            return $result;
+        }
+
+        $order = is_array($result['order'] ?? null) ? $result['order'] : [];
+        $updates = [
+            'gds_snapshot' => [
+                'provider' => 'downtown_travel',
+                'order' => $order,
+                'retrieved_at' => now()->toIso8601String(),
+                'can_ticket' => $result['can_ticket'] ?? null,
+                'can_cancel' => $result['can_cancel'] ?? null,
+                'can_void' => $result['can_void'] ?? null,
+                'can_refund' => $result['can_refund'] ?? null,
+            ],
+            'raw_result' => array_merge((array) $reservation->raw_result, [
+                'order' => $order,
+                'booking_record_id' => $result['booking_record_id'] ?? null,
+            ]),
+        ];
+
+        if (! empty($result['airline_pnr'])) {
+            $updates['air_reservation_locator'] = $result['airline_pnr'];
+            $updates['provider_locator'] = $result['airline_pnr'];
+        }
+
+        $tickets = $result['ticket_numbers'] ?? [];
+        if (is_array($tickets) && $tickets !== []) {
+            $updates['ticket_numbers'] = $tickets;
+            $updates['status'] = FlightReservation::STATUS_TICKETED;
+            $updates['ticketed_at'] = $reservation->ticketed_at ?? now();
+        }
+
+        $reservation->forceFill($updates)->save();
+
+        return [
+            'ok' => true,
+            'message' => 'Downtown Travel order refreshed.',
+            'provider' => 'downtown_travel',
+            'raw' => $result,
+        ];
+    }
+
+    protected function runDowntownCancelFlow(FlightReservation $reservation): array
+    {
+        $dt = app(DowntownTravelAirService::class);
+        $resolved = $this->resolveDowntownBookingContext($reservation, $dt);
+        if (! ($resolved['ok'] ?? false)) {
+            return $resolved;
+        }
+
+        $result = $dt->cancelBookingRecord((string) $resolved['booking_record_id']);
+        if (! ($result['ok'] ?? false)) {
+            return $result;
+        }
+
+        $reservation->update([
+            'status' => FlightReservation::STATUS_CANCELLED,
+            'cancelled_at' => now(),
+            'raw_result' => array_merge((array) $reservation->raw_result, [
+                'cancel' => $result,
+                'booking_record_id' => $resolved['booking_record_id'],
+            ]),
+        ]);
+
+        return array_merge($result, ['cancelled' => true]);
+    }
+
+    protected function runDowntownVoidFlow(FlightReservation $reservation): array
+    {
+        $dt = app(DowntownTravelAirService::class);
+        $resolved = $this->resolveDowntownBookingContext($reservation, $dt);
+        if (! ($resolved['ok'] ?? false)) {
+            return $resolved;
+        }
+
+        $result = $dt->voidBookingRecord((string) $resolved['booking_record_id']);
+        if (! ($result['ok'] ?? false)) {
+            return $result;
+        }
+
+        $reservation->forceFill([
+            'status' => FlightReservation::STATUS_CANCELLED,
+            'cancelled_at' => now(),
+            'raw_result' => array_merge((array) $reservation->raw_result, [
+                'void' => $result,
+                'booking_record_id' => $resolved['booking_record_id'],
+            ]),
+        ])->save();
+
+        return array_merge($result, ['voided' => true]);
+    }
+
+    protected function runDowntownRefundFlow(FlightReservation $reservation): array
+    {
+        $dt = app(DowntownTravelAirService::class);
+        $resolved = $this->resolveDowntownBookingContext($reservation, $dt);
+        if (! ($resolved['ok'] ?? false)) {
+            return $resolved;
+        }
+
+        $offer = $dt->createRefundOffer((string) $resolved['booking_record_id']);
+        if (! ($offer['ok'] ?? false)) {
+            return $offer;
+        }
+
+        $offerId = trim((string) ($offer['offer_id'] ?? ''));
+        if ($offerId === '') {
+            return [
+                'ok' => false,
+                'message' => 'Downtown Travel created a refund offer but did not return an offer id.',
+                'provider' => 'downtown_travel',
+                'raw' => $offer,
+            ];
+        }
+
+        $result = $dt->refundBookingRecord((string) $resolved['booking_record_id'], $offerId);
+        if (! ($result['ok'] ?? false)) {
+            return array_merge($result, ['offer' => $offer]);
+        }
+
+        $reservation->forceFill([
+            'status' => FlightReservation::STATUS_CANCELLED,
+            'cancelled_at' => now(),
+            'raw_result' => array_merge((array) $reservation->raw_result, [
+                'refund_offer' => $offer,
+                'refund' => $result,
+                'booking_record_id' => $resolved['booking_record_id'],
+            ]),
+        ])->save();
+
+        return array_merge($result, [
+            'refunded' => true,
+            'offer_id' => $offerId,
+        ]);
+    }
+
+    /**
+     * @return array{ok: bool, message?: string, booking_record_id?: string, provider?: string, order?: array<string, mixed>}
+     */
+    protected function resolveDowntownBookingContext(FlightReservation $reservation, DowntownTravelAirService $dt): array
+    {
+        $raw = is_array($reservation->raw_result) ? $reservation->raw_result : [];
+        $recordId = $dt->resolveBookingRecordId($raw);
+        if ($recordId !== '') {
+            return [
+                'ok' => true,
+                'booking_record_id' => $recordId,
+                'provider' => 'downtown_travel',
+            ];
+        }
+
+        $orderId = trim((string) ($reservation->universal_locator ?? ''));
+        if ($orderId === '') {
+            return [
+                'ok' => false,
+                'message' => 'No Downtown Travel order / booking record on this reservation. Refresh order details first.',
+                'provider' => 'downtown_travel',
+            ];
+        }
+
+        $order = $dt->getOrder($orderId);
+        if (! ($order['ok'] ?? false)) {
+            return $order;
+        }
+
+        $recordId = trim((string) ($order['booking_record_id'] ?? ''));
+        if ($recordId === '') {
+            return [
+                'ok' => false,
+                'message' => 'Downtown Travel order has no booking record id yet.',
+                'provider' => 'downtown_travel',
+                'raw' => $order,
+            ];
+        }
+
+        $reservation->forceFill([
+            'raw_result' => array_merge($raw, [
+                'order' => $order['order'] ?? null,
+                'booking_record_id' => $recordId,
+            ]),
+        ])->save();
+
+        return [
+            'ok' => true,
+            'booking_record_id' => $recordId,
+            'provider' => 'downtown_travel',
+            'order' => is_array($order['order'] ?? null) ? $order['order'] : [],
+        ];
     }
 
     /**

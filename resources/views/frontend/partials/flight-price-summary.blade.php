@@ -39,6 +39,34 @@
                     @endif
                 </div>
             </div>
+            @if(!empty($searchResult['fare_rules']) && is_array($searchResult['fare_rules']))
+                <hr class="my-3">
+                <h3 class="h6 mb-2">Fare rules</h3>
+                <div class="small">
+                    @foreach($searchResult['fare_rules'] as $ruleBlock)
+                        @if(!is_array($ruleBlock))
+                            @continue
+                        @endif
+                        <div class="mb-2">
+                            <strong>{{ $ruleBlock['DepartureAirport'] ?? '' }} → {{ $ruleBlock['ArrivalAirport'] ?? '' }}</strong>
+                            @if(!empty($ruleBlock['refundRuleArray']) && is_array($ruleBlock['refundRuleArray']))
+                                <ul class="mb-1">
+                                    @foreach($ruleBlock['refundRuleArray'] as $rr)
+                                        <li>{{ $rr['title'] ?? '' }}@if(isset($rr['penalty'])): {{ $rr['penalty'] }}@endif</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                            @if(!empty($ruleBlock['FareRules']) && is_array($ruleBlock['FareRules']))
+                                <ul class="mb-0 text-muted">
+                                    @foreach($ruleBlock['FareRules'] as $fr)
+                                        <li>{{ $fr['title'] ?? '' }}@if(!empty($fr['value'])): {{ $fr['value'] }}@endif</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </div>
 @elseif(!empty($searchResult) && ($searchResult['ok'] ?? false))

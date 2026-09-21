@@ -222,6 +222,7 @@ class PublicHotelController extends Controller
             'prefix' => $data['prefix'],
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
+            'nationality' => $data['nationality'] ?? null,
         ];
 
         $result = $bookProvider === HotelProvider::DOWNTOWN_TRAVEL_HOTELS
@@ -337,7 +338,7 @@ class PublicHotelController extends Controller
         ]);
     }
 
-    public function reservationsShow(int $id, XconnectHotelService $hotels)
+    public function reservationsShow(int $id, XconnectHotelService $hotels, DowntownTravelHotelService $downtown)
     {
         $reservation = HotelReservation::query()->findOrFail($id);
         $detail = null;
@@ -353,6 +354,20 @@ class PublicHotelController extends Controller
                 $reservation->provider_snapshot = $detail;
                 $reservation->save();
             }
+        } elseif ($reservation->isDowntownTravel()) {
+            $orderId = $downtown->resolveOrderId(
+                $reservation->booking_id,
+                $reservation->internal_reference,
+                is_array($reservation->raw_result) ? $reservation->raw_result : null
+            );
+            if ($orderId !== '') {
+                $detailResult = $downtown->getOrderDetails($orderId);
+                if ($detailResult['ok'] ?? false) {
+                    $detail = $detailResult['order'] ?? null;
+                    $reservation->provider_snapshot = $detail;
+                    $reservation->save();
+                }
+            }
         }
 
         return view('frontend.hotels.reservations-show', [
@@ -361,17 +376,48 @@ class PublicHotelController extends Controller
         ]);
     }
 
-    public function reservationsCancel(int $id, Request $request, XconnectHotelService $hotels)
+    public function reservationsCancel(int $id, Request $request, XconnectHotelService $hotels, DowntownTravelHotelService $downtown)
     {
         $reservation = HotelReservation::query()->findOrFail($id);
         if ($reservation->isCancelled()) {
             return back()->with('error', 'This booking is already cancelled.');
         }
 
+        if ($reservation->isDowntownTravel()) {
+            $orderId = $downtown->resolveOrderId(
+                $reservation->booking_id,
+                $reservation->internal_reference,
+                is_array($reservation->raw_result) ? $reservation->raw_result : null
+            );
+            if ($orderId === '' || str_starts_with(strtoupper($orderId), 'DTH-')) {
+                $reservation->status = HotelReservation::STATUS_CANCELLED;
+                $reservation->cancelled_at = now();
+                $reservation->save();
+
+                return back()->with('success', 'Local hotel hold cancelled (no supplier order id).');
+            }
+
+            $cancel = $downtown->cancelOrder($orderId);
+            if (! ($cancel['ok'] ?? false)) {
+                return back()->with('error', $cancel['message'] ?? 'Downtown Travel hotel cancel failed.');
+            }
+
+            $reservation->status = HotelReservation::STATUS_CANCELLED;
+            $reservation->cancelled_at = now();
+            $reservation->raw_result = array_merge(
+                is_array($reservation->raw_result) ? $reservation->raw_result : [],
+                ['cancel' => $cancel['raw'] ?? $cancel]
+            );
+            $reservation->provider_snapshot = $cancel['order'] ?? $reservation->provider_snapshot;
+            $reservation->save();
+
+            return back()->with('success', $cancel['message'] ?? 'Downtown Travel hotel booking cancelled.');
+        }
+
         if (! $reservation->isXconnect()) {
-        $reservation->status = HotelReservation::STATUS_CANCELLED;
-        $reservation->cancelled_at = now();
-        $reservation->save();
+            $reservation->status = HotelReservation::STATUS_CANCELLED;
+            $reservation->cancelled_at = now();
+            $reservation->save();
 
             return back()->with('success', 'Hotel booking cancelled locally.');
         }

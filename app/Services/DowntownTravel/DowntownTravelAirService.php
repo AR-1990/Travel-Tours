@@ -243,6 +243,7 @@ class DowntownTravelAirService
             ],
         ]);
 
+        $bookingRecordId = trim((string) data_get($data, 'booking_records.0.id', ''));
         $label = $readable !== '' ? $readable : ($airlinePnr !== '' ? $airlinePnr : $orderId);
 
         return [
@@ -256,7 +257,469 @@ class DowntownTravelAirService
             'provider_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
             'air_reservation_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
             'air_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
+            'booking_record_id' => $bookingRecordId !== '' ? $bookingRecordId : null,
             'raw' => $data,
+        ];
+    }
+
+    /**
+     * GET /api/public/v2/orders/{order_id}
+     *
+     * @return array<string, mixed>
+     */
+    public function getOrder(string $orderId): array
+    {
+        $orderId = trim($orderId);
+        if ($orderId === '') {
+            return ['ok' => false, 'message' => 'Downtown Travel order id is required.', 'provider' => 'downtown_travel'];
+        }
+
+        $response = $this->client->getAir('/api/public/v2/orders/'.$orderId);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? 'Could not load Downtown Travel order.',
+                'provider' => 'downtown_travel',
+                'http_status' => $response['http_status'] ?? null,
+                'raw' => $response,
+            ];
+        }
+
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+
+        return [
+            'ok' => true,
+            'message' => 'Downtown Travel order retrieved.',
+            'provider' => 'downtown_travel',
+            'order' => $data,
+            'order_id' => (string) ($data['id'] ?? $orderId),
+            'readable_id' => $data['readable_id'] ?? null,
+            'booking_record_id' => data_get($data, 'booking_records.0.id'),
+            'can_ticket' => (bool) data_get($data, 'booking_records.0.can_ticket'),
+            'can_cancel' => (bool) data_get($data, 'booking_records.0.can_cancel'),
+            'can_void' => (bool) data_get($data, 'booking_records.0.can_void'),
+            'can_refund' => (bool) data_get($data, 'booking_records.0.can_refund'),
+            'ticket_numbers' => $this->extractTicketNumbers($data),
+            'airline_pnr' => trim((string) (
+                data_get($data, 'booking_records.0.airline_record_locator')
+                ?? data_get($data, 'booking_records.0.record_locator')
+                ?? ''
+            )),
+            'raw' => $data,
+        ];
+    }
+
+    /**
+     * POST /api/public/v2/booking_records/{id}/issue
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    public function issueTickets(array $params): array
+    {
+        $recordId = trim((string) ($params['booking_record_id'] ?? ''));
+        if ($recordId === '') {
+            return ['ok' => false, 'message' => 'Downtown Travel booking record id is required to issue tickets.', 'provider' => 'downtown_travel'];
+        }
+
+        $passengers = $this->mapPassengers(
+            is_array($params['passengers'] ?? null) ? $params['passengers'] : [],
+            false
+        );
+        if ($passengers === []) {
+            return ['ok' => false, 'message' => 'Passenger details are required to issue Downtown Travel tickets.', 'provider' => 'downtown_travel'];
+        }
+
+        $phone = $this->normalizePhone((string) ($params['phone'] ?? ''));
+        $body = [
+            'passengers' => $passengers,
+            'payment_option' => (string) ($params['payment_option'] ?? 'agent_cash'),
+            'phone' => $phone !== '' ? $phone : '+10000000000',
+            'send_itinerary' => (bool) ($params['send_itinerary'] ?? true),
+        ];
+        if (isset($params['expected_agent_net_price']) && is_numeric($params['expected_agent_net_price'])) {
+            $body['expected_agent_net_price'] = round((float) $params['expected_agent_net_price'], 2);
+        }
+        $email = trim((string) ($params['email'] ?? ''));
+        if ($email !== '') {
+            $body['email'] = $email;
+        }
+
+        $response = $this->client->postAir('/api/public/v2/booking_records/'.$recordId.'/issue', $body);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? 'Downtown Travel ticketing failed.',
+                'provider' => 'downtown_travel',
+                'http_status' => $response['http_status'] ?? null,
+                'raw' => $response,
+            ];
+        }
+
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+        $tickets = $this->extractTicketNumbers(['booking_records' => [$data]]);
+
+        return [
+            'ok' => true,
+            'message' => $tickets !== []
+                ? 'Downtown Travel tickets issued ('.implode(', ', $tickets).').'
+                : 'Downtown Travel ticketing request completed.',
+            'provider' => 'downtown_travel',
+            'ticket_numbers' => $tickets,
+            'booking_record' => $data,
+            'raw' => $data,
+        ];
+    }
+
+    /**
+     * POST /api/public/v2/booking_records/{id}/cancel
+     *
+     * @return array<string, mixed>
+     */
+    public function cancelBookingRecord(string $bookingRecordId): array
+    {
+        return $this->bookingRecordAction($bookingRecordId, 'cancel', 'Downtown Travel booking cancelled.');
+    }
+
+    /**
+     * POST /api/public/v2/booking_records/{id}/void
+     *
+     * @return array<string, mixed>
+     */
+    public function voidBookingRecord(string $bookingRecordId): array
+    {
+        return $this->bookingRecordAction($bookingRecordId, 'void', 'Downtown Travel tickets voided.');
+    }
+
+    /**
+     * POST /api/public/v2/booking_records/{id}/create_refund_offer
+     *
+     * @return array<string, mixed>
+     */
+    public function createRefundOffer(string $bookingRecordId): array
+    {
+        $bookingRecordId = trim($bookingRecordId);
+        if ($bookingRecordId === '') {
+            return ['ok' => false, 'message' => 'Downtown Travel booking record id is required.', 'provider' => 'downtown_travel'];
+        }
+
+        $response = $this->client->postAir('/api/public/v2/booking_records/'.$bookingRecordId.'/create_refund_offer', []);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? 'Could not create Downtown Travel refund offer.',
+                'provider' => 'downtown_travel',
+                'http_status' => $response['http_status'] ?? null,
+                'raw' => $response,
+            ];
+        }
+
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+        $offerId = trim((string) (data_get($data, 'offer.id') ?? data_get($data, 'id') ?? ''));
+
+        return [
+            'ok' => true,
+            'message' => $offerId !== ''
+                ? 'Downtown Travel refund offer created ('.$offerId.').'
+                : 'Downtown Travel refund offer created.',
+            'provider' => 'downtown_travel',
+            'offer_id' => $offerId !== '' ? $offerId : null,
+            'offer' => $data,
+            'raw' => $data,
+        ];
+    }
+
+    /**
+     * POST /api/public/v2/booking_records/{id}/refund
+     *
+     * @return array<string, mixed>
+     */
+    public function refundBookingRecord(string $bookingRecordId, string $offerId): array
+    {
+        $bookingRecordId = trim($bookingRecordId);
+        $offerId = trim($offerId);
+        if ($bookingRecordId === '' || $offerId === '') {
+            return ['ok' => false, 'message' => 'Downtown Travel booking record id and refund offer id are required.', 'provider' => 'downtown_travel'];
+        }
+
+        $response = $this->client->postAir('/api/public/v2/booking_records/'.$bookingRecordId.'/refund', [
+            'id' => $offerId,
+        ]);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? 'Downtown Travel refund failed.',
+                'provider' => 'downtown_travel',
+                'http_status' => $response['http_status'] ?? null,
+                'raw' => $response,
+            ];
+        }
+
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+
+        return [
+            'ok' => true,
+            'message' => 'Downtown Travel refund completed.',
+            'provider' => 'downtown_travel',
+            'booking_record' => $data,
+            'raw' => $data,
+        ];
+    }
+
+    /**
+     * POST /api/public/v2/booking_records/{id}/instant_issue
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    public function instantIssue(array $params): array
+    {
+        $recordId = trim((string) ($params['booking_record_id'] ?? ''));
+        if ($recordId === '') {
+            return ['ok' => false, 'message' => 'Downtown Travel booking record id is required for instant issue.', 'provider' => 'downtown_travel'];
+        }
+
+        $body = [
+            'payment_option' => (string) ($params['payment_option'] ?? 'agent_cash'),
+        ];
+        if (isset($params['agency_fee']) && is_numeric($params['agency_fee'])) {
+            $body['agency_fee'] = round((float) $params['agency_fee'], 2);
+        }
+        if (isset($params['airline_cc_payment']) && is_numeric($params['airline_cc_payment'])) {
+            $body['airline_cc_payment'] = round((float) $params['airline_cc_payment'], 2);
+        }
+        if (is_array($params['billing_address'] ?? null)) {
+            $body['billing_address'] = $params['billing_address'];
+        }
+        if (is_array($params['credit_card'] ?? null)) {
+            $body['credit_card'] = $params['credit_card'];
+        }
+
+        $response = $this->client->postAir('/api/public/v2/booking_records/'.$recordId.'/instant_issue', $body);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? 'Downtown Travel instant issue failed.',
+                'provider' => 'downtown_travel',
+                'http_status' => $response['http_status'] ?? null,
+                'raw' => $response,
+            ];
+        }
+
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+
+        return [
+            'ok' => true,
+            'message' => 'Downtown Travel instant issue completed.',
+            'provider' => 'downtown_travel',
+            'booking_record' => $data,
+            'ticket_numbers' => $this->extractTicketNumbers(['booking_records' => [$data]]),
+            'raw' => $data,
+        ];
+    }
+
+    /**
+     * GET /api/public/v2/orders
+     *
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    public function listOrders(array $filters = []): array
+    {
+        $query = [];
+        foreach (['sort_by', 'sort_order', 'limit', 'created_on_start_date', 'created_on_end_date'] as $key) {
+            if (isset($filters[$key]) && $filters[$key] !== '' && $filters[$key] !== null) {
+                $query[$key] = $filters[$key];
+            }
+        }
+
+        $response = $this->client->getAir('/api/public/v2/orders', $query);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? 'Could not list Downtown Travel orders.',
+                'provider' => 'downtown_travel',
+                'orders' => [],
+                'http_status' => $response['http_status'] ?? null,
+                'raw' => $response,
+            ];
+        }
+
+        $data = $response['data'] ?? null;
+        $orders = [];
+        if (is_array($data)) {
+            $orders = array_is_list($data) ? $data : (is_array($data['orders'] ?? null) ? $data['orders'] : [$data]);
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'Downtown Travel orders loaded ('.count($orders).').',
+            'provider' => 'downtown_travel',
+            'orders' => $orders,
+            'raw' => $data,
+        ];
+    }
+
+    /**
+     * GET /api/public/v2/orders/comments?order={order_id}
+     *
+     * @return array<string, mixed>
+     */
+    public function listOrderComments(string $orderId): array
+    {
+        $orderId = trim($orderId);
+        if ($orderId === '') {
+            return ['ok' => false, 'message' => 'Order id is required.', 'provider' => 'downtown_travel', 'comments' => []];
+        }
+
+        $response = $this->client->getAir('/api/public/v2/orders/comments', ['order' => $orderId]);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? 'Could not load Downtown Travel order comments.',
+                'provider' => 'downtown_travel',
+                'comments' => [],
+                'raw' => $response,
+            ];
+        }
+
+        $data = $response['data'] ?? null;
+        $comments = is_array($data) ? (array_is_list($data) ? $data : (is_array($data['comments'] ?? null) ? $data['comments'] : [])) : [];
+
+        return [
+            'ok' => true,
+            'message' => 'Downtown Travel order comments loaded.',
+            'provider' => 'downtown_travel',
+            'comments' => $comments,
+            'raw' => $data,
+        ];
+    }
+
+    /**
+     * POST /api/public/v2/orders/comments
+     *
+     * @return array<string, mixed>
+     */
+    public function addOrderComment(string $orderId, string $comment): array
+    {
+        $orderId = trim($orderId);
+        $comment = trim($comment);
+        if ($orderId === '' || $comment === '') {
+            return ['ok' => false, 'message' => 'Order id and comment are required.', 'provider' => 'downtown_travel'];
+        }
+
+        $response = $this->client->postAir('/api/public/v2/orders/comments', [
+            'order_id' => $orderId,
+            'comment' => $comment,
+        ]);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? 'Could not add Downtown Travel order comment.',
+                'provider' => 'downtown_travel',
+                'raw' => $response,
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'Downtown Travel order comment added.',
+            'provider' => 'downtown_travel',
+            'comment' => $response['data'] ?? null,
+            'raw' => $response['data'] ?? null,
+        ];
+    }
+
+    /**
+     * Resolve booking_record_id from a stored order / reservation raw payload.
+     *
+     * @param  array<string, mixed>  $raw
+     */
+    public function resolveBookingRecordId(array $raw): string
+    {
+        foreach ([
+            'booking_record_id',
+            'booking_records.0.id',
+            'raw.booking_records.0.id',
+            'order.booking_records.0.id',
+            'response.booking_records.0.id',
+        ] as $path) {
+            $value = trim((string) data_get($raw, $path, ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $orderOrRecord
+     * @return list<string>
+     */
+    public function extractTicketNumbers(array $orderOrRecord): array
+    {
+        $numbers = [];
+        $records = data_get($orderOrRecord, 'booking_records');
+        if (! is_array($records)) {
+            $records = isset($orderOrRecord['passengers']) ? [$orderOrRecord] : [];
+        }
+
+        foreach ($records as $record) {
+            if (! is_array($record)) {
+                continue;
+            }
+            foreach ((array) ($record['passengers'] ?? []) as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                foreach (['adult', 'child', 'infant'] as $key) {
+                    $person = $row[$key] ?? null;
+                    if (! is_array($person)) {
+                        continue;
+                    }
+                    $num = trim((string) data_get($person, 'air_ticket.ticket_number', ''));
+                    if ($num !== '') {
+                        $numbers[] = $num;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($numbers));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function bookingRecordAction(string $bookingRecordId, string $action, string $successMessage): array
+    {
+        $bookingRecordId = trim($bookingRecordId);
+        if ($bookingRecordId === '') {
+            return ['ok' => false, 'message' => 'Downtown Travel booking record id is required.', 'provider' => 'downtown_travel'];
+        }
+
+        $response = $this->client->postAir('/api/public/v2/booking_records/'.$bookingRecordId.'/'.$action, []);
+        if (! ($response['ok'] ?? false)) {
+            return [
+                'ok' => false,
+                'message' => $response['message'] ?? ('Downtown Travel '.$action.' failed.'),
+                'provider' => 'downtown_travel',
+                'http_status' => $response['http_status'] ?? null,
+                'raw' => $response,
+            ];
+        }
+
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+
+        return [
+            'ok' => true,
+            'message' => $successMessage,
+            'provider' => 'downtown_travel',
+            'booking_record' => $data,
+            'raw' => $data,
+            'cancelled' => $action === 'cancel',
+            'voided' => $action === 'void',
         ];
     }
 
@@ -416,17 +879,23 @@ class DowntownTravelAirService
             }
             $type = strtoupper((string) ($p['type'] ?? 'ADT'));
             $sex = strtoupper(substr((string) ($p['gender'] ?? 'M'), 0, 1)) === 'F' ? 'female' : 'male';
+            $first = $this->normalizePersonName((string) ($p['first'] ?? $p['given_name'] ?? ''), 30);
+            $last = $this->normalizePersonName((string) ($p['last'] ?? $p['surname'] ?? ''), 30);
+            // Downtown: whole name (first + space + last) max 50 characters.
+            $combinedMax = 50;
+            $fullLen = mb_strlen(trim($first.' '.$last));
+            if ($fullLen > $combinedMax && $first !== '' && $last !== '') {
+                $roomForLast = max(1, $combinedMax - 1 - mb_strlen($first));
+                $last = mb_substr($last, 0, $roomForLast);
+            }
             $person = [
                 'birthday' => (string) ($p['dob'] ?? $p['birthdate'] ?? '1990-01-01'),
-                'first_name' => trim((string) ($p['first'] ?? $p['given_name'] ?? '')),
-                'last_name' => trim((string) ($p['last'] ?? $p['surname'] ?? '')),
+                'first_name' => $first,
+                'last_name' => $last,
                 'nationality' => $this->normalizeNationality((string) ($p['nationality'] ?? 'USA')),
                 'sex' => $sex,
             ];
-            $middle = trim((string) ($p['middle'] ?? ''));
-            if ($middle !== '') {
-                $person['middle_name'] = $middle;
-            }
+            // Do not send middle_name — it counts toward Downtown's whole-name limit.
 
             $passportNumber = trim((string) ($p['passport_number'] ?? data_get($p, 'travel_document.number', '')));
             $passportExpire = trim((string) ($p['passport_expire'] ?? data_get($p, 'travel_document.expires_at', '')));
@@ -485,6 +954,25 @@ class DowntownTravelAirService
         }
 
         return '+'.$digits;
+    }
+
+    /**
+     * Letters / spaces / hyphen / apostrophe only; truncate to Downtown first/last limits.
+     */
+    protected function normalizePersonName(string $name, int $maxLen = 30): string
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name) ?? '');
+        $name = preg_replace("/[^A-Za-z \\-']+/", '', $name) ?? '';
+        $name = trim($name);
+        if ($name === '') {
+            return '';
+        }
+
+        if (mb_strlen($name) > $maxLen) {
+            return mb_substr($name, 0, $maxLen);
+        }
+
+        return $name;
     }
 
     /**

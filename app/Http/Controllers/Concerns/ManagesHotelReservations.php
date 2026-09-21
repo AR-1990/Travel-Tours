@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\HotelReservation;
+use App\Services\DowntownTravel\DowntownTravelHotelService;
 use App\Services\Xconnect\XconnectHotelService;
 use App\Support\HotelProvider;
 use Illuminate\Http\Request;
@@ -64,7 +65,7 @@ trait ManagesHotelReservations
         return view('hotels.reservations.index', $payload);
     }
 
-    public function reservationsShow(int $id, XconnectHotelService $hotels)
+    public function reservationsShow(int $id, XconnectHotelService $hotels, DowntownTravelHotelService $downtown)
     {
         $this->ensureHotelAccess();
 
@@ -88,6 +89,26 @@ trait ManagesHotelReservations
             } catch (\Throwable) {
                 // Supplier detail is best-effort in admin.
             }
+        } elseif ($reservation->isDowntownTravel()) {
+            try {
+                $orderId = $downtown->resolveOrderId(
+                    $reservation->booking_id,
+                    $reservation->internal_reference,
+                    is_array($reservation->raw_result) ? $reservation->raw_result : null
+                );
+                if ($orderId !== '') {
+                    $detailResult = $downtown->getOrderDetails($orderId);
+                    if ($detailResult['ok'] ?? false) {
+                        $detail = $detailResult['order'] ?? null;
+                        if (is_array($detail)) {
+                            $reservation->provider_snapshot = $detail;
+                            $reservation->save();
+                        }
+                    }
+                }
+            } catch (\Throwable) {
+                // Supplier detail is best-effort in admin.
+            }
         }
 
         return view('hotels.reservations.show', [
@@ -99,13 +120,50 @@ trait ManagesHotelReservations
         ]);
     }
 
-    public function reservationsCancel(int $id, Request $request, XconnectHotelService $hotels)
+    public function reservationsCancel(int $id, Request $request, XconnectHotelService $hotels, DowntownTravelHotelService $downtown)
     {
         $this->ensureHotelAccess();
 
         $reservation = $this->findAccessibleHotelReservation($id);
         if ($reservation->isCancelled()) {
             return back()->with('error', 'This booking is already cancelled.');
+        }
+
+        if ($reservation->isDowntownTravel()) {
+            $orderId = $downtown->resolveOrderId(
+                $reservation->booking_id,
+                $reservation->internal_reference,
+                is_array($reservation->raw_result) ? $reservation->raw_result : null
+            );
+            if ($orderId === '' || str_starts_with(strtoupper($orderId), 'DTH-')) {
+                $reservation->forceFill([
+                    'status' => HotelReservation::STATUS_CANCELLED,
+                    'cancelled_at' => now(),
+                ])->save();
+
+                return redirect()
+                    ->route($this->hotelsRoutePrefix().'.hotels.reservations.show', $reservation)
+                    ->with('success', 'Local hotel hold cancelled (no supplier order id).');
+            }
+
+            $cancel = $downtown->cancelOrder($orderId);
+            if (! ($cancel['ok'] ?? false)) {
+                return back()->with('error', $cancel['message'] ?? 'Downtown Travel hotel cancel failed.');
+            }
+
+            $reservation->forceFill([
+                'status' => HotelReservation::STATUS_CANCELLED,
+                'cancelled_at' => now(),
+                'raw_result' => array_merge(
+                    is_array($reservation->raw_result) ? $reservation->raw_result : [],
+                    ['cancel' => $cancel['raw'] ?? $cancel]
+                ),
+                'provider_snapshot' => $cancel['order'] ?? $reservation->provider_snapshot,
+            ])->save();
+
+            return redirect()
+                ->route($this->hotelsRoutePrefix().'.hotels.reservations.show', $reservation)
+                ->with('success', $cancel['message'] ?? 'Downtown Travel hotel booking cancelled.');
         }
 
         if (! $reservation->isXconnect()) {

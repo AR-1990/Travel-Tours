@@ -94,7 +94,7 @@ class HotelProvider
 
         return match ($provider) {
             self::DOWNTOWN_TRAVEL_HOTELS => [
-                'hint' => 'Lead guest details for Downtown Travel Hotels. Use letters-only names and a real phone number.',
+                'hint' => 'Lead guest details for Downtown Travel Hotels. Use letters-only names, ISO nationality, and a real phone number.',
                 'name_pattern' => '[A-Za-z][A-Za-z \\-\']{0,78}[A-Za-z]?',
                 'name_title' => 'Letters, spaces, hyphen or apostrophe only',
                 'name_min' => 2,
@@ -103,6 +103,7 @@ class HotelProvider
                 'phone_title' => 'Phone with digits (e.g. +15551234567)',
                 'phone_min' => 7,
                 'phone_max' => 20,
+                'requires_nationality' => true,
             ],
             default => [
                 'hint' => 'Lead guest details for Xconnect hotel booking.',
@@ -114,8 +115,17 @@ class HotelProvider
                 'phone_title' => 'Phone digits (7–30 characters)',
                 'phone_min' => 7,
                 'phone_max' => 30,
+                'requires_nationality' => false,
             ],
         };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function nationalityOptions(): array
+    {
+        return FlightProvider::nationalityOptions(FlightProvider::DOWNTOWN_TRAVEL);
     }
 
     /**
@@ -128,7 +138,7 @@ class HotelProvider
         $nameRegex = '/^[A-Za-z][A-Za-z \\-\']{0,78}$/';
         $phoneRegex = '/^[0-9+() \\-]{'.$spec['phone_min'].','.$spec['phone_max'].'}$/';
 
-        return [
+        $rules = [
             'provider' => ['nullable', 'in:'.implode(',', self::all())],
             'prefix' => ['required', 'in:Mr.,Mrs.,Ms.,Miss.'],
             'first_name' => ['required', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex],
@@ -138,6 +148,12 @@ class HotelProvider
             'guest2_first' => ['nullable', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex],
             'guest2_last' => ['nullable', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex, 'required_with:guest2_first'],
         ];
+
+        if (! empty($spec['requires_nationality'])) {
+            $rules['nationality'] = ['required', 'string', 'size:2', 'in:'.implode(',', FlightProvider::isoAlpha2Nationalities())];
+        }
+
+        return $rules;
     }
 
     /**

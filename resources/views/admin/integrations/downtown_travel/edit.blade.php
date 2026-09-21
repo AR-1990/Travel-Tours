@@ -229,7 +229,8 @@
         <ul class="small text-muted mb-0">
             <li>Get Token / Refresh Token</li>
             <li>Search → Preliminary Booking → Book → Confirm price → Issue tickets</li>
-            <li>Cancel / Void / Refund Offer / Refund / Order details</li>
+            <li>Order details (GET) / Cancel / Void / Refund Offer / Refund</li>
+            <li>Wired in Flights reservation page for Downtown Travel bookings</li>
         </ul>
         <p class="small text-muted mt-2 mb-0">Full Flights UI wiring (provider switch) can be added next once credentials are verified here.</p>
     </div>

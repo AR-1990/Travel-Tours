@@ -164,6 +164,24 @@ class DowntownTravelHotelsClient
      */
     public function postHotels(string $path, array $body = [], ?string $token = null): array
     {
+        return $this->requestHotels('POST', $path, $body, $token);
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array{ok: bool, message: string, http_status?: int|null, data?: mixed, response_excerpt?: string}
+     */
+    public function getHotels(string $path, array $query = [], ?string $token = null): array
+    {
+        return $this->requestHotels('GET', $path, $query, $token);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload  Body for POST, query for GET
+     * @return array{ok: bool, message: string, http_status?: int|null, data?: mixed, response_excerpt?: string}
+     */
+    protected function requestHotels(string $method, string $path, array $payload = [], ?string $token = null): array
+    {
         if ($token === null || $token === '') {
             $auth = $this->getToken();
             if (! ($auth['ok'] ?? false)) {
@@ -178,13 +196,18 @@ class DowntownTravelHotelsClient
         }
 
         $url = $this->hotelsBaseUrl().'/'.ltrim($path, '/');
+        $method = strtoupper($method);
 
         try {
-            $response = $this->http()
+            $pending = $this->http()
                 ->withToken($token)
                 ->acceptJson()
-                ->withHeaders(['Content-Type' => 'application/json;charset=utf-8'])
-                ->post($url, $body);
+                ->withHeaders(['Content-Type' => 'application/json;charset=utf-8']);
+
+            $response = $method === 'GET'
+                ? $pending->get($url, $payload)
+                : $pending->withBody(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}', 'application/json;charset=utf-8')
+                    ->post($url);
         } catch (\Throwable $e) {
             return [
                 'ok' => false,
@@ -198,11 +221,15 @@ class DowntownTravelHotelsClient
             $auth = $this->getToken(true);
             if ($auth['ok'] ?? false) {
                 try {
-                    $response = $this->http()
+                    $pending = $this->http()
                         ->withToken((string) ($auth['token'] ?? ''))
                         ->acceptJson()
-                        ->withHeaders(['Content-Type' => 'application/json;charset=utf-8'])
-                        ->post($url, $body);
+                        ->withHeaders(['Content-Type' => 'application/json;charset=utf-8']);
+
+                    $response = $method === 'GET'
+                        ? $pending->get($url, $payload)
+                        : $pending->withBody(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}', 'application/json;charset=utf-8')
+                            ->post($url);
                 } catch (\Throwable $e) {
                     return [
                         'ok' => false,
@@ -213,7 +240,7 @@ class DowntownTravelHotelsClient
             }
         }
 
-        $json = $this->jsonOrNull($response);
+        $decoded = $response->json();
         $excerpt = $this->excerpt($response->body());
 
         if ($response->successful()) {
@@ -221,22 +248,40 @@ class DowntownTravelHotelsClient
                 'ok' => true,
                 'message' => 'OK',
                 'http_status' => $response->status(),
-                'data' => $json,
+                // Create Order returns a bare UUID string — keep scalar data intact.
+                'data' => $decoded,
                 'response_excerpt' => $excerpt,
             ];
         }
 
-        $err = is_array($json)
-            ? (string) ($json['message'] ?? $json['error_description'] ?? $json['error'] ?? '')
-            : '';
-
         return [
             'ok' => false,
-            'message' => $err !== '' ? $err : ('Downtown Travel Hotels request failed (HTTP '.$response->status().').'),
+            'message' => $this->formatErrorMessage($decoded, $response->status(), $response->body()),
             'http_status' => $response->status(),
-            'data' => $json,
+            'data' => is_array($decoded) ? $decoded : null,
             'response_excerpt' => $excerpt,
         ];
+    }
+
+    protected function formatErrorMessage(mixed $json, int $status, string $body): string
+    {
+        if (is_array($json)) {
+            $msg = trim((string) ($json['error_message'] ?? $json['message'] ?? $json['error_description'] ?? $json['error'] ?? ''));
+            if ($msg !== '') {
+                return $msg;
+            }
+            $tag = trim((string) data_get($json, 'error_description.tag', ''));
+            if ($tag !== '') {
+                return 'Downtown Travel Hotels error: '.$tag;
+            }
+        }
+
+        $plain = trim($body);
+        if ($plain !== '' && ! str_starts_with($plain, '{') && ! str_starts_with($plain, '[')) {
+            return strlen($plain) > 400 ? substr($plain, 0, 400).'…' : $plain;
+        }
+
+        return 'Downtown Travel Hotels request failed (HTTP '.$status.').';
     }
 
     /**

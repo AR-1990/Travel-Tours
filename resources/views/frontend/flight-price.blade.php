@@ -22,7 +22,10 @@
 
     <div class="flight-booking flight-list pt-80 pb-120">
         <div class="container">
-            @include('frontend.partials.flight-workflow-steps', ['workflowStep' => 'price'])
+            @include('frontend.partials.flight-workflow-steps', [
+                'workflowStep' => 'price',
+                'flightPriceResult' => $flightPriceResult ?? null,
+            ])
 
             @if(session('success'))
                 <div class="alert alert-success">{{ session('success') }}</div>
@@ -31,11 +34,17 @@
                 <div class="alert alert-danger">{{ session('error') }}</div>
             @endif
 
+            @php
+                $pricedProvider = \App\Support\FlightProvider::fromResult($flightPriceResult ?? null);
+                $isTravelportPrice = $pricedProvider === \App\Support\FlightProvider::TRAVELPORT;
+            @endphp
+
             <div class="mb-3">
                 @include('flights.partials.provider-badge', [
-                    'provider' => \App\Support\FlightProvider::fromResult($flightPriceResult ?? null),
+                    'provider' => $pricedProvider,
                 ])
             </div>
+            <p class="small text-muted mb-3">{{ \App\Support\FlightProvider::postBookFlowHint($pricedProvider) }}</p>
 
             @if(!($providerReady ?? $travelportReady ?? false))
                 <div class="alert alert-warning">Flight pricing is not configured. Contact the agency.</div>
@@ -50,12 +59,14 @@
                         <a href="{{ route('frontend.flights.book') }}" class="theme-btn theme-btn2">
                             Continue to book<i class="fas fa-user"></i>
                         </a>
-                        <a href="{{ route('frontend.flights.operation', ['operation' => 'air_fare_rules']) }}" class="theme-btn theme-btn-outline">
-                            Fare rules<i class="fas fa-file-alt"></i>
-                        </a>
-                        <a href="{{ route('frontend.flights.operation', ['operation' => 'seat_map']) }}" class="theme-btn theme-btn-outline">
-                            Seat map<i class="fas fa-chair"></i>
-                        </a>
+                        @if($isTravelportPrice)
+                            <a href="{{ route('frontend.flights.operation', ['operation' => 'air_fare_rules']) }}" class="theme-btn theme-btn-outline">
+                                Fare rules<i class="fas fa-file-alt"></i>
+                            </a>
+                            <a href="{{ route('frontend.flights.operation', ['operation' => 'seat_map']) }}" class="theme-btn theme-btn-outline">
+                                Seat map<i class="fas fa-chair"></i>
+                            </a>
+                        @endif
                     </div>
                 </div>
             @endif

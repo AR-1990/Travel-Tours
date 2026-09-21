@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\FlightReservation;
+use App\Services\DowntownTravel\DowntownTravelIntegrationConfig;
 use App\Services\SunSpring\SunSpringIntegrationConfig;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
@@ -86,9 +87,16 @@ trait ManagesFlightReservations
 
         $reservation = $this->findAccessibleReservation($id);
 
-        $providerReady = $reservation->isSunSpring()
-            ? SunSpringIntegrationConfig::isReadyForAir()
-            : TravelportIntegrationConfig::isReadyForAir();
+        $providerReady = match (true) {
+            $reservation->isDowntownTravel() => DowntownTravelIntegrationConfig::isReadyForAir(),
+            $reservation->isSunSpring() => SunSpringIntegrationConfig::isReadyForAir(),
+            default => TravelportIntegrationConfig::isReadyForAir(),
+        };
+
+        $provider = $reservation->provider();
+        $workflowStep = $reservation->status === FlightReservation::STATUS_TICKETED
+            ? 'done'
+            : ($reservation->status === FlightReservation::STATUS_CANCELLED ? 'done' : 'ticket');
 
         return view('flights.reservations.show', array_merge($this->travelportViewBase(), [
             'reservation' => $reservation,
@@ -105,12 +113,27 @@ trait ManagesFlightReservations
                 'ticket_numbers' => $reservation->ticket_numbers ?? [],
             ],
             'gdsSnapshot' => $reservation->gds_snapshot,
-            'workflowStep' => $reservation->status === FlightReservation::STATUS_TICKETED ? 'done' : 'ticket',
+            'workflowStep' => $workflowStep,
             'canBookFlights' => $this->userCanBookFlights(),
             'providerReady' => $providerReady,
-            'ticketActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.ticket', $reservation),
-            'retrieveActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.retrieve', $reservation),
-            'cancelActionRoute' => route($this->flightsRoutePrefix().'.flights.reservations.cancel', $reservation),
+            'ticketActionRoute' => FlightProvider::supportsSeparateTicketing($provider)
+                ? route($this->flightsRoutePrefix().'.flights.reservations.ticket', $reservation)
+                : null,
+            'retrieveActionRoute' => FlightProvider::supportsStatusRefresh($provider)
+                ? route($this->flightsRoutePrefix().'.flights.reservations.retrieve', $reservation)
+                : null,
+            'cancelActionRoute' => FlightProvider::supportsRemoteCancel($provider)
+                ? route($this->flightsRoutePrefix().'.flights.reservations.cancel', $reservation)
+                : null,
+            'voidActionRoute' => FlightProvider::supportsVoid($provider)
+                ? route($this->flightsRoutePrefix().'.flights.reservations.void', $reservation)
+                : null,
+            'refundActionRoute' => FlightProvider::supportsRefund($provider)
+                ? route($this->flightsRoutePrefix().'.flights.reservations.refund', $reservation)
+                : null,
+            'cancelTrackActionRoute' => $reservation->isSunSpring()
+                ? route($this->flightsRoutePrefix().'.flights.reservations.cancel-track', $reservation)
+                : null,
         ]));
     }
 
@@ -172,6 +195,63 @@ trait ManagesFlightReservations
             ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
             ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Cancel complete.')
             ->with('travelport_last_error_reason', ($result['ok'] ?? false) ? null : ($result['technical_message'] ?? $result['message'] ?? null));
+    }
+
+    public function reservationsVoid(int $id, TravelportAirService $air)
+    {
+        $this->ensureFlightAccess();
+        $this->ensureFlightBookPermission();
+
+        $reservation = $this->findAccessibleReservation($id);
+        if (! $reservation->isDowntownTravel()) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+                ->with('error', 'Void is only available for Downtown Travel bookings.');
+        }
+
+        $result = $this->runDowntownVoidFlow($reservation);
+
+        return redirect()
+            ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Void complete.');
+    }
+
+    public function reservationsRefund(int $id, TravelportAirService $air)
+    {
+        $this->ensureFlightAccess();
+        $this->ensureFlightBookPermission();
+
+        $reservation = $this->findAccessibleReservation($id);
+        if (! $reservation->isDowntownTravel()) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+                ->with('error', 'Refund is only available for Downtown Travel bookings.');
+        }
+
+        $result = $this->runDowntownRefundFlow($reservation);
+
+        return redirect()
+            ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Refund complete.');
+    }
+
+    public function reservationsCancelTrack(int $id)
+    {
+        $this->ensureFlightAccess();
+        $this->ensureFlightBookPermission();
+
+        $reservation = $this->findAccessibleReservation($id);
+        if (! $reservation->isSunSpring()) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+                ->with('error', 'Cancel tracking is only available for SunSpring bookings.');
+        }
+
+        $result = $this->runSunSpringCancelTrackingFlow($reservation);
+
+        return redirect()
+            ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
+            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Cancel tracking complete.');
     }
 
     protected function findAccessibleReservation(int $id): FlightReservation

@@ -260,6 +260,13 @@ class SunSpringAirService
         $parsed['response_excerpt'] = $response['response_excerpt'] ?? null;
 
         if ($parsed['ok'] ?? false) {
+            $refs = array_values(array_filter([$outboundRef, $returnRef]));
+            $rules = $this->airRule($refs);
+            if ($rules['ok'] ?? false) {
+                $parsed['fare_rules'] = $rules['rules'] ?? [];
+                $parsed['fare_rules_message'] = $rules['message'] ?? null;
+            }
+
             session([
                 'sunspring.last_price' => [
                     'solution_key' => $solutionKey,
@@ -267,6 +274,7 @@ class SunSpringAirService
                     'response' => $data,
                     'solution' => $parsed['solutions'][0] ?? $selected,
                     'adults' => $adults,
+                    'fare_rules' => $parsed['fare_rules'] ?? [],
                 ],
             ]);
         }
@@ -484,7 +492,88 @@ class SunSpringAirService
             'voucher' => $voucher,
         ];
 
-        return $this->client->post('/api/v2/flight/Cancel', $body);
+        $response = $this->client->post('/api/v2/flight/Cancel', $body);
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+        $status = strtolower((string) ($data['status'] ?? ''));
+        $ok = ($response['ok'] ?? false) || in_array($status, ['success', 'process', 'processing'], true);
+        $requestId = trim((string) ($data['request_id'] ?? ''));
+
+        return [
+            'ok' => $ok,
+            'message' => trim((string) ($data['msg'] ?? $data['message'] ?? $response['message'] ?? ($ok ? 'Cancel request submitted.' : 'Cancel failed.'))),
+            'provider' => 'sunspring',
+            'request_id' => $requestId !== '' ? $requestId : null,
+            'status' => $data['status'] ?? null,
+            'raw' => $data,
+            'http_status' => $response['http_status'] ?? null,
+            'data' => $data,
+        ];
+    }
+
+    /**
+     * POST /api/v2/flight/AirRule — fare / refund rules for priced ref_number(s).
+     *
+     * @param  list<string>|string  $refNumbers
+     * @return array<string, mixed>
+     */
+    public function airRule(array|string $refNumbers): array
+    {
+        $refs = is_array($refNumbers) ? $refNumbers : [$refNumbers];
+        $refs = array_values(array_filter(array_map(static fn ($r) => trim((string) $r), $refs)));
+        if ($refs === []) {
+            return ['ok' => false, 'message' => 'SunSpring AirRule requires at least one ref_number.', 'provider' => 'sunspring', 'rules' => []];
+        }
+
+        $response = $this->client->post('/api/v2/flight/AirRule', [
+            'ref_number' => $refs,
+        ]);
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+        $status = strtolower((string) ($data['status'] ?? ''));
+        $ok = ($response['ok'] ?? false) || $status === 'success';
+        $rules = is_array($data['rules'] ?? null) ? $data['rules'] : [];
+
+        return [
+            'ok' => $ok,
+            'message' => $ok
+                ? (count($rules) > 0 ? 'SunSpring fare rules loaded.' : 'SunSpring AirRule OK (no rules returned).')
+                : ($response['message'] ?? data_get($data, 'err.msg') ?? 'AirRule failed.'),
+            'provider' => 'sunspring',
+            'rules' => $rules,
+            'raw' => $data,
+            'http_status' => $response['http_status'] ?? null,
+        ];
+    }
+
+    /**
+     * POST /api/v2/flight/CancelTracking — poll a prior Cancel request_id.
+     *
+     * @return array<string, mixed>
+     */
+    public function cancelTracking(string $requestId): array
+    {
+        $requestId = trim($requestId);
+        if ($requestId === '') {
+            return ['ok' => false, 'message' => 'CancelTracking requires request_id from Cancel.', 'provider' => 'sunspring'];
+        }
+
+        $response = $this->client->post('/api/v2/flight/CancelTracking', [
+            'request_id' => $requestId,
+        ]);
+        $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+        $status = strtolower((string) ($data['status'] ?? ''));
+        $ok = ($response['ok'] ?? false) || in_array($status, ['success', 'process', 'processing'], true);
+
+        return [
+            'ok' => $ok,
+            'message' => trim((string) ($data['message'] ?? $data['msg'] ?? $response['message'] ?? ($ok ? 'Cancel tracking updated.' : 'Cancel tracking failed.'))),
+            'provider' => 'sunspring',
+            'request_id' => $requestId,
+            'status' => $data['status'] ?? null,
+            'penalty' => $data['penalty'] ?? null,
+            'tickets' => is_array($data['tickets'] ?? null) ? $data['tickets'] : [],
+            'raw' => $data,
+            'http_status' => $response['http_status'] ?? null,
+        ];
     }
 
     /**

@@ -184,6 +184,26 @@ class DowntownTravelClient
      */
     public function postAir(string $path, array $body = [], ?string $token = null): array
     {
+        return $this->requestAir('POST', $path, $body, $token);
+    }
+
+    /**
+     * Authenticated Air API GET.
+     *
+     * @param  array<string, mixed>  $query
+     * @return array{ok: bool, message: string, http_status?: int|null, data?: mixed, response_excerpt?: string}
+     */
+    public function getAir(string $path, array $query = [], ?string $token = null): array
+    {
+        return $this->requestAir('GET', $path, $query, $token);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload  Body for POST, query for GET
+     * @return array{ok: bool, message: string, http_status?: int|null, data?: mixed, response_excerpt?: string}
+     */
+    protected function requestAir(string $method, string $path, array $payload = [], ?string $token = null): array
+    {
         if ($token === null || $token === '') {
             $auth = $this->getToken();
             if (! ($auth['ok'] ?? false)) {
@@ -198,13 +218,17 @@ class DowntownTravelClient
         }
 
         $url = $this->airBaseUrl().'/'.ltrim($path, '/');
+        $method = strtoupper($method);
 
         try {
-            $response = $this->http()
+            $pending = $this->http()
                 ->withToken($token)
                 ->acceptJson()
-                ->asJson()
-                ->post($url, $body);
+                ->asJson();
+
+            $response = $method === 'GET'
+                ? $pending->get($url, $payload)
+                : $pending->post($url, $payload);
         } catch (\Throwable $e) {
             return [
                 'ok' => false,
@@ -218,11 +242,14 @@ class DowntownTravelClient
             $auth = $this->getToken(true);
             if ($auth['ok'] ?? false) {
                 try {
-                    $response = $this->http()
+                    $pending = $this->http()
                         ->withToken((string) ($auth['token'] ?? ''))
                         ->acceptJson()
-                        ->asJson()
-                        ->post($url, $body);
+                        ->asJson();
+
+                    $response = $method === 'GET'
+                        ? $pending->get($url, $payload)
+                        : $pending->post($url, $payload);
                 } catch (\Throwable $e) {
                     return [
                         'ok' => false,

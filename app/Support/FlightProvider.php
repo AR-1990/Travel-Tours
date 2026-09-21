@@ -72,6 +72,85 @@ class FlightProvider
     }
 
     /**
+     * Whether this provider has a separate post-book ticketing step.
+     */
+    public static function supportsSeparateTicketing(?string $provider = null): bool
+    {
+        $provider = strtolower((string) ($provider ?? self::current()));
+
+        return in_array($provider, [self::TRAVELPORT, self::SUNSPRING, self::DOWNTOWN_TRAVEL], true);
+    }
+
+    /**
+     * Refresh reservation status from the provider host.
+     * Travelport: UR retrieve. SunSpring: TicketInfo. Downtown: GET order.
+     */
+    public static function supportsStatusRefresh(?string $provider = null): bool
+    {
+        $provider = strtolower((string) ($provider ?? self::current()));
+
+        return in_array($provider, [self::TRAVELPORT, self::SUNSPRING, self::DOWNTOWN_TRAVEL], true);
+    }
+
+    /**
+     * @deprecated Use supportsStatusRefresh()
+     */
+    public static function supportsGdsRetrieve(?string $provider = null): bool
+    {
+        return self::supportsStatusRefresh($provider);
+    }
+
+    /**
+     * Provider-hosted cancel.
+     */
+    public static function supportsRemoteCancel(?string $provider = null): bool
+    {
+        $provider = strtolower((string) ($provider ?? self::current()));
+
+        return in_array($provider, [self::TRAVELPORT, self::SUNSPRING, self::DOWNTOWN_TRAVEL], true);
+    }
+
+    /**
+     * Downtown / Travelport void after ticketing.
+     */
+    public static function supportsVoid(?string $provider = null): bool
+    {
+        return strtolower((string) ($provider ?? self::current())) === self::DOWNTOWN_TRAVEL;
+    }
+
+    /**
+     * Downtown refund offer + refund.
+     */
+    public static function supportsRefund(?string $provider = null): bool
+    {
+        return strtolower((string) ($provider ?? self::current())) === self::DOWNTOWN_TRAVEL;
+    }
+
+    /**
+     * Last workflow step label after book for this provider.
+     */
+    public static function reservationStepLabel(?string $provider = null): string
+    {
+        return match (strtolower((string) ($provider ?? self::current()))) {
+            self::DOWNTOWN_TRAVEL => 'Ticket',
+            self::SUNSPRING => 'Ticket',
+            default => 'Reservation',
+        };
+    }
+
+    /**
+     * Short post-book flow description shown on reservation / confirmation.
+     */
+    public static function postBookFlowHint(?string $provider = null): string
+    {
+        return match (strtolower((string) ($provider ?? self::current()))) {
+            self::DOWNTOWN_TRAVEL => 'Downtown Travel flow: Search → Preliminary → Book → Issue tickets. Refresh order details, cancel, void, or refund from this page when Downtown allows it.',
+            self::SUNSPRING => 'SunSpring flow: Book → Confirm → Issue ticket. Fare rules load on price; refresh/cancel here; track cancel via CancelTracking.',
+            default => 'Travelport flow: Reserve → Issue e-ticket from the GDS Universal Record. Retrieve refreshes the PNR; cancel voids it before ticketing.',
+        };
+    }
+
+    /**
      * SunSpring requires national ID + passport on every traveler.
      */
     public static function requiresTravelDocuments(?string $provider = null): bool
@@ -160,6 +239,7 @@ class FlightProvider
      *   name_title: string,
      *   name_min: int,
      *   name_max: int,
+     *   name_combined_max?: int,
      *   phone_pattern: string,
      *   phone_title: string,
      *   phone_min: int,
@@ -231,11 +311,12 @@ class FlightProvider
                 'show_nationality' => true,
             ],
             self::DOWNTOWN_TRAVEL => [
-                'hint' => 'Enter every traveler from your search. Pick a real nationality from the list and use a phone with country code. Passport only if the fare requires it.',
-                'name_pattern' => $namePattern,
-                'name_title' => $nameTitle,
+                'hint' => 'Enter every traveler from your search. First and last name max 30 each; combined name max 50 characters. Pick a nationality and use a phone with country code.',
+                'name_pattern' => '[A-Za-z][A-Za-z \\-\']{0,28}',
+                'name_title' => 'Letters only; max 30 characters (first + last together max 50)',
                 'name_min' => 2,
-                'name_max' => 80,
+                'name_max' => 30,
+                'name_combined_max' => 50,
                 'phone_pattern' => '\\+?[0-9() \\-]{7,20}',
                 'phone_title' => 'Phone with country code digits (e.g. +14057787503)',
                 'phone_min' => 7,
@@ -311,7 +392,8 @@ class FlightProvider
 
         $expected = max(1, $expectedPassengers);
         $spec = self::bookFieldSpecs($provider);
-        $nameRegex = '/^[A-Za-z][A-Za-z \\-\']{0,78}$/';
+        $nameExtra = max(0, (int) $spec['name_max'] - 1);
+        $nameRegex = '/^[A-Za-z][A-Za-z \\-\']{0,'.$nameExtra.'}$/';
         $phoneRegex = '/^[0-9+() \\-]{'.$spec['phone_min'].','.$spec['phone_max'].'}$/';
         $countryRegex = '/^\\+[0-9]{1,4}$/';
         $nationalityRegex = '/^[A-Za-z]{'.$spec['nationality_min'].','.$spec['nationality_max'].'}$/';
@@ -353,6 +435,18 @@ class FlightProvider
             $iso = self::isoAlpha2Nationalities();
             $rules['passengers.*.nationality'] = ['nullable', 'string', 'size:2', 'in:'.implode(',', $iso)];
             $rules['passengers.0.nationality'] = ['required', 'string', 'size:2', 'in:'.implode(',', $iso)];
+            $combinedMax = (int) ($spec['name_combined_max'] ?? 50);
+            $rules['passengers.*'] = [function (string $attribute, mixed $value, \Closure $fail) use ($combinedMax): void {
+                if (! is_array($value)) {
+                    return;
+                }
+                $first = trim((string) ($value['first'] ?? ''));
+                $last = trim((string) ($value['last'] ?? ''));
+                $full = trim($first.' '.$last);
+                if ($full !== '' && mb_strlen($full) > $combinedMax) {
+                    $fail('We allow only '.$combinedMax.' characters for the whole name, including spaces (first + last).');
+                }
+            }];
         }
 
         if ($spec['docs_required']) {

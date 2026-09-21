@@ -83,6 +83,9 @@ Route::get('/flights/reservations/{id}', [PublicFlightController::class, 'reserv
 Route::post('/flights/reservations/{id}/ticket', [PublicFlightController::class, 'reservationsTicket'])->name('frontend.flights.reservations.ticket')->whereNumber('id');
 Route::post('/flights/reservations/{id}/retrieve', [PublicFlightController::class, 'reservationsRetrieve'])->name('frontend.flights.reservations.retrieve')->whereNumber('id');
 Route::post('/flights/reservations/{id}/cancel', [PublicFlightController::class, 'reservationsCancel'])->name('frontend.flights.reservations.cancel')->whereNumber('id');
+Route::post('/flights/reservations/{id}/void', [PublicFlightController::class, 'reservationsVoid'])->name('frontend.flights.reservations.void')->whereNumber('id');
+Route::post('/flights/reservations/{id}/refund', [PublicFlightController::class, 'reservationsRefund'])->name('frontend.flights.reservations.refund')->whereNumber('id');
+Route::post('/flights/reservations/{id}/cancel-track', [PublicFlightController::class, 'reservationsCancelTrack'])->name('frontend.flights.reservations.cancel-track')->whereNumber('id');
 Route::match(['get', 'post'], '/flights/operations/{operation}', [PublicFlightController::class, 'flightOperation'])
     ->name('frontend.flights.operation');
 
@@ -267,6 +270,9 @@ Route::middleware(['auth', RoleMiddleware::class.':1'])->prefix('admin')->name('
     Route::post('/flights/reservations/{id}/ticket', [AdminFlightController::class, 'reservationsTicket'])->name('flights.reservations.ticket')->whereNumber('id');
     Route::post('/flights/reservations/{id}/retrieve', [AdminFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
     Route::post('/flights/reservations/{id}/cancel', [AdminFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/void', [AdminFlightController::class, 'reservationsVoid'])->name('flights.reservations.void')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/refund', [AdminFlightController::class, 'reservationsRefund'])->name('flights.reservations.refund')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/cancel-track', [AdminFlightController::class, 'reservationsCancelTrack'])->name('flights.reservations.cancel-track')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AdminFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 
     Route::get('/hotels/reservations', [AdminHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
@@ -315,6 +321,9 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('agent')->na
     Route::post('/flights/reservations/{id}/ticket', [AgentFlightController::class, 'reservationsTicket'])->name('flights.reservations.ticket')->whereNumber('id');
     Route::post('/flights/reservations/{id}/retrieve', [AgentFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
     Route::post('/flights/reservations/{id}/cancel', [AgentFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/void', [AgentFlightController::class, 'reservationsVoid'])->name('flights.reservations.void')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/refund', [AgentFlightController::class, 'reservationsRefund'])->name('flights.reservations.refund')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/cancel-track', [AgentFlightController::class, 'reservationsCancelTrack'])->name('flights.reservations.cancel-track')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 
     Route::get('/hotels/reservations', [AgentHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
@@ -345,6 +354,9 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('sub-agent')
     Route::post('/flights/reservations/{id}/ticket', [SubAgentFlightController::class, 'reservationsTicket'])->name('flights.reservations.ticket')->whereNumber('id');
     Route::post('/flights/reservations/{id}/retrieve', [SubAgentFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
     Route::post('/flights/reservations/{id}/cancel', [SubAgentFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/void', [SubAgentFlightController::class, 'reservationsVoid'])->name('flights.reservations.void')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/refund', [SubAgentFlightController::class, 'reservationsRefund'])->name('flights.reservations.refund')->whereNumber('id');
+    Route::post('/flights/reservations/{id}/cancel-track', [SubAgentFlightController::class, 'reservationsCancelTrack'])->name('flights.reservations.cancel-track')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [SubAgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
 
     Route::get('/hotels/reservations', [SubAgentHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');

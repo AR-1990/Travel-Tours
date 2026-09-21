@@ -207,7 +207,12 @@ class FlightReservation extends Model
     public function toPriceResultArray(): ?array
     {
         if (is_array($this->price_snapshot) && $this->price_snapshot !== []) {
-            return $this->price_snapshot;
+            $snapshot = $this->price_snapshot;
+            if (empty($snapshot['provider'])) {
+                $snapshot['provider'] = $this->provider();
+            }
+
+            return $snapshot;
         }
 
         if (! is_array($this->itinerary) || $this->itinerary === []) {
@@ -216,6 +221,7 @@ class FlightReservation extends Model
 
         return [
             'ok' => true,
+            'provider' => $this->provider(),
             'solutions' => [[
                 'plating_carrier' => $this->carrier,
                 'fare_basis' => $this->fare_basis,

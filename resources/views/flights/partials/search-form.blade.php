@@ -82,6 +82,7 @@
             $providers = $flightProviders ?? [
                 ['id' => 'travelport', 'label' => 'Travelport', 'ready' => $travelportReady ?? false],
                 ['id' => 'sunspring', 'label' => 'SunSpring', 'ready' => $sunspringReady ?? false],
+                ['id' => 'downtown_travel', 'label' => 'Downtown Travel', 'ready' => $downtownTravelReady ?? false],
             ];
         @endphp
         <div class="mb-3">

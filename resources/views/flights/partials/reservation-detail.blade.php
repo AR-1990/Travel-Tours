@@ -8,6 +8,30 @@
     $status = $reservationModel->status ?? null;
     $isCancelled = $status === \App\Models\FlightReservation::STATUS_CANCELLED;
     $isTicketed = $status === \App\Models\FlightReservation::STATUS_TICKETED || ! empty($ticket['ticket_numbers']);
+    $providerId = strtolower((string) (
+        (is_object($reservationModel) && method_exists($reservationModel, 'provider') ? $reservationModel->provider() : null)
+        ?? ($priceResult['provider'] ?? null)
+        ?? ($flightProvider ?? null)
+        ?? \App\Support\FlightProvider::TRAVELPORT
+    ));
+    if (! in_array($providerId, \App\Support\FlightProvider::all(), true)) {
+        $providerId = \App\Support\FlightProvider::TRAVELPORT;
+    }
+    $isTravelport = $providerId === \App\Support\FlightProvider::TRAVELPORT;
+    $isSunSpring = $providerId === \App\Support\FlightProvider::SUNSPRING;
+    $isDowntown = $providerId === \App\Support\FlightProvider::DOWNTOWN_TRAVEL;
+    $supportsTicket = \App\Support\FlightProvider::supportsSeparateTicketing($providerId);
+    $supportsRetrieve = \App\Support\FlightProvider::supportsStatusRefresh($providerId);
+    $supportsCancel = \App\Support\FlightProvider::supportsRemoteCancel($providerId);
+    $supportsVoid = \App\Support\FlightProvider::supportsVoid($providerId);
+    $supportsRefund = \App\Support\FlightProvider::supportsRefund($providerId);
+    $flowHint = \App\Support\FlightProvider::postBookFlowHint($providerId);
+    $voidRoute = ($supportsVoid ? ($voidActionRoute ?? null) : null);
+    $refundRoute = ($supportsRefund ? ($refundActionRoute ?? null) : null);
+    $cancelTrackRoute = $cancelTrackActionRoute ?? null;
+    $cancelRequestId = trim((string) data_get($reservationModel?->raw_result, 'cancel_request_id',
+        data_get($reservationModel?->raw_result, 'cancel.request_id', '')
+    ));
     $pax = $booking['input']['passengers'][0] ?? null;
     if (! is_array($pax)) {
         $pax = [
@@ -31,17 +55,34 @@
     } else {
         $statusLabel = 'Reserved';
         $statusClass = 'bg-warning text-dark';
-        $headline = 'Booking reserved';
+        $headline = $isDowntown ? 'Downtown order reserved' : 'Booking reserved';
     }
     $carrierCode = $solution['plating_carrier'] ?? ($solution['segments'][0]['carrier'] ?? null);
     $price = \App\Support\FlightDisplay::parsePrice($solution['total_price'] ?? null);
     $base = \App\Support\FlightDisplay::parsePrice($solution['base_price'] ?? null);
     $taxes = \App\Support\FlightDisplay::parsePrice($solution['taxes'] ?? null);
     $journeys = is_array($solution) ? \App\Support\FlightDisplay::solutionJourneys($solution) : [];
-    $ticketRoute = $ticketActionRoute ?? null;
-    $retrieveRoute = $retrieveActionRoute ?? null;
-    $cancelRoute = $cancelActionRoute ?? null;
+    $ticketRoute = ($supportsTicket ? ($ticketActionRoute ?? null) : null);
+    $retrieveRoute = ($supportsRetrieve ? ($retrieveActionRoute ?? null) : null);
+    $cancelRoute = ($supportsCancel ? ($cancelActionRoute ?? null) : null);
     $gds = $gdsSnapshot ?? ($reservationModel->gds_snapshot ?? null);
+    $cancelTracking = data_get($reservationModel?->raw_result, 'cancel_tracking')
+        ?? (is_array($gds) ? ($gds['cancel_tracking'] ?? null) : null);
+    $dtCaps = is_array($gds) ? $gds : [];
+    $canDtTicket = array_key_exists('can_ticket', $dtCaps) ? (bool) $dtCaps['can_ticket'] : true;
+    $canDtCancel = array_key_exists('can_cancel', $dtCaps) ? (bool) $dtCaps['can_cancel'] : true;
+    $canDtVoid = array_key_exists('can_void', $dtCaps) ? (bool) $dtCaps['can_void'] : $isTicketed;
+    $canDtRefund = array_key_exists('can_refund', $dtCaps) ? (bool) $dtCaps['can_refund'] : $isTicketed;
+    $primaryRefLabel = match ($providerId) {
+        'downtown_travel' => 'Order ID',
+        'sunspring' => 'Booking reference',
+        default => 'Universal Record',
+    };
+    $secondaryRefLabel = match ($providerId) {
+        'downtown_travel' => 'Airline PNR',
+        'sunspring' => 'PNR / reference',
+        default => 'Air reservation',
+    };
 @endphp
 
 <div class="reservation-detail">
@@ -53,9 +94,7 @@
                     <h2 class="h5 mb-0">{{ $headline }}</h2>
                     <div class="mt-2">
                         @include('flights.partials.provider-badge', [
-                            'provider' => isset($reservation) && is_object($reservation)
-                                ? $reservation->provider()
-                                : ($flightPriceResult['provider'] ?? ($flightProvider ?? null)),
+                            'provider' => $providerId,
                             'reservation' => $reservation ?? null,
                             'size' => 'sm',
                         ])
@@ -66,12 +105,12 @@
 
             <div class="row g-3">
                 <div class="col-md-4">
-                    <div class="small text-muted">Universal Record</div>
+                    <div class="small text-muted">{{ $primaryRefLabel }}</div>
                     <div class="fw-semibold"><code>{{ $booking['universal_locator'] ?? '—' }}</code></div>
                 </div>
                 <div class="col-md-4">
-                    <div class="small text-muted">Air reservation</div>
-                    <div class="fw-semibold"><code>{{ $booking['air_reservation_locator'] ?? '—' }}</code></div>
+                    <div class="small text-muted">{{ $secondaryRefLabel }}</div>
+                    <div class="fw-semibold"><code>{{ $booking['air_reservation_locator'] ?? ($booking['provider_locator'] ?? '—') }}</code></div>
                 </div>
                 <div class="col-md-4">
                     <div class="small text-muted">Booked at</div>
@@ -206,6 +245,21 @@
         </div>
     @endif
 
+    @if($isDowntown && ! $isCancelled)
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
+                <h3 class="h6 mb-2"><i class="fas fa-route me-2"></i>Downtown Travel flow</h3>
+                <p class="text-muted small mb-2">{{ $flowHint }}</p>
+                <ol class="small text-muted mb-0 ps-3">
+                    <li>Search → Preliminary → Book</li>
+                    <li>Issue tickets on the booking record</li>
+                    <li>Refresh order details anytime</li>
+                    <li>Cancel (pre-ticket), Void, or Refund when Downtown allows it</li>
+                </ol>
+            </div>
+        </div>
+    @endif
+
     @if($isTicketed && ! $isCancelled)
         <div class="card border-0 shadow-sm mb-4 border-success">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
@@ -217,74 +271,172 @@
                         @endforeach
                     </ul>
                 @else
-                    <p class="text-muted small mb-0">Marked ticketed — ticket numbers not stored yet.</p>
+                    <p class="text-muted small mb-0">Marked ticketed — ticket numbers not stored yet. Refresh order details to pull them.</p>
                 @endif
             </div>
         </div>
-    @elseif(! $isCancelled && ($canBookFlights ?? false) && $ticketRoute)
+    @elseif(! $isCancelled && ($canBookFlights ?? false) && $ticketRoute && $supportsTicket && (! $isDowntown || $canDtTicket))
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
-                <h3 class="h6 mb-2">Issue e-ticket</h3>
+                <h3 class="h6 mb-2">
+                    @if($isDowntown) Downtown ticketing
+                    @elseif($isSunSpring) SunSpring ticketing
+                    @else Issue e-ticket
+                    @endif
+                </h3>
+                <p class="text-muted small mb-2">{{ $flowHint }}</p>
                 <p class="text-muted small mb-3">
-                    Your reservation is saved. Ticketing requires an IATA-enabled PCC.
-                    On the current test account it may fail until Travelport enables ticketing.
+                    @if($isDowntown)
+                        Next step: issue tickets on the Downtown booking record (agent cash).
+                    @elseif($isSunSpring)
+                        Next step: issue the e-ticket through SunSpring for this reserved booking.
+                    @else
+                        Ticketing requires an IATA-enabled PCC. On the current test account it may fail until Travelport enables ticketing.
+                    @endif
                 </p>
                 <form method="POST" action="{{ $ticketRoute }}">
                     @csrf
                     <button type="submit" class="{{ $ticketButtonClass ?? 'btn btn-primary btn-sm' }}" @disabled(!($providerReady ?? $travelportReady ?? false))>
-                        <i class="fas fa-receipt me-1"></i> Issue ticket
+                        <i class="fas fa-receipt me-1"></i>
+                        @if($isDowntown) Issue Downtown tickets
+                        @elseif($isSunSpring) Issue SunSpring ticket
+                        @else Issue ticket
+                        @endif
                     </button>
                 </form>
             </div>
         </div>
     @endif
 
-    @if($retrieveRoute || ($cancelRoute && ! $isCancelled))
+    @if(($retrieveRoute && $supportsRetrieve) || ($cancelRoute && $supportsCancel && ! $isCancelled) || ($voidRoute && ! $isCancelled) || ($refundRoute && ! $isCancelled) || ($isSunSpring && $isCancelled && $cancelTrackRoute && $cancelRequestId !== ''))
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
-                <h3 class="h6 mb-2">Manage reservation</h3>
+                <h3 class="h6 mb-2">
+                    @if($isDowntown) Manage Downtown order
+                    @elseif($isSunSpring) Manage SunSpring booking
+                    @else Manage reservation
+                    @endif
+                </h3>
                 <p class="text-muted small mb-3">
-                    Retrieve refreshes this file from the GDS Universal Record.
-                    Cancel voids the PNR in Travelport (not available after ticketing).
+                    @if($isDowntown)
+                        Refresh pulls the latest order from Downtown Travel. Cancel works before ticketing; Void / Refund apply when Downtown flags allow them.
+                    @elseif($isSunSpring)
+                        Refresh pulls the latest status from SunSpring (TicketInfo). Cancel voids the SunSpring booking when still allowed. After cancel, track the refund request with CancelTracking.
+                    @else
+                        Retrieve refreshes this file from the Travelport GDS Universal Record.
+                        Cancel voids the PNR in Travelport (not available after ticketing).
+                    @endif
                 </p>
                 <div class="d-flex flex-wrap gap-2">
-                    @if($retrieveRoute)
+                    @if($retrieveRoute && $supportsRetrieve)
                         <form method="POST" action="{{ $retrieveRoute }}">
                             @csrf
                             <button type="submit" class="{{ $secondaryButtonClass ?? 'btn btn-outline-primary btn-sm' }}" @disabled(!($providerReady ?? $travelportReady ?? false) || empty($booking['universal_locator']))>
-                                <i class="fas fa-sync me-1"></i> Retrieve from GDS
+                                <i class="fas fa-sync me-1"></i>
+                                @if($isDowntown) Refresh Downtown order
+                                @elseif($isSunSpring) Refresh SunSpring status
+                                @else Retrieve from GDS
+                                @endif
                             </button>
                         </form>
                     @endif
-                    @if($cancelRoute && ! $isCancelled && ! $isTicketed && ($canBookFlights ?? false))
-                        <form method="POST" action="{{ $cancelRoute }}" onsubmit="return confirm('Cancel this reservation in the GDS? This cannot be undone.');">
+                    @if($cancelRoute && $supportsCancel && ! $isCancelled && ($canBookFlights ?? false) && (! $isTicketed || $isSunSpring) && (! $isDowntown || $canDtCancel))
+                        <form method="POST" action="{{ $cancelRoute }}" onsubmit="return confirm('{{ $isDowntown ? 'Cancel this Downtown Travel booking record?' : ($isSunSpring ? 'Cancel this SunSpring booking? This cannot be undone.' : 'Cancel this reservation in the GDS? This cannot be undone.') }}');">
                             @csrf
                             <button type="submit" class="{{ $dangerButtonClass ?? 'btn btn-outline-danger btn-sm' }}" @disabled(!($providerReady ?? $travelportReady ?? false) || empty($booking['universal_locator']))>
-                                <i class="fas fa-ban me-1"></i> Cancel reservation
+                                <i class="fas fa-ban me-1"></i>
+                                @if($isDowntown) Cancel Downtown booking
+                                @elseif($isSunSpring) Cancel SunSpring booking
+                                @else Cancel reservation
+                                @endif
+                            </button>
+                        </form>
+                    @endif
+                    @if($voidRoute && ! $isCancelled && $isTicketed && ($canBookFlights ?? false) && $canDtVoid)
+                        <form method="POST" action="{{ $voidRoute }}" onsubmit="return confirm('Void Downtown Travel tickets? This cannot be undone.');">
+                            @csrf
+                            <button type="submit" class="{{ $dangerButtonClass ?? 'btn btn-outline-danger btn-sm' }}" @disabled(!($providerReady ?? false))>
+                                <i class="fas fa-undo me-1"></i> Void tickets
+                            </button>
+                        </form>
+                    @endif
+                    @if($refundRoute && ! $isCancelled && $isTicketed && ($canBookFlights ?? false) && $canDtRefund)
+                        <form method="POST" action="{{ $refundRoute }}" onsubmit="return confirm('Create a Downtown refund offer and refund this booking?');">
+                            @csrf
+                            <button type="submit" class="{{ $dangerButtonClass ?? 'btn btn-outline-danger btn-sm' }}" @disabled(!($providerReady ?? false))>
+                                <i class="fas fa-hand-holding-usd me-1"></i> Refund
+                            </button>
+                        </form>
+                    @endif
+                    @if($isSunSpring && $isCancelled && $cancelTrackRoute && $cancelRequestId !== '' && ($canBookFlights ?? false))
+                        <form method="POST" action="{{ $cancelTrackRoute }}">
+                            @csrf
+                            <button type="submit" class="{{ $secondaryButtonClass ?? 'btn btn-outline-primary btn-sm' }}" @disabled(!($providerReady ?? false))>
+                                <i class="fas fa-search-location me-1"></i> Track cancel #{{ $cancelRequestId }}
                             </button>
                         </form>
                     @endif
                 </div>
-                @if($isTicketed && ! $isCancelled)
-                    <p class="small text-muted mt-3 mb-0">Ticketed bookings need void/refund before PNR cancel.</p>
+                @if($isSunSpring && $isCancelled && is_array($cancelTracking))
+                    <div class="mt-3 small">
+                        <div class="text-muted mb-1">Last CancelTracking</div>
+                        <div>Status: <strong>{{ $cancelTracking['status'] ?? '—' }}</strong>
+                            @if(!empty($cancelTracking['penalty']))
+                                · Penalty: {{ $cancelTracking['penalty'] }}
+                            @endif
+                        </div>
+                        @if(!empty($cancelTracking['tickets']) && is_array($cancelTracking['tickets']))
+                            <ul class="mb-0 mt-1">
+                                @foreach($cancelTracking['tickets'] as $ctTicket)
+                                    <li>
+                                        <code>{{ $ctTicket['ticket_number'] ?? '—' }}</code>
+                                        — {{ $ctTicket['status'] ?? '' }}
+                                        @if(isset($ctTicket['penalty'])) (penalty {{ $ctTicket['penalty'] }})@endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                @endif
+                @if($isTicketed && ! $isCancelled && $isTravelport)
+                    <p class="small text-muted mt-3 mb-0">Ticketed Travelport bookings need void/refund before PNR cancel.</p>
                 @endif
             </div>
         </div>
     @endif
 
-    @if(is_array($gds) && $gds !== [])
+    @if(is_array($gds) && $gds !== [] && ($isTravelport || $isDowntown))
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
-                <h3 class="h6 mb-3">GDS Universal Record</h3>
+                <h3 class="h6 mb-3">{{ $isDowntown ? 'Downtown order snapshot' : 'GDS Universal Record' }}</h3>
                 <div class="row g-3 mb-2">
-                    <div class="col-md-4">
-                        <div class="small text-muted">UR status</div>
-                        <div class="fw-semibold">{{ $gds['ur_status'] ?? '—' }}</div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="small text-muted">Version</div>
-                        <div class="fw-semibold"><code>{{ $gds['version'] ?? ($reservationModel->gds_version ?? '—') }}</code></div>
-                    </div>
+                    @if($isDowntown)
+                        <div class="col-md-3">
+                            <div class="small text-muted">Can ticket</div>
+                            <div class="fw-semibold">{{ !empty($gds['can_ticket']) ? 'Yes' : 'No' }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Can cancel</div>
+                            <div class="fw-semibold">{{ !empty($gds['can_cancel']) ? 'Yes' : 'No' }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Can void</div>
+                            <div class="fw-semibold">{{ !empty($gds['can_void']) ? 'Yes' : 'No' }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Can refund</div>
+                            <div class="fw-semibold">{{ !empty($gds['can_refund']) ? 'Yes' : 'No' }}</div>
+                        </div>
+                    @else
+                        <div class="col-md-4">
+                            <div class="small text-muted">UR status</div>
+                            <div class="fw-semibold">{{ $gds['ur_status'] ?? '—' }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small text-muted">Version</div>
+                            <div class="fw-semibold"><code>{{ $gds['version'] ?? ($reservationModel->gds_version ?? '—') }}</code></div>
+                        </div>
+                    @endif
                     <div class="col-md-4">
                         <div class="small text-muted">Last retrieved</div>
                         <div class="fw-semibold">{{ isset($gds['retrieved_at']) ? ((\App\Support\FlightDisplay::parseDateTime($gds['retrieved_at'])['date'] ?? null) ?: $gds['retrieved_at']) : '—' }}</div>

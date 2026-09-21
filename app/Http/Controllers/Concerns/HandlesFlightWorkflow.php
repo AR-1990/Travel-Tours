@@ -440,8 +440,10 @@ trait HandlesFlightWorkflow
                     ->with('error', 'Ticketing is not configured.');
             }
         } elseif (FlightProvider::isDowntownTravel()) {
-            return redirect()->route($this->flightsRoutePrefix().'.flights.confirmation')
-                ->with('success', 'Downtown Travel bookings are confirmed at purchase — no separate ticketing step.');
+            if (! DowntownTravelIntegrationConfig::isReadyForAir()) {
+                return redirect()->route($this->flightsRoutePrefix().'.flights.confirmation')
+                    ->with('error', 'Ticketing is not configured.');
+            }
         } elseif (! TravelportIntegrationConfig::isReadyForAir()) {
             return redirect()->route($this->flightsRoutePrefix().'.flights.confirmation')
                 ->with('error', 'Ticketing is not configured.');

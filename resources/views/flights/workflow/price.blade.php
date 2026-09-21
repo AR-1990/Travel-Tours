@@ -23,7 +23,10 @@
         <p class="mb-0">Review pricing before creating a reservation.</p>
     </div>
 
-    @include('flights.partials.workflow-steps', ['workflowStep' => 'price'])
+    @include('flights.partials.workflow-steps', [
+        'workflowStep' => 'price',
+        'flightPriceResult' => $flightPriceResult ?? null,
+    ])
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
@@ -34,11 +37,17 @@
 
     @include('flights.partials.status')
 
+    @php
+        $pricedProvider = \App\Support\FlightProvider::fromResult($flightPriceResult ?? null);
+        $isTravelportPrice = $pricedProvider === \App\Support\FlightProvider::TRAVELPORT;
+    @endphp
+
     <div class="mb-3">
         @include('flights.partials.provider-badge', [
-            'provider' => \App\Support\FlightProvider::fromResult($flightPriceResult ?? null),
+            'provider' => $pricedProvider,
         ])
     </div>
+    <p class="small text-muted mb-3">{{ \App\Support\FlightProvider::postBookFlowHint($pricedProvider) }}</p>
 
     @include('frontend.partials.flight-price-summary', ['searchResult' => $flightPriceResult ?? null])
 
@@ -54,8 +63,10 @@
                     @else
                         <span class="text-muted small align-self-center">You need <code>flights.book</code> permission to create reservations.</span>
                     @endif
-                    <a href="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'air_fare_rules']) }}" class="btn btn-outline-secondary btn-sm">Fare rules</a>
-                    <a href="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'seat_map']) }}" class="btn btn-outline-secondary btn-sm">Seat map</a>
+                    @if($isTravelportPrice)
+                        <a href="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'air_fare_rules']) }}" class="btn btn-outline-secondary btn-sm">Fare rules</a>
+                        <a href="{{ route($flightsRoutePrefix . '.flights.operation', ['operation' => 'seat_map']) }}" class="btn btn-outline-secondary btn-sm">Seat map</a>
+                    @endif
                     <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="btn btn-outline-secondary btn-sm">Back to search</a>
                 </div>
             </div>

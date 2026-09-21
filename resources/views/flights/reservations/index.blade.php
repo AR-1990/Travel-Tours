@@ -20,7 +20,7 @@
     <div class="flights-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
         <div>
             <h1><i class="fas fa-folder-open me-2"></i>Reservations</h1>
-            <p class="mb-0">Bookings created from Search → Price → Book. Open a file for passenger, itinerary, and ticketing.</p>
+            <p class="mb-0">Bookings created from Search → Price → Book. Open a file for passenger, itinerary, and provider actions.</p>
         </div>
         <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="btn btn-primary btn-sm">
             <i class="fas fa-search me-1"></i> New search

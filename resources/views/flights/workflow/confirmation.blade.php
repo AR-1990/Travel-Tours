@@ -42,9 +42,13 @@
         'flightPriceResult' => $flightPriceResult ?? null,
         'searchInput' => $searchInput ?? [],
         'flightTicket' => $flightTicket ?? null,
+        'flightProvider' => $flightPriceResult['provider'] ?? ($flightProvider ?? null),
         'canBookFlights' => $canBookFlights ?? false,
         'travelportReady' => $travelportReady ?? false,
-        'ticketActionRoute' => route($flightsRoutePrefix . '.flights.ticket'),
+        'providerReady' => $providerReady ?? $travelportReady ?? false,
+        'ticketActionRoute' => \App\Support\FlightProvider::supportsSeparateTicketing($flightPriceResult['provider'] ?? null)
+            ? route($flightsRoutePrefix . '.flights.ticket')
+            : null,
         'ticketButtonClass' => 'btn btn-primary btn-sm',
         'compact' => true,
     ])

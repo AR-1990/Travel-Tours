@@ -30,9 +30,13 @@
                 'flightPriceResult' => $flightPriceResult ?? null,
                 'flightSearchInput' => $flightSearchInput ?? [],
                 'flightTicket' => $flightTicket ?? null,
+                'flightProvider' => $flightPriceResult['provider'] ?? ($flightProvider ?? null),
                 'canBookFlights' => true,
                 'travelportReady' => $travelportReady ?? false,
-                'ticketActionRoute' => route('frontend.flights.ticket'),
+                'providerReady' => $providerReady ?? $travelportReady ?? false,
+                'ticketActionRoute' => \App\Support\FlightProvider::supportsSeparateTicketing($flightPriceResult['provider'] ?? null)
+                    ? route('frontend.flights.ticket')
+                    : null,
                 'ticketButtonClass' => 'theme-btn',
             ])
 

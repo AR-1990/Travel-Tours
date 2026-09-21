@@ -1,7 +1,8 @@
 @php
-    $anyReady = $anyProviderReady ?? (($travelportReady ?? false) || ($sunspringReady ?? false));
+    $anyReady = $anyProviderReady ?? (($travelportReady ?? false) || ($sunspringReady ?? false) || ($downtownTravelReady ?? false));
     $tpReady = $travelportReady ?? false;
     $ssReady = $sunspringReady ?? false;
+    $dtReady = $downtownTravelReady ?? false;
 @endphp
 
 @if(! $anyReady)
@@ -27,6 +28,11 @@
             <span class="status-pill ok"><i class="fas fa-check-circle"></i> SunSpring ready</span>
         @else
             <span class="status-pill text-muted" style="background:#f3f4f6;color:#6b7280!important"><i class="fas fa-minus-circle"></i> SunSpring off</span>
+        @endif
+        @if($dtReady)
+            <span class="status-pill ok"><i class="fas fa-check-circle"></i> Downtown Travel ready</span>
+        @else
+            <span class="status-pill text-muted" style="background:#f3f4f6;color:#6b7280!important"><i class="fas fa-minus-circle"></i> Downtown Travel off</span>
         @endif
         <span class="status-pill ok text-muted" style="background:#f3f4f6;color:#4b5563!important"><i class="fas fa-cloud"></i> Live search</span>
     </div>
