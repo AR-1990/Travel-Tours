@@ -522,15 +522,11 @@ class DowntownTravelAirService
             return $map[$value];
         }
 
-        if (strlen($value) === 2) {
+        if (strlen($value) === 2 && in_array($value, \App\Support\FlightProvider::isoAlpha2Nationalities(), true)) {
             return $value;
         }
 
-        if (strlen($value) === 3 && isset($map[$value])) {
-            return $map[$value];
-        }
-
-        // Unknown free-text → default US rather than inventing a fake ISO code.
+        // Unknown / invalid codes → default US (form validation should block these first).
         return 'US';
     }
 }

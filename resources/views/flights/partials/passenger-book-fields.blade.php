@@ -137,15 +137,15 @@
                     @if($spec['show_nationality'])
                         <div class="col-md-4">
                             <label class="form-label">Nationality</label>
-                            <input type="text" name="passengers[{{ $index }}][nationality]" class="{{ $control }} text-uppercase"
-                                value="{{ $old['nationality'] ?? $defaultNationality }}"
-                                required
-                                minlength="{{ $spec['nationality_min'] }}"
-                                maxlength="{{ $spec['nationality_max'] }}"
-                                pattern="{{ $spec['nationality_pattern'] }}"
-                                title="{{ $spec['nationality_title'] }}"
-                                placeholder="{{ $spec['nationality_placeholder'] }}"
-                                style="text-transform:uppercase">
+                            @php
+                                $nationalityOptions = \App\Support\FlightProvider::nationalityOptions($providerId);
+                                $selectedNationality = strtoupper((string) ($old['nationality'] ?? $defaultNationality));
+                            @endphp
+                            <select name="passengers[{{ $index }}][nationality]" class="{{ $select }}" required>
+                                @foreach($nationalityOptions as $code => $label)
+                                    <option value="{{ $code }}" @selected($selectedNationality === $code)>{{ $label }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     @endif
                 @else

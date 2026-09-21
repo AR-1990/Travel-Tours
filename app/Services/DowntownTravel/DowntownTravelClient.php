@@ -248,7 +248,7 @@ class DowntownTravelClient
 
         return [
             'ok' => false,
-            'message' => $this->formatErrorMessage($json, $response->status()),
+            'message' => $this->formatErrorMessage($json, $response->status(), $response->body()),
             'http_status' => $response->status(),
             'data' => $json,
             'response_excerpt' => $excerpt,
@@ -258,7 +258,7 @@ class DowntownTravelClient
     /**
      * @param  array<string, mixed>|null  $json
      */
-    protected function formatErrorMessage(?array $json, int $status): string
+    protected function formatErrorMessage(?array $json, int $status, string $rawBody = ''): string
     {
         if (is_array($json)) {
             foreach (['display_message', 'message', 'error_description', 'error', 'detail', 'title'] as $key) {
@@ -289,6 +289,16 @@ class DowntownTravelClient
                     return $joined;
                 }
             }
+        }
+
+        $plain = trim($rawBody);
+        // Downtown sometimes returns a plain-text body (e.g. invalid nationality).
+        if ($plain !== '' && ! str_starts_with($plain, '{') && ! str_starts_with($plain, '[')) {
+            if (strlen($plain) <= 300) {
+                return $plain;
+            }
+
+            return substr($plain, 0, 300).'…';
         }
 
         return 'Downtown Travel request failed (HTTP '.$status.').';

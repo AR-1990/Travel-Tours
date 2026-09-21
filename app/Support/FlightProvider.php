@@ -88,6 +88,64 @@ class FlightProvider
         };
     }
 
+    /**
+     * ISO 3166-1 alpha-2 codes accepted for Downtown Travel nationality.
+     *
+     * @return list<string>
+     */
+    public static function isoAlpha2Nationalities(): array
+    {
+        return [
+            'AE', 'AF', 'AL', 'AM', 'AR', 'AT', 'AU', 'AZ', 'BA', 'BD', 'BE', 'BG', 'BH', 'BR', 'BY',
+            'CA', 'CH', 'CL', 'CN', 'CO', 'CY', 'CZ', 'DE', 'DK', 'DZ', 'EE', 'EG', 'ES', 'ET', 'FI',
+            'FR', 'GB', 'GE', 'GH', 'GR', 'HK', 'HR', 'HU', 'ID', 'IE', 'IL', 'IN', 'IQ', 'IR', 'IS',
+            'IT', 'JO', 'JP', 'KE', 'KG', 'KR', 'KW', 'KZ', 'LB', 'LK', 'LT', 'LU', 'LV', 'LY', 'MA',
+            'MD', 'MK', 'MT', 'MX', 'MY', 'NG', 'NL', 'NO', 'NP', 'NZ', 'OM', 'PH', 'PK', 'PL', 'PT',
+            'QA', 'RO', 'RS', 'RU', 'SA', 'SD', 'SE', 'SG', 'SI', 'SK', 'SO', 'SY', 'TH', 'TJ', 'TM',
+            'TN', 'TR', 'TZ', 'UA', 'UG', 'US', 'UZ', 'VN', 'YE', 'ZA', 'ZW',
+        ];
+    }
+
+    /**
+     * Nationality options for book forms (code => label).
+     *
+     * @return array<string, string>
+     */
+    public static function nationalityOptions(?string $provider = null): array
+    {
+        $provider = strtolower((string) ($provider ?? self::current()));
+        if ($provider === self::SUNSPRING) {
+            return [
+                'IRN' => 'Iran (IRN)',
+                'USA' => 'United States (USA)',
+                'ARE' => 'UAE (ARE)',
+                'GBR' => 'United Kingdom (GBR)',
+                'PAK' => 'Pakistan (PAK)',
+                'IND' => 'India (IND)',
+                'SAU' => 'Saudi Arabia (SAU)',
+                'QAT' => 'Qatar (QAT)',
+                'TUR' => 'Turkey (TUR)',
+            ];
+        }
+
+        $labels = [
+            'US' => 'United States', 'GB' => 'United Kingdom', 'CA' => 'Canada', 'AE' => 'United Arab Emirates',
+            'PK' => 'Pakistan', 'IN' => 'India', 'SA' => 'Saudi Arabia', 'QA' => 'Qatar', 'EG' => 'Egypt',
+            'TR' => 'Turkey', 'IR' => 'Iran', 'IQ' => 'Iraq', 'JO' => 'Jordan', 'KW' => 'Kuwait',
+            'BH' => 'Bahrain', 'OM' => 'Oman', 'AU' => 'Australia', 'DE' => 'Germany', 'FR' => 'France',
+            'IT' => 'Italy', 'ES' => 'Spain', 'NL' => 'Netherlands', 'CN' => 'China', 'JP' => 'Japan',
+            'KR' => 'South Korea', 'PH' => 'Philippines', 'NG' => 'Nigeria', 'ZA' => 'South Africa',
+            'BR' => 'Brazil', 'MX' => 'Mexico',
+        ];
+
+        $out = [];
+        foreach (self::isoAlpha2Nationalities() as $code) {
+            $out[$code] = ($labels[$code] ?? $code).' ('.$code.')';
+        }
+
+        return $out;
+    }
+
     public static function defaultCountryCode(?string $provider = null): string
     {
         return self::requiresTravelDocuments($provider) ? '+98' : '+1';
@@ -173,7 +231,7 @@ class FlightProvider
                 'show_nationality' => true,
             ],
             self::DOWNTOWN_TRAVEL => [
-                'hint' => 'Enter every traveler from your search. Use ISO nationality (US) and a real phone. Passport only if the fare requires it.',
+                'hint' => 'Enter every traveler from your search. Pick a real nationality from the list and use a phone with country code. Passport only if the fare requires it.',
                 'name_pattern' => $namePattern,
                 'name_title' => $nameTitle,
                 'name_min' => 2,
@@ -290,6 +348,12 @@ class FlightProvider
             'country_code' => ['nullable', 'string', 'max:'.$spec['country_code_max'], 'regex:'.$countryRegex],
             'form_of_payment' => ['nullable', 'in:Cash,Credit,Check'],
         ];
+
+        if ($provider === self::DOWNTOWN_TRAVEL) {
+            $iso = self::isoAlpha2Nationalities();
+            $rules['passengers.*.nationality'] = ['nullable', 'string', 'size:2', 'in:'.implode(',', $iso)];
+            $rules['passengers.0.nationality'] = ['required', 'string', 'size:2', 'in:'.implode(',', $iso)];
+        }
 
         if ($spec['docs_required']) {
             $rules['passengers.*.national_id'] = [
