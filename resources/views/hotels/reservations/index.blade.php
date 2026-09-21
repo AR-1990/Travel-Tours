@@ -1,67 +1,60 @@
 @extends('admin.layouts.main')
 
-@section('title', 'Reservations')
-
-@push('styles')
-    @include('flights.partials.styles')
-@endpush
+@section('title', 'Hotel Reservations')
 
 @section('content')
-<div class="container-fluid flights-page">
-    @include('flights.partials.nav')
-
+<div class="container-fluid">
     <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0 small">
-            <li class="breadcrumb-item"><a href="{{ route($flightsRoutePrefix . '.flights.index') }}">Flights</a></li>
-            <li class="breadcrumb-item active">Reservations</li>
+            <li class="breadcrumb-item active">Hotel reservations</li>
         </ol>
     </nav>
 
-    <div class="flights-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
-            <h1><i class="fas fa-folder-open me-2"></i>Reservations</h1>
-            <p class="mb-0">Bookings created from Search → Price → Book. Open a file for passenger, itinerary, and ticketing.</p>
+            <h1 class="h3 mb-1 text-gray-800"><i class="fas fa-hotel me-2"></i>Hotel reservations</h1>
+            <p class="text-muted mb-0">Bookings created from the public hotel search (Downtown Travel / Xconnect).</p>
         </div>
-        <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="btn btn-primary btn-sm">
-            <i class="fas fa-search me-1"></i> New search
+        <a href="{{ route('frontend.hotels.hub') }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">
+            <i class="fas fa-external-link-alt me-1"></i> Open web hotel search
         </a>
     </div>
 
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     @endif
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     @endif
 
     <form method="GET" class="card border-0 shadow-sm mb-3">
         <div class="card-body py-3">
             <div class="row g-2 align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-5">
                     <label class="form-label small text-muted mb-1">Search</label>
-                    <input type="text" name="q" value="{{ $filters['q'] ?? '' }}" class="form-control form-control-sm" placeholder="Locator, passenger, route…">
+                    <input type="text" name="q" value="{{ $filters['q'] ?? '' }}" class="form-control form-control-sm"
+                        placeholder="Reference, hotel, guest, city…">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small text-muted mb-1">Status</label>
                     <select name="status" class="form-select form-select-sm">
                         <option value="">All</option>
-                        <option value="reserved" @selected(($filters['status'] ?? '') === 'reserved')>Reserved</option>
-                        <option value="ticketed" @selected(($filters['status'] ?? '') === 'ticketed')>Ticketed</option>
+                        <option value="confirmed" @selected(($filters['status'] ?? '') === 'confirmed')>Confirmed</option>
                         <option value="cancelled" @selected(($filters['status'] ?? '') === 'cancelled')>Cancelled</option>
                     </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small text-muted mb-1">Provider</label>
                     <select name="provider" class="form-select form-select-sm">
-                        <option value="">All providers</option>
-                        @foreach(($flightProviders ?? \App\Support\FlightProvider::options()) as $option)
+                        <option value="">All</option>
+                        @foreach(($providerOptions ?? []) as $option)
                             <option value="{{ $option['id'] }}" @selected(($filters['provider'] ?? '') === $option['id'])>
                                 {{ $option['label'] }}
                             </option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-outline-primary btn-sm w-100">Filter</button>
                 </div>
             </div>
@@ -74,11 +67,12 @@
                 <thead class="table-light">
                     <tr>
                         <th>Booked</th>
-                        <th>Passenger</th>
-                        <th>Route</th>
+                        <th>Guest</th>
+                        <th>Hotel</th>
+                        <th>Dates</th>
                         <th>Provider</th>
-                        <th>Airline</th>
-                        <th>Locator</th>
+                        <th>Reference</th>
+                        <th>Total</th>
                         <th>Status</th>
                         <th></th>
                     </tr>
@@ -92,28 +86,26 @@
                                 <div class="small text-muted">{{ $reservation->passenger_email }}</div>
                             </td>
                             <td>
-                                <div>{{ $reservation->routeLabel() }}</div>
-                                <div class="small text-muted">{{ optional($reservation->departure_date)->format('d M Y') }}</div>
+                                <div class="fw-semibold">{{ $reservation->hotel_name ?: '—' }}</div>
+                                @if($reservation->city_id)
+                                    <div class="small text-muted">{{ $reservation->city_id }}</div>
+                                @endif
                             </td>
+                            <td class="small">{{ $reservation->datesLabel() }}</td>
                             <td>
-                                @include('flights.partials.provider-badge', [
-                                    'provider' => $reservation->provider(),
-                                    'reservation' => $reservation,
-                                    'size' => 'sm',
-                                ])
+                                @php $badge = \App\Support\HotelProvider::badge($reservation->provider); @endphp
+                                <span class="{{ $badge['css'] }} provider-badge--sm">{{ $badge['label'] }}</span>
                             </td>
-                            <td class="small">{{ $reservation->airlineLabel() }}</td>
-                            <td><code>{{ $reservation->universal_locator ?? $reservation->air_reservation_locator ?? '—' }}</code></td>
+                            <td><code>{{ $reservation->referenceLabel() }}</code></td>
+                            <td class="small">{{ $reservation->total_price }} {{ $reservation->currency }}</td>
                             <td><span class="badge {{ $reservation->statusBadgeClass() }}">{{ $reservation->statusLabel() }}</span></td>
                             <td class="text-end">
-                                <a href="{{ route($flightsRoutePrefix . '.flights.reservations.show', $reservation) }}" class="btn btn-sm btn-outline-primary">Open</a>
+                                <a href="{{ route($hotelsRoutePrefix . '.hotels.reservations.show', $reservation) }}" class="btn btn-sm btn-outline-primary">Open</a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-5">
-                                No reservations yet. <a href="{{ route($flightsRoutePrefix . '.flights.search') }}">Search and book</a> to create one.
-                            </td>
+                            <td colspan="9" class="text-center text-muted py-4">No hotel reservations yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -124,4 +116,10 @@
         @endif
     </div>
 </div>
+<style>
+.provider-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .7rem;border-radius:999px;font-size:.75rem;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.provider-badge--sm{font-size:.68rem;padding:.2rem .55rem}
+.provider-badge--downtown{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+.provider-badge--xconnect{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+</style>
 @endsection

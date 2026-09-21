@@ -94,6 +94,30 @@ class FlightReservation extends Model
         return 'travelport';
     }
 
+    /**
+     * Filter by effective provider (raw_result / price_snapshot / default Travelport).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\FlightReservation>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\FlightReservation>
+     */
+    public function scopeWhereProvider($query, ?string $provider)
+    {
+        $provider = strtolower(trim((string) $provider));
+        if ($provider === '' || ! in_array($provider, \App\Support\FlightProvider::all(), true)) {
+            return $query;
+        }
+
+        // Match FlightReservation::provider() resolution order.
+        return $query->whereRaw(
+            "LOWER(COALESCE(
+                NULLIF(JSON_UNQUOTE(JSON_EXTRACT(raw_result, '$.provider')), ''),
+                NULLIF(JSON_UNQUOTE(JSON_EXTRACT(price_snapshot, '$.provider')), ''),
+                'travelport'
+            )) = ?",
+            [$provider]
+        );
+    }
+
     public function isSunSpring(): bool
     {
         return $this->provider() === 'sunspring';

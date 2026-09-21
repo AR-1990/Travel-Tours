@@ -226,11 +226,13 @@ class PublicHotelController extends Controller
         }
 
         $booking = $result['booking'];
+        $user = Auth::user();
         $reservation = HotelReservation::query()->create([
+            'tenant_id' => $user?->tenant_id,
             'user_id' => Auth::id(),
             'channel' => 'public',
             'provider' => HotelProvider::current(),
-            'status' => 'confirmed',
+            'status' => HotelReservation::STATUS_CONFIRMED,
             'booking_id' => isset($booking['booking_id']) ? (string) $booking['booking_id'] : null,
             'reference_no' => $booking['reference_no'] ?? null,
             'internal_reference' => $booking['internal_reference'] ?? null,
@@ -285,17 +287,44 @@ class PublicHotelController extends Controller
         ]);
     }
 
-    public function reservationsIndex()
+    public function reservationsIndex(Request $request)
     {
-        $query = HotelReservation::query()->latest();
+        $query = HotelReservation::query()->latest('booked_at')->latest('id');
         if (Auth::check()) {
             $query->where('user_id', Auth::id());
         } else {
             $query->where('channel', 'public')->limit(25);
         }
 
+        if ($request->filled('q')) {
+            $q = trim((string) $request->input('q'));
+            $query->where(function ($builder) use ($q) {
+                $builder->where('reference_no', 'like', "%{$q}%")
+                    ->orWhere('internal_reference', 'like', "%{$q}%")
+                    ->orWhere('booking_id', 'like', "%{$q}%")
+                    ->orWhere('hotel_name', 'like', "%{$q}%")
+                    ->orWhere('city_id', 'like', "%{$q}%")
+                    ->orWhere('passenger_first', 'like', "%{$q}%")
+                    ->orWhere('passenger_last', 'like', "%{$q}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('provider')) {
+            $query->where('provider', $request->input('provider'));
+        }
+
         return view('frontend.hotels.reservations-index', [
-            'reservations' => $query->paginate(20),
+            'reservations' => $query->paginate(20)->withQueryString(),
+            'providerOptions' => HotelProvider::options(),
+            'filters' => [
+                'q' => $request->input('q'),
+                'status' => $request->input('status'),
+                'provider' => $request->input('provider'),
+            ],
         ]);
     }
 
@@ -331,9 +360,9 @@ class PublicHotelController extends Controller
         }
 
         if (! $reservation->isXconnect()) {
-            $reservation->status = 'cancelled';
-            $reservation->cancelled_at = now();
-            $reservation->save();
+        $reservation->status = HotelReservation::STATUS_CANCELLED;
+        $reservation->cancelled_at = now();
+        $reservation->save();
 
             return back()->with('success', 'Hotel booking cancelled locally.');
         }
@@ -359,7 +388,7 @@ class PublicHotelController extends Controller
             return back()->with('error', $cancel['message']);
         }
 
-        $reservation->status = 'cancelled';
+        $reservation->status = HotelReservation::STATUS_CANCELLED;
         $reservation->cancelled_at = now();
         $reservation->raw_result = array_merge(
             is_array($reservation->raw_result) ? $reservation->raw_result : [],

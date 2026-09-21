@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\System\Tenant;
+use App\Models\Users\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HotelReservation extends Model
 {
+    public const STATUS_CONFIRMED = 'confirmed';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $fillable = [
         'tenant_id',
         'user_id',
@@ -58,7 +64,12 @@ class HotelReservation extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Users\User::class);
+        return $this->belongsTo(User::class);
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     public function isXconnect(): bool
@@ -79,6 +90,54 @@ class HotelReservation extends Model
     public function isCancelled(): bool
     {
         return $this->cancelled_at !== null
-            || strtolower((string) $this->status) === 'cancelled';
+            || strtolower((string) $this->status) === self::STATUS_CANCELLED;
+    }
+
+    public function passengerName(): string
+    {
+        return trim(($this->passenger_prefix ? $this->passenger_prefix.' ' : '').($this->passenger_first ?? '').' '.($this->passenger_last ?? ''));
+    }
+
+    public function stayLabel(): string
+    {
+        $hotel = trim((string) ($this->hotel_name ?: 'Hotel'));
+        $city = trim((string) ($this->city_id ?? ''));
+
+        return $city !== '' ? $hotel.' · '.$city : $hotel;
+    }
+
+    public function datesLabel(): string
+    {
+        $in = optional($this->check_in)->format('d M Y');
+        $out = optional($this->check_out)->format('d M Y');
+
+        if ($in && $out) {
+            return $in.' → '.$out;
+        }
+
+        return $in ?: ($out ?: '—');
+    }
+
+    public function statusLabel(): string
+    {
+        return match (strtolower((string) $this->status)) {
+            self::STATUS_CANCELLED => 'Cancelled',
+            self::STATUS_CONFIRMED => 'Confirmed',
+            default => ucfirst((string) ($this->status ?: 'unknown')),
+        };
+    }
+
+    public function statusBadgeClass(): string
+    {
+        return match (strtolower((string) $this->status)) {
+            self::STATUS_CANCELLED => 'bg-danger',
+            self::STATUS_CONFIRMED => 'bg-success',
+            default => 'bg-secondary',
+        };
+    }
+
+    public function referenceLabel(): string
+    {
+        return (string) ($this->reference_no ?: $this->internal_reference ?: $this->booking_id ?: '—');
     }
 }

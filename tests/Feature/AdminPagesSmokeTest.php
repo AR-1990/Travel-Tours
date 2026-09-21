@@ -21,6 +21,8 @@ class AdminPagesSmokeTest extends TestCase
             'admin.tenants.index',
             'admin.blogs.index',
             'admin.debtor-types.index',
+            'admin.hotels.reservations.index',
+            'admin.flights.reservations.index',
         ];
 
         foreach ($routes as $name) {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\BlogController as AdminBlogController;
 use App\Http\Controllers\Admin\DebtorTypeController;
 use App\Http\Controllers\Admin\FlightController as AdminFlightController;
+use App\Http\Controllers\Admin\HotelController as AdminHotelController;
 use App\Http\Controllers\Admin\IntegrationsController;
 use App\Http\Controllers\Admin\ManagersController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TenantController;
 use App\Http\Controllers\Agent\DashboardController as AgentDashboardController;
 use App\Http\Controllers\Agent\FlightController as AgentFlightController;
+use App\Http\Controllers\Agent\HotelController as AgentHotelController;
 use App\Http\Controllers\Agent\PermissionController as AgentPermissionController;
 use App\Http\Controllers\Agent\RoleController as AgentRoleController;
 use App\Http\Controllers\Agent\SubAgentController as AgentSubAgentController;
@@ -25,6 +27,7 @@ use App\Http\Controllers\PublicFlightController;
 use App\Http\Controllers\PublicHotelController;
 use App\Http\Controllers\SubAgent\DashboardController as SubAgentDashboardController;
 use App\Http\Controllers\SubAgent\FlightController as SubAgentFlightController;
+use App\Http\Controllers\SubAgent\HotelController as SubAgentHotelController;
 use App\Http\Controllers\SubAgent\PermissionController as SubAgentPermissionController;
 use App\Http\Controllers\SubAgent\RoleController as SubAgentRoleController;
 use App\Http\Controllers\SubAgent\SubAgentController as SubAgentManagementController;
@@ -265,6 +268,10 @@ Route::middleware(['auth', RoleMiddleware::class.':1'])->prefix('admin')->name('
     Route::post('/flights/reservations/{id}/retrieve', [AdminFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
     Route::post('/flights/reservations/{id}/cancel', [AdminFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AdminFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
+
+    Route::get('/hotels/reservations', [AdminHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
+    Route::get('/hotels/reservations/{id}', [AdminHotelController::class, 'reservationsShow'])->name('hotels.reservations.show')->whereNumber('id');
+    Route::post('/hotels/reservations/{id}/cancel', [AdminHotelController::class, 'reservationsCancel'])->name('hotels.reservations.cancel')->whereNumber('id');
 });
 
 Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('agent')->name('agent.')->group(function () {
@@ -309,6 +316,10 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('agent')->na
     Route::post('/flights/reservations/{id}/retrieve', [AgentFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
     Route::post('/flights/reservations/{id}/cancel', [AgentFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [AgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
+
+    Route::get('/hotels/reservations', [AgentHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
+    Route::get('/hotels/reservations/{id}', [AgentHotelController::class, 'reservationsShow'])->name('hotels.reservations.show')->whereNumber('id');
+    Route::post('/hotels/reservations/{id}/cancel', [AgentHotelController::class, 'reservationsCancel'])->name('hotels.reservations.cancel')->whereNumber('id');
 });
 
 Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('sub-agent')->name('subagent.')->group(function () {
@@ -335,6 +346,10 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('sub-agent')
     Route::post('/flights/reservations/{id}/retrieve', [SubAgentFlightController::class, 'reservationsRetrieve'])->name('flights.reservations.retrieve')->whereNumber('id');
     Route::post('/flights/reservations/{id}/cancel', [SubAgentFlightController::class, 'reservationsCancel'])->name('flights.reservations.cancel')->whereNumber('id');
     Route::match(['get', 'post'], '/flights/ops/{operation}', [SubAgentFlightController::class, 'operation'])->name('flights.operation')->where('operation', '[a-z0-9_]+');
+
+    Route::get('/hotels/reservations', [SubAgentHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
+    Route::get('/hotels/reservations/{id}', [SubAgentHotelController::class, 'reservationsShow'])->name('hotels.reservations.show')->whereNumber('id');
+    Route::post('/hotels/reservations/{id}/cancel', [SubAgentHotelController::class, 'reservationsCancel'])->name('hotels.reservations.cancel')->whereNumber('id');
 });
 
 /*

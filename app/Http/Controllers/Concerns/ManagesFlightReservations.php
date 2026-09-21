@@ -6,6 +6,7 @@ use App\Models\FlightReservation;
 use App\Services\SunSpring\SunSpringIntegrationConfig;
 use App\Services\Travelport\TravelportAirService;
 use App\Services\Travelport\TravelportIntegrationConfig;
+use App\Support\FlightProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -55,13 +56,19 @@ trait ManagesFlightReservations
             $query->where('status', $request->input('status'));
         }
 
+        if ($request->filled('provider')) {
+            $query->whereProvider((string) $request->input('provider'));
+        }
+
         $reservations = $query->paginate(20)->withQueryString();
 
         return view('flights.reservations.index', array_merge($this->travelportViewBase(), [
             'reservations' => $reservations,
+            'flightProviders' => FlightProvider::options(),
             'filters' => [
                 'q' => $request->input('q'),
                 'status' => $request->input('status'),
+                'provider' => $request->input('provider'),
             ],
         ]));
     }

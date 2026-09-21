@@ -132,11 +132,23 @@ class PublicFlightController extends Controller
             });
         }
 
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('provider')) {
+            $query->whereProvider((string) $request->input('provider'));
+        }
+
         $reservations = $query->paginate(20)->withQueryString();
 
         return view('frontend.flight-reservations', array_merge($this->publicFlightViewData(session('public.flight_search', [])), [
             'reservations' => $reservations,
-            'filters' => ['q' => $request->input('q')],
+            'filters' => [
+                'q' => $request->input('q'),
+                'status' => $request->input('status'),
+                'provider' => $request->input('provider'),
+            ],
         ]));
     }
 

@@ -24,12 +24,33 @@
             @endif
 
             <form method="GET" class="mb-4">
-                <div class="row g-2">
-                    <div class="col-md-8">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label small text-muted mb-1">Search</label>
                         <input type="text" name="q" value="{{ $filters['q'] ?? '' }}" class="form-control" placeholder="Search by locator, name, or route">
                     </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="theme-btn w-100">Search</button>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted mb-1">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="">All</option>
+                            <option value="reserved" @selected(($filters['status'] ?? '') === 'reserved')>Reserved</option>
+                            <option value="ticketed" @selected(($filters['status'] ?? '') === 'ticketed')>Ticketed</option>
+                            <option value="cancelled" @selected(($filters['status'] ?? '') === 'cancelled')>Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted mb-1">Provider</label>
+                        <select name="provider" class="form-select">
+                            <option value="">All providers</option>
+                            @foreach(($flightProviders ?? \App\Support\FlightProvider::options()) as $option)
+                                <option value="{{ $option['id'] }}" @selected(($filters['provider'] ?? '') === $option['id'])>
+                                    {{ $option['label'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="theme-btn w-100">Filter</button>
                     </div>
                 </div>
             </form>
@@ -41,7 +62,7 @@
                             <th>Booked</th>
                             <th>Passenger</th>
                             <th>Route</th>
-                            <th>API</th>
+                            <th>Provider</th>
                             <th>Locator</th>
                             <th>Status</th>
                             <th></th>
