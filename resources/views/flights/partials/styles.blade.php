@@ -1,12 +1,12 @@
 <style>
     .flights-page { max-width: 1200px; }
     .flights-hero {
-        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #a855f7 100%);
-        border-radius: 1rem;
+        background: linear-gradient(120deg, #0c2c7a 0%, #053750 58%, #ffb400 100%);
+        border-radius: 1.25rem;
         color: #fff;
-        padding: 1.75rem 2rem;
+        padding: 1.5rem 1.75rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 12px 40px rgba(79, 70, 229, 0.25);
+        box-shadow: 0 18px 45px rgba(12, 44, 122, 0.22);
     }
     .flights-hero h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.35rem; }
     .flights-hero p { margin: 0; opacity: 0.92; font-size: 0.95rem; }
@@ -27,9 +27,9 @@
         border: 1px solid #e5e7eb;
         transition: all 0.2s;
     }
-    .flights-nav a:hover { border-color: #6366f1; color: #4f46e5; }
+    .flights-nav a:hover { border-color: #0aa6bb; color: #0c2c7a; }
     .flights-nav a.active {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        background: linear-gradient(135deg, #0aa6bb, #053750);
         color: #fff;
         border-color: transparent;
     }
@@ -137,10 +137,10 @@
     .flight-results-pagination .page-link {
         border-radius: 0.5rem;
         margin: 0 0.15rem;
-        color: #4f46e5;
+        color: #0c2c7a;
     }
     .flight-results-pagination .page-item.active .page-link {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        background: linear-gradient(135deg, #0aa6bb, #053750);
         border-color: transparent;
     }
     .flight-search-card {
@@ -173,7 +173,7 @@
     }
     .trip-type-tabs input:checked + span {
         background: #fff;
-        color: #4f46e5;
+        color: #0c2c7a;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     .flight-field-label {
@@ -191,7 +191,7 @@
         left: 0.85rem;
         top: 50%;
         transform: translateY(-50%);
-        color: #6366f1;
+        color: #0aa6bb;
         z-index: 2;
         pointer-events: none;
     }
@@ -204,8 +204,8 @@
         min-height: 48px;
     }
     .airport-picker-display:focus {
-        border-color: #6366f1;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        border-color: #0aa6bb;
+        box-shadow: 0 0 0 3px rgba(10, 166, 187, 0.15);
     }
     .airport-picker-list {
         position: absolute;
@@ -234,12 +234,12 @@
     }
     .airport-picker-item:hover,
     .airport-picker-item.active {
-        background: #eef2ff;
+        background: #e6f7f9;
     }
     .airport-picker-item-code {
         grid-row: 1 / span 2;
         font-weight: 700;
-        color: #4f46e5;
+        color: #0c2c7a;
         font-size: 0.9rem;
     }
     .airport-picker-item-main {
@@ -263,13 +263,13 @@
         border-radius: 50%;
         border: 1px solid #e5e7eb;
         background: #fff;
-        color: #6366f1;
+        color: #0aa6bb;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-top: 1.5rem;
     }
-    .flight-swap-btn:hover { background: #eef2ff; border-color: #6366f1; }
+    .flight-swap-btn:hover { background: #e6f7f9; border-color: #0aa6bb; }
     .popular-routes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
     .popular-routes button {
         font-size: 0.8rem;
@@ -279,7 +279,7 @@
         background: #f9fafb;
         color: #374151;
     }
-    .popular-routes button:hover { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
+    .popular-routes button:hover { background: #e6f7f9; border-color: #0aa6bb; color: #0c2c7a; }
     .flight-result-card {
         background: #fff;
         border: 1px solid #e5e7eb;
@@ -289,15 +289,15 @@
         transition: box-shadow 0.2s, border-color 0.2s;
     }
     .flight-result-card:hover {
-        border-color: #c7d2fe;
-        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12);
+        border-color: #0aa6bb;
+        box-shadow: 0 8px 24px rgba(12, 44, 122, 0.12);
     }
     .carrier-badge {
         width: 48px;
         height: 48px;
         border-radius: 0.75rem;
-        background: linear-gradient(135deg, #eef2ff, #e0e7ff);
-        color: #4338ca;
+        background: linear-gradient(135deg, #e8eef8, #d4eef2);
+        color: #0c2c7a;
         font-weight: 700;
         font-size: 0.85rem;
         display: flex;
@@ -332,7 +332,7 @@
         position: relative;
         background: #fff;
         padding: 0 0.5rem;
-        color: #6366f1;
+        color: #0aa6bb;
     }
     .price-block { text-align: right; }
     .price-amount { font-size: 1.5rem; font-weight: 700; color: #111827; }
@@ -371,9 +371,9 @@
     }
     .provider-badge--sm { font-size: 0.68rem; padding: 0.2rem 0.55rem; }
     .provider-badge--travelport {
-        background: #eef2ff;
-        color: #3730a3;
-        border-color: #c7d2fe;
+        background: #e8eef8;
+        color: #0c2c7a;
+        border-color: #9db4d8;
     }
     .provider-badge--sunspring {
         background: #ecfdf5;

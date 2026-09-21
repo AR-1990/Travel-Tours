@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid flights-page">
+<div class="container-fluid panel-page flights-page">
     @include('flights.partials.nav')
 
     <nav aria-label="breadcrumb" class="mb-3">
@@ -17,10 +17,10 @@
         </ol>
     </nav>
 
-    <div class="flights-hero py-3">
-        <h1 class="h4 mb-1">{{ $currentOperation['label'] ?? $operationKey }}</h1>
-        <p class="small mb-0 opacity-90">{{ $currentOperation['description'] ?? '' }}</p>
-    </div>
+    @include('admin.partials.page-header', [
+        'title' => $currentOperation['label'] ?? $operationKey,
+        'subtitle' => $currentOperation['description'] ?? '',
+    ])
 
     @include('flights.partials.operation-help')
 

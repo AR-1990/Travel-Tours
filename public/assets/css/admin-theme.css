@@ -1,6 +1,15 @@
 :root {
     --header-height: 72px;
     --sidebar-width: 300px;
+    --panel-navy: #0c2c7a;
+    --panel-teal: #053750;
+    --panel-cyan: #0aa6bb;
+    --panel-gold: #ffb400;
+    --panel-ink: #0f172a;
+    --panel-muted: #64748b;
+    --panel-border: #e9eef5;
+    --panel-surface: #ffffff;
+    --panel-bg: #f8fafc;
 }
 
 body {
@@ -101,17 +110,21 @@ body {
 }
 
 .card-modern {
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    background: var(--panel-surface);
+    border: 1px solid var(--panel-border);
     border-radius: 1rem;
     padding: 1.5rem;
-    transition: all 0.3s;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .card-modern:hover {
-    border-color: #053750;
-    box-shadow: 0 10px 25px rgba(36, 189, 199, 0.15);
-    transform: translateY(-2px);
+    border-color: var(--panel-cyan);
+    box-shadow: 0 10px 24px rgba(10, 166, 187, 0.12);
+}
+
+.text-indigo-600 {
+    color: var(--panel-navy) !important;
 }
 
 .btn-primary {
@@ -255,6 +268,218 @@ body {
     background: rgba(12, 44, 122, 0.05);
 }
 
+/* —— Shared panel chrome (admin / agent / sub-agent inner pages) —— */
+.panel-page,
+.flights-page {
+    max-width: 1200px;
+}
+
+.panel-hero,
+.flights-hero {
+    background: linear-gradient(120deg, var(--panel-navy) 0%, var(--panel-teal) 58%, var(--panel-gold) 100%);
+    border-radius: 1.25rem;
+    color: #fff;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 18px 45px rgba(12, 44, 122, 0.22);
+    position: relative;
+    overflow: hidden;
+}
+
+.panel-hero::after,
+.flights-hero::after {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    pointer-events: none;
+}
+
+.panel-hero > *,
+.flights-hero > * {
+    position: relative;
+    z-index: 1;
+}
+
+.panel-hero h1,
+.flights-hero h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin: 0 0 0.35rem;
+    color: #fff;
+}
+
+.panel-hero p,
+.flights-hero p {
+    margin: 0;
+    opacity: 0.92;
+    font-size: 0.95rem;
+}
+
+.panel-hero .btn,
+.flights-hero .btn {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.panel-hero .btn-primary,
+.flights-hero .btn-primary {
+    background: #fff;
+    color: var(--panel-navy);
+    border: none;
+    font-weight: 600;
+}
+
+.panel-hero .btn-primary:hover,
+.flights-hero .btn-primary:hover {
+    background: #f1f5f9;
+    color: var(--panel-navy);
+}
+
+.panel-hero .btn-outline-light,
+.flights-hero .btn-outline-light {
+    border-color: rgba(255, 255, 255, 0.55);
+    color: #fff;
+}
+
+.panel-nav,
+.flights-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.panel-nav a,
+.flights-nav a {
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: #4b5563;
+    background: #fff;
+    border: 1px solid var(--panel-border);
+    transition: all 0.2s;
+}
+
+.panel-nav a:hover,
+.flights-nav a:hover {
+    border-color: var(--panel-cyan);
+    color: var(--panel-navy);
+}
+
+.panel-nav a.active,
+.flights-nav a.active {
+    background: linear-gradient(135deg, var(--panel-teal), var(--panel-cyan));
+    color: #fff;
+    border-color: transparent;
+}
+
+.panel-surface {
+    background: var(--panel-surface);
+    border: 1px solid var(--panel-border);
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    padding: 1.5rem;
+}
+
+.panel-surface > .card-body {
+    padding: 0;
+}
+
+.panel-surface.panel-surface--flush {
+    padding: 0;
+    overflow: hidden;
+}
+
+.panel-surface.panel-surface--flush .card-body,
+.panel-surface.panel-surface--flush .table-responsive {
+    padding: 1.25rem 1.5rem;
+}
+
+.panel-breadcrumb .breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin-bottom: 0.75rem;
+}
+
+.panel-breadcrumb .breadcrumb-item a {
+    color: var(--panel-cyan);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.panel-breadcrumb .breadcrumb-item.active {
+    color: var(--panel-muted);
+}
+
+.panel-alert {
+    border: 0;
+    border-radius: 0.85rem;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.text-gray-800 {
+    color: var(--panel-ink) !important;
+}
+
+.text-gray-600 {
+    color: var(--panel-muted) !important;
+}
+
+.main-content .card:not(.border-0):not(.card-modern) {
+    border: 1px solid var(--panel-border);
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.main-content .table thead th {
+    color: var(--panel-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    border-bottom-width: 1px;
+}
+
+.main-content .form-control,
+.main-content .form-select {
+    border-radius: 0.65rem;
+    border-color: #dbe3ef;
+}
+
+.main-content .form-control:focus,
+.main-content .form-select:focus {
+    border-color: var(--panel-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(10, 166, 187, 0.15);
+}
+
+.main-content .btn-outline-primary {
+    color: var(--panel-navy);
+    border-color: rgba(12, 44, 122, 0.3);
+}
+
+.main-content .btn-outline-primary:hover {
+    background: var(--panel-navy);
+    border-color: var(--panel-navy);
+    color: #fff;
+}
+
+.main-content .page-link {
+    color: var(--panel-navy);
+    border-radius: 0.5rem;
+    margin: 0 0.12rem;
+}
+
+.main-content .page-item.active .page-link {
+    background: linear-gradient(135deg, var(--panel-teal), var(--panel-cyan));
+    border-color: transparent;
+}
+
 @media (max-width: 768px) {
     .sidebar {
         transform: translateX(-100%);
@@ -268,6 +493,11 @@ body {
     .main-content {
         margin-left: 0;
         width: 100%;
+        padding: 1.25rem;
+    }
+
+    .panel-hero,
+    .flights-hero {
         padding: 1.25rem;
     }
 }

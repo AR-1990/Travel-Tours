@@ -3,13 +3,23 @@
 @section('title', 'Agents')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid panel-page">
+    @include('admin.partials.page-header', [
+        'title' => 'Agents',
+        'subtitle' => 'Agency requests, approvals, and agent accounts.',
+        'icon' => 'fas fa-building',
+    ])
+
+    @include('admin.partials.flash')
+
     @include('admin.tenants._agency-create-form')
 
-    <div class="card-modern">
-        <h3 class="h4 mb-3">Agent requests &amp; agencies</h3>
+    <div class="panel-surface panel-surface--flush">
+        <div class="card-body pb-0">
+            <h3 class="h5 mb-3">Agent requests &amp; agencies</h3>
+        </div>
         <div class="table-responsive">
-            <table class="table table-striped">
+            <table class="table table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>

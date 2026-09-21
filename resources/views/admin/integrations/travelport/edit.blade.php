@@ -3,36 +3,24 @@
 @section('title', 'Travelport — Integrations')
 
 @section('content')
-<div class="container-fluid">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('admin.integrations.index') }}">Integrations</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Travelport</li>
-        </ol>
-    </nav>
+<div class="container-fluid panel-page">
+    @include('admin.partials.page-header', [
+        'title' => 'Travelport Universal API',
+        'subtitle' => 'SOAP credentials and endpoints. Ping first, then air shopping, availability, and booking.',
+        'icon' => 'fas fa-globe',
+        'actions' => '<a href="'.e(route('admin.integrations.index')).'" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i> Back</a>',
+    ])
 
-    <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
-        <h1 class="h3 mb-0 text-gray-800">Travelport Universal API</h1>
+    @include('admin.partials.flash')
+
+    <div class="mb-3">
         @include('admin.integrations.partials.environment-badge', [
             'environment' => $travelport['environment'] ?? 'pp',
         ])
-        <p class="text-muted mb-0 w-100">SOAP credentials and endpoints. Step 1: Ping. Later: Air shopping, availability, booking.</p>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0 small">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-    @endif
-
-    <div class="card-modern p-4">
+    <div class="panel-surface">
+        <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
             @if($travelportHasDbRow)
                 <span class="badge bg-success">Saved in <code>integrations</code> table</span>
@@ -207,6 +195,7 @@
                 @endif
             </div>
         @endif
+        </div>
     </div>
 </div>
 @endsection

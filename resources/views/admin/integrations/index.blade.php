@@ -3,18 +3,15 @@
 @section('title', 'Integrations')
 
 @section('content')
-<div class="container-fluid">
-    <div class="mb-4">
-        <h1 class="h3 mb-1 text-gray-800">Integrations</h1>
-        <p class="text-muted mb-0">Each integration has its own record in the <code>integrations</code> table (encrypted credentials). Add new providers in <code>config/integrations.php</code>, then wire their admin screens and persistence.</p>
-    </div>
+<div class="container-fluid panel-page">
+    
+@include('admin.partials.page-header', [
+        'title' => 'Integrations',
+        'subtitle' => 'Configure supplier APIs. Credentials are stored encrypted per integration.',
+        'icon' => 'fas fa-plug',
+    ])
 
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
+    @include('admin.partials.flash')
 
     <div class="row g-4">
         @foreach ($items as $item)

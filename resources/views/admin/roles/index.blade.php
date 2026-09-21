@@ -7,38 +7,22 @@
     $user = auth()->user();
     $panelPrefix = $user && $user->user_type === 'tenant_admin' ? 'agent' : ($user && $user->user_type === 'sub_agent' ? 'subagent' : 'admin');
 @endphp
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1 text-gray-800">Roles Management</h1>
-            <p class="text-gray-600 mb-0">Manage system roles and their permissions</p>
-        </div>
-        <a href="{{ route($panelPrefix . '.roles.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Add New Role
-        </a>
-    </div>
+<div class="container-fluid panel-page">
+    
+@include('admin.partials.page-header', [
+        'title' => 'Roles',
+        'subtitle' => 'Define roles and attach permissions for your team.',
+        'icon' => 'fas fa-user-shield',
+        'actions' => '<a href="'.e(route($panelPrefix.'.roles.create')).'" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> Add New Role</a>',
+    ])
 
-    <!-- Alerts -->
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+    @include('admin.partials.flash')
 
     <!-- Roles Grid -->
     <div class="row g-4">
         @forelse($roles as $role)
             <div class="col-md-6 col-lg-4">
-                <div class="card-modern h-100">
+                <div class="panel-surface h-100">
                     <div class="d-flex justify-content-between align-items-start mb-3">
                         <div>
                             <h3 class="h5 mb-1 text-gray-800">{{ $role->name }}</h3>
@@ -87,7 +71,7 @@
             </div>
         @empty
             <div class="col-12">
-                <div class="card-modern text-center py-5">
+                <div class="panel-surface text-center py-5">
                     <i class="fas fa-shield-alt fa-3x text-gray-400 mb-3"></i>
                     <p class="text-gray-600 mb-0">No roles found.</p>
                 </div>

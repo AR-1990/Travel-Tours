@@ -3,26 +3,23 @@
 @section('title', 'Edit Blog')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-1">Edit Blog</h1>
-                    <p class="text-muted mb-0">Update blog content and SEO details.</p>
-                </div>
-                <a href="{{ route('admin.blogs.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Blogs
-                </a>
-            </div>
+<div class="container-fluid panel-page">
+    @include('admin.partials.page-header', [
+        'title' => 'Edit blog',
+        'subtitle' => 'Update blog content and SEO details.',
+        'icon' => 'fas fa-newspaper',
+        'actions' => '<a href="'.e(route('admin.blogs.index')).'" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i> Back</a>',
+    ])
 
-            <div class="card-modern">
-                <form action="{{ route('admin.blogs.update', $blog->id) }}" method="POST" enctype="multipart/form-data">
-                    @csrf
-                    @method('PUT')
-                    @include('admin.blogs.partials.form', ['blog' => $blog])
-                </form>
-            </div>
+    @include('admin.partials.flash')
+
+    <div class="panel-surface">
+        <div class="card-body">
+            <form action="{{ route('admin.blogs.update', $blog->id) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                @include('admin.blogs.partials.form', ['blog' => $blog])
+            </form>
         </div>
     </div>
 </div>

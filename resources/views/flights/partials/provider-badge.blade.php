@@ -19,7 +19,7 @@
 <style>
 .provider-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .7rem;border-radius:999px;font-size:.75rem;font-weight:600;letter-spacing:.02em;border:1px solid transparent;white-space:nowrap}
 .provider-badge--sm{font-size:.68rem;padding:.2rem .55rem}
-.provider-badge--travelport{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}
+.provider-badge--travelport{background:#e8eef8;color:#0c2c7a;border-color:#9db4d8}
 .provider-badge--sunspring{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
 .provider-badge--downtown{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
 .env-badge{display:inline-flex;align-items:center;padding:.2rem .55rem;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.03em;border:1px solid transparent;white-space:nowrap}

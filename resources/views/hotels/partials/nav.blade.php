@@ -8,7 +8,7 @@
     $hasPrebook = session('panel.hotel_prebook.'.$prefix);
     $hasBooking = session('panel.hotel_booking.'.$prefix);
 @endphp
-<nav class="flights-nav mb-3" aria-label="Hotel section">
+<nav class="panel-nav mb-3" aria-label="Hotel section">
     <a href="{{ route($dashboardRoute) }}" class="{{ request()->routeIs($dashboardRoute) ? 'active' : '' }}">
         <i class="fas fa-home me-1"></i> Dashboard
     </a>

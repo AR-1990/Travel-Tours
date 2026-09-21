@@ -3,25 +3,22 @@
 @section('title', 'Create Blog')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-1">Create Blog</h1>
-                    <p class="text-muted mb-0">Add a new SEO-ready blog post.</p>
-                </div>
-                <a href="{{ route('admin.blogs.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Blogs
-                </a>
-            </div>
+<div class="container-fluid panel-page">
+    @include('admin.partials.page-header', [
+        'title' => 'Create blog',
+        'subtitle' => 'Add a new SEO-ready blog post.',
+        'icon' => 'fas fa-newspaper',
+        'actions' => '<a href="'.e(route('admin.blogs.index')).'" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i> Back</a>',
+    ])
 
-            <div class="card-modern">
-                <form action="{{ route('admin.blogs.store') }}" method="POST" enctype="multipart/form-data">
-                    @csrf
-                    @include('admin.blogs.partials.form')
-                </form>
-            </div>
+    @include('admin.partials.flash')
+
+    <div class="panel-surface">
+        <div class="card-body">
+            <form action="{{ route('admin.blogs.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                @include('admin.blogs.partials.form')
+            </form>
         </div>
     </div>
 </div>

@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid flights-page">
+<div class="container-fluid panel-page flights-page">
     @include('flights.partials.nav')
 
     <nav aria-label="breadcrumb" class="mb-2">
@@ -19,10 +19,11 @@
         </ol>
     </nav>
 
-    <div class="flights-hero">
-        <h1><i class="fas fa-user me-2"></i>Passenger details</h1>
-        <p class="mb-0">Enter traveler information to create the reservation.</p>
-    </div>
+    @include('admin.partials.page-header', [
+        'title' => 'Passenger details',
+        'subtitle' => 'Enter traveler information to create the reservation.',
+        'icon' => 'fas fa-user',
+    ])
 
     @include('flights.partials.workflow-steps', [
         'workflowStep' => 'book',

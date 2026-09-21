@@ -3,38 +3,34 @@
 @section('title', 'Dashboard')
 
 @section('content')
-<div class="container-fluid">
-    @php
-        $currentUser = auth()->user();
-        $isSuperAdmin = $currentUser && $currentUser->user_type === 'super_admin';
-        $isTenantAdmin = $currentUser && $currentUser->user_type === 'tenant_admin';
-        $isSubAgent = $currentUser && $currentUser->user_type === 'sub_agent';
-    @endphp
+@php
+    $currentUser = auth()->user();
+    $isSuperAdmin = $currentUser && $currentUser->user_type === 'super_admin';
+    $isTenantAdmin = $currentUser && $currentUser->user_type === 'tenant_admin';
+    $isSubAgent = $currentUser && $currentUser->user_type === 'sub_agent';
 
-    <div class="tavelo-hero mb-4">
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 tavelo-hero-content">
-            <div>
-                <span class="tavelo-brand-chip mb-3">
-                    <img src="{{ asset('assets/img/logo/logo.png') }}" alt="Tavelo logo">
-                    Tavelo Admin
-                </span>
-                <h1 class="h3 mb-2 fw-bold">
-                    @if($isSuperAdmin)
-                        Super Admin Dashboard
-                    @elseif($isTenantAdmin)
-                        Agent Admin Dashboard
-                    @elseif($isSubAgent)
-                        Sub Agent Dashboard
-                    @else
-                        Admin Dashboard
-                    @endif
-                </h1>
-                <p class="mb-0 opacity-90">
-                    Welcome to Tavelo. Monitor your operations, team activity, and travel modules from one clean control center.
-                </p>
-            </div>
-        </div>
-    </div>
+    if ($isSuperAdmin) {
+        $dashTitle = 'Super Admin Dashboard';
+        $dashSubtitle = 'Monitor operations, team activity, and travel modules.';
+    } elseif ($isTenantAdmin) {
+        $dashTitle = 'Agent Admin Dashboard';
+        $dashSubtitle = 'Monitor your agency operations and team activity.';
+    } elseif ($isSubAgent) {
+        $dashTitle = 'Sub Agent Dashboard';
+        $dashSubtitle = 'Access flights, bookings, and modules from one place.';
+    } else {
+        $dashTitle = 'Admin Dashboard';
+        $dashSubtitle = 'Welcome to Tavelo. Monitor your operations from one control center.';
+    }
+@endphp
+<div class="container-fluid panel-page">
+    @include('admin.partials.page-header', [
+        'title' => $dashTitle,
+        'subtitle' => $dashSubtitle,
+        'icon' => 'fas fa-tachometer-alt',
+    ])
+
+    @include('admin.partials.flash')
 
     <div class="row g-4">
         @if($isSuperAdmin)

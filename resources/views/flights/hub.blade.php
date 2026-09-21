@@ -7,13 +7,14 @@
 @endpush
 
 @section('content')
-<div class="container-fluid flights-page">
+<div class="container-fluid panel-page flights-page">
     @include('flights.partials.nav')
 
-    <div class="flights-hero">
-        <h1><i class="fas fa-plane me-2"></i>Flights</h1>
-        <p class="mb-0">Same booking flow as the public site: Search → Price → Book → Reservation.</p>
-    </div>
+    @include('admin.partials.page-header', [
+        'title' => 'Flights',
+        'subtitle' => 'Same booking flow as the public site: Search → Price → Book → Reservation.',
+        'icon' => 'fas fa-plane',
+    ])
 
     @include('flights.partials.status')
     @include('flights.partials.workflow-steps', ['workflowStep' => session('travelport.flight_booking') || session('travelport.last_reservation_id') ? 'ticket' : (session('travelport.flight_price') ? 'price' : 'search'), 'canBookFlights' => $canBookFlights ?? false])
@@ -123,7 +124,7 @@
 @endsection
 
 @push('styles')
-<style>.flight-op-card:hover { border-color: #6366f1 !important; }</style>
+<style>.flight-op-card:hover { border-color: #0aa6bb !important; }</style>
 @endpush
 
 @push('scripts')

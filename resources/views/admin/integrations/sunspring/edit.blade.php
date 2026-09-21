@@ -3,36 +3,24 @@
 @section('title', 'SunSpring — Integrations')
 
 @section('content')
-<div class="container-fluid">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('admin.integrations.index') }}">Integrations</a></li>
-            <li class="breadcrumb-item active" aria-current="page">SunSpring</li>
-        </ol>
-    </nav>
+<div class="container-fluid panel-page">
+    @include('admin.partials.page-header', [
+        'title' => 'SunSpring Airline API',
+        'subtitle' => 'REST credentials and endpoints. Authorize token, then FlightSearch, AirPrice, Book, Ticket.',
+        'icon' => 'fas fa-plane',
+        'actions' => '<a href="'.e(route('admin.integrations.index')).'" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i> Back</a>',
+    ])
 
-    <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
-        <h1 class="h3 mb-0 text-gray-800">SunSpring Airline API</h1>
+    @include('admin.partials.flash')
+
+    <div class="mb-3">
         @include('admin.integrations.partials.environment-badge', [
             'environment' => $sunspring['environment'] ?? 'sandbox',
         ])
-        <p class="text-muted mb-0 w-100">REST credentials and endpoints. Step 1: Authorize token. Later: FlightSearch, AirPrice, Book, Ticket.</p>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0 small">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-    @endif
-
-    <div class="card-modern p-4">
+    <div class="panel-surface">
+        <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
             @if($sunspringHasDbRow)
                 <span class="badge bg-success">Saved in <code>integrations</code> table</span>
@@ -201,6 +189,7 @@
             <li><code>FlightSearch</code> → <code>AirPrice</code> → <code>Book</code> → <code>Confirm</code> → <code>AirDemandTicket</code></li>
             <li>Reservations: ticket / retrieve (TicketInfo) / cancel</li>
         </ul>
+        </div>
     </div>
 </div>
 @endsection

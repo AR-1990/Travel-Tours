@@ -3,38 +3,46 @@
 @section('title', 'Agent Details')
 
 @section('content')
-<div class="container-fluid">
-    <div class="card-modern mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <h3 class="h4 mb-0">Agent Details</h3>
-            <a href="{{ route('admin.tenants.index') }}" class="btn btn-secondary btn-sm">Back</a>
-        </div>
-        <hr>
-        <div class="row g-3">
-            <div class="col-md-4"><strong>Name:</strong> {{ $tenant->name }}</div>
-            <div class="col-md-4"><strong>Agency code:</strong> <code>{{ $tenant->agency_code }}</code></div>
-            <div class="col-md-4"><strong>Agent code:</strong> <code>{{ $tenant->agent_code }}</code></div>
-            <div class="col-md-4"><strong>Email:</strong> {{ $tenant->email ?? '-' }}</div>
-            <div class="col-md-4"><strong>Phone:</strong> {{ $tenant->phone ?? '-' }}</div>
-            <div class="col-md-4"><strong>Office type:</strong> {{ str_replace('_', ' ', $tenant->office_type ?? '-') }}</div>
-            <div class="col-md-4"><strong>Debtor type:</strong> {{ $tenant->debtorType->name ?? '-' }}</div>
-            <div class="col-md-4"><strong>Currency:</strong> {{ $tenant->currency ?? 'USD' }}</div>
-            <div class="col-md-4"><strong>Assigned by:</strong> {{ $tenant->assigner?->email ?? '-' }}</div>
-            <div class="col-md-4"><strong>Tax / Reg:</strong> {{ $tenant->tax_number ?? '-' }} / {{ $tenant->reg_number ?? '-' }}</div>
-            <div class="col-md-8"><strong>Address:</strong> {{ collect([$tenant->address_city, $tenant->address_state, $tenant->address_country])->filter()->implode(', ') }} {{ $tenant->address_line }}</div>
-            <div class="col-md-4"><strong>Status:</strong> {{ ucfirst($tenant->status) }}</div>
-            <div class="col-md-4"><strong>Active:</strong> {{ $tenant->is_active ? 'Yes' : 'No' }}</div>
-            <div class="col-md-4"><strong>Approved At:</strong> {{ $tenant->approved_at ? $tenant->approved_at->format('Y-m-d H:i') : '-' }}</div>
-            @if($tenant->logo)
-                <div class="col-md-4"><strong>Logo:</strong><br><img src="{{ asset('storage/' . $tenant->logo) }}" alt="" style="max-height:64px;"></div>
-            @endif
+<div class="container-fluid panel-page">
+    @include('admin.partials.page-header', [
+        'title' => 'Agent details',
+        'subtitle' => $tenant->name,
+        'icon' => 'fas fa-building',
+        'actions' => '<a href="'.e(route('admin.tenants.index')).'" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i> Back</a>',
+    ])
+
+    @include('admin.partials.flash')
+
+    <div class="panel-surface mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4"><strong>Name:</strong> {{ $tenant->name }}</div>
+                <div class="col-md-4"><strong>Agency code:</strong> <code>{{ $tenant->agency_code }}</code></div>
+                <div class="col-md-4"><strong>Agent code:</strong> <code>{{ $tenant->agent_code }}</code></div>
+                <div class="col-md-4"><strong>Email:</strong> {{ $tenant->email ?? '-' }}</div>
+                <div class="col-md-4"><strong>Phone:</strong> {{ $tenant->phone ?? '-' }}</div>
+                <div class="col-md-4"><strong>Office type:</strong> {{ str_replace('_', ' ', $tenant->office_type ?? '-') }}</div>
+                <div class="col-md-4"><strong>Debtor type:</strong> {{ $tenant->debtorType->name ?? '-' }}</div>
+                <div class="col-md-4"><strong>Currency:</strong> {{ $tenant->currency ?? 'USD' }}</div>
+                <div class="col-md-4"><strong>Assigned by:</strong> {{ $tenant->assigner?->email ?? '-' }}</div>
+                <div class="col-md-4"><strong>Tax / Reg:</strong> {{ $tenant->tax_number ?? '-' }} / {{ $tenant->reg_number ?? '-' }}</div>
+                <div class="col-md-8"><strong>Address:</strong> {{ collect([$tenant->address_city, $tenant->address_state, $tenant->address_country])->filter()->implode(', ') }} {{ $tenant->address_line }}</div>
+                <div class="col-md-4"><strong>Status:</strong> {{ ucfirst($tenant->status) }}</div>
+                <div class="col-md-4"><strong>Active:</strong> {{ $tenant->is_active ? 'Yes' : 'No' }}</div>
+                <div class="col-md-4"><strong>Approved At:</strong> {{ $tenant->approved_at ? $tenant->approved_at->format('Y-m-d H:i') : '-' }}</div>
+                @if($tenant->logo)
+                    <div class="col-md-4"><strong>Logo:</strong><br><img src="{{ asset('storage/' . $tenant->logo) }}" alt="" style="max-height:64px;"></div>
+                @endif
+            </div>
         </div>
     </div>
 
-    <div class="card-modern mb-4">
-        <h4 class="h5 mb-3">Agent Admins</h4>
+    <div class="panel-surface panel-surface--flush mb-4">
+        <div class="card-body pb-0">
+            <h4 class="h5 mb-3">Agent Admins</h4>
+        </div>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped">
+            <table class="table table-bordered table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -61,10 +69,12 @@
         </div>
     </div>
 
-    <div class="card-modern">
-        <h4 class="h5 mb-3">Sub Agents (Table)</h4>
+    <div class="panel-surface panel-surface--flush">
+        <div class="card-body pb-0">
+            <h4 class="h5 mb-3">Sub Agents (Table)</h4>
+        </div>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped">
+            <table class="table table-bordered table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>

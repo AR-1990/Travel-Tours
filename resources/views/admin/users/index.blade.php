@@ -3,25 +3,16 @@
 @section('title', 'Users Management')
 
 @section('content')
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1 text-gray-800">Users Management</h1>
-            <p class="text-gray-600 mb-0">Platform users (public, agent admin, sub agent). Login uses email or username.</p>
-        </div>
-        <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Add New User
-        </a>
-    </div>
+<div class="container-fluid panel-page">
+    
+@include('admin.partials.page-header', [
+        'title' => 'Users',
+        'subtitle' => 'Platform users and account status.',
+        'icon' => 'fas fa-users',
+        'actions' => '<a href="'.e(route('admin.users.create')).'" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> Add New User</a>',
+    ])
 
-    <!-- Alerts -->
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+    @include('admin.partials.flash')
 
     <!-- Filter Tabs -->
     <div class="card-modern mb-4">

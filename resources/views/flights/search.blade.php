@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid flights-page">
+<div class="container-fluid panel-page flights-page">
     @include('flights.partials.nav')
 
     <nav aria-label="breadcrumb" class="mb-2">
@@ -17,10 +17,11 @@
         </ol>
     </nav>
 
-    <div class="flights-hero">
-        <h1><i class="fas fa-plane-departure me-2"></i>Search flights</h1>
-        <p class="mb-0">Same guided flow as the public site: Search → Price → Book → Reservation.</p>
-    </div>
+    @include('admin.partials.page-header', [
+        'title' => 'Search flights',
+        'subtitle' => 'Same guided flow as the public site: Search → Price → Book → Reservation.',
+        'icon' => 'fas fa-plane-departure',
+    ])
 
     @include('flights.partials.workflow-steps', ['workflowStep' => 'search', 'canBookFlights' => $canBookFlights ?? false])
 

@@ -1,8 +1,9 @@
 @php
     $currencies = ['USD','EUR','GBP','AED','SAR','PKR'];
 @endphp
-<div class="card-modern mb-4">
-    <h3 class="h4 mb-3">Create agency (Super Admin)</h3>
+<div class="panel-surface mb-4">
+    <div class="card-body">
+    <h3 class="h5 mb-3">Create agency (Super Admin)</h3>
     <p class="text-muted small mb-3">Agency code and agent code are generated automatically. Assigned by: <strong>{{ auth()->user()->first_name }}</strong>.</p>
     <form method="POST" action="{{ route('admin.tenants.store') }}" enctype="multipart/form-data" class="row g-3"
         data-swal-confirm
@@ -138,4 +139,5 @@
             <button class="btn btn-primary">Create agency</button>
         </div>
     </form>
+    </div>
 </div>

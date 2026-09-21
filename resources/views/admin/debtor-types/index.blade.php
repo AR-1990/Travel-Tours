@@ -3,17 +3,18 @@
 @section('title', 'Debtor types')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1">Debtor types</h1>
-            <p class="text-muted mb-0">Define cash/credit (or custom) terms for agencies. Cash and credit are built-in.</p>
-        </div>
-        <a href="{{ route('admin.debtor-types.create') }}" class="btn btn-primary">Add type</a>
-    </div>
-    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-    @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
-    <div class="card-modern">
+<div class="container-fluid panel-page">
+    
+@include('admin.partials.page-header', [
+        'title' => 'Debtor types',
+        'subtitle' => 'Classify debtor categories for agencies.',
+        'icon' => 'fas fa-tags',
+        'actions' => '<a href="'.e(route('admin.debtor-types.create')).'" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> Add type</a>',
+    ])
+
+    @include('admin.partials.flash')
+
+    <div class="panel-surface panel-surface--flush">
         <div class="table-responsive">
             <table class="table table-striped">
                 <thead>

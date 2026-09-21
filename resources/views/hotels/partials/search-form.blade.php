@@ -8,7 +8,7 @@
     $isDowntown = $selectedProvider === \App\Support\HotelProvider::DOWNTOWN_TRAVEL_HOTELS;
     $prefix = $hotelsRoutePrefix ?? 'admin';
 @endphp
-<div class="card border-0 shadow-sm mb-4">
+<div class="panel-surface mb-4">
     <div class="card-body">
         @unless($hotelReady ?? false)
             <div class="alert alert-warning mb-3">

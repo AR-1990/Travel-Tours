@@ -3,43 +3,28 @@
 @section('title', 'Xconnect — Integrations')
 
 @section('content')
-<div class="container-fluid">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('admin.integrations.index') }}">Integrations</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Xconnect</li>
-        </ol>
-    </nav>
+<div class="container-fluid panel-page">
+    @include('admin.partials.page-header', [
+        'title' => 'Xconnect Hotel API',
+        'subtitle' => 'Technoheaven / Rimo wholesale hotels. Countries → Availability → Book → Cancel.',
+        'icon' => 'fas fa-hotel',
+        'actions' => '<a href="'.e(route('admin.integrations.index')).'" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i> Back</a>',
+    ])
 
-    <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
-        <h1 class="h3 mb-0 text-gray-800">Xconnect Hotel API</h1>
+    @include('admin.partials.flash')
+
+    <div class="mb-3">
         @include('admin.integrations.partials.environment-badge', [
             'environment' => $xconnect['environment'] ?? 'sandbox',
         ])
-        <p class="text-muted mb-0 w-100">
-            Technoheaven / Rimo wholesale hotels.
-            Journey: Countries/Cities → Availability → ReCheck → PreBook → Book → BookingDetail → Cancel.
+        <p class="text-muted small mb-0 mt-2">
             <a href="https://documenter.getpostman.com/view/11578141/TVKBYJAE" target="_blank" rel="noopener">API docs</a>.
-        </p>
-        <p class="small text-warning mb-0 mt-2 w-100">
-            The published Xconnect collection is <strong>hotels only</strong>. Flights need a separate Rimo/Xconnect flight API document.
+            The published Xconnect collection is <strong>hotels only</strong>.
         </p>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    @endif
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0 small">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-    @endif
-
-    <div class="card-modern p-4">
+    <div class="panel-surface">
+        <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
             @if($xconnectHasDbRow)
                 <span class="badge bg-success">Saved in <code>integrations</code> table</span>
@@ -143,6 +128,7 @@
         @if(session('xconnect_availability'))
             <pre class="bg-light border rounded p-3 small">{{ json_encode(session('xconnect_availability'), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
         @endif
+        </div>
     </div>
 </div>
 @endsection

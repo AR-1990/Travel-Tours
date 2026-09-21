@@ -3,25 +3,18 @@
 @section('title', 'Blogs')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1">Blogs</h1>
-            <p class="text-muted mb-0">Manage blog posts and SEO content.</p>
-        </div>
-        <a href="{{ route('admin.blogs.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Add Blog
-        </a>
-    </div>
+<div class="container-fluid panel-page">
+    
+@include('admin.partials.page-header', [
+        'title' => 'Blogs',
+        'subtitle' => 'Manage blog posts and SEO content.',
+        'icon' => 'fas fa-newspaper',
+        'actions' => '<a href="'.e(route('admin.blogs.create')).'" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> Add Blog</a>',
+    ])
 
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+    @include('admin.partials.flash')
 
-    <div class="card-modern">
+    <div class="panel-surface panel-surface--flush">
         <div class="table-responsive">
             <table id="blogsTable" class="table table-hover align-middle w-100">
                 <thead>

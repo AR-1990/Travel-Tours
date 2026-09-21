@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid flights-page">
+<div class="container-fluid panel-page flights-page">
     @include('flights.partials.nav')
 
     <nav aria-label="breadcrumb" class="mb-2">
@@ -17,15 +17,12 @@
         </ol>
     </nav>
 
-    <div class="flights-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
-        <div>
-            <h1><i class="fas fa-folder-open me-2"></i>Reservations</h1>
-            <p class="mb-0">Bookings created from Search → Price → Book. Open a file for passenger, itinerary, and provider actions.</p>
-        </div>
-        <a href="{{ route($flightsRoutePrefix . '.flights.search') }}" class="btn btn-primary btn-sm">
-            <i class="fas fa-search me-1"></i> New search
-        </a>
-    </div>
+    @include('admin.partials.page-header', [
+        'title' => 'Reservations',
+        'subtitle' => 'Bookings created from Search → Price → Book. Open a file for passenger, itinerary, and provider actions.',
+        'icon' => 'fas fa-folder-open',
+        'actions' => '<a href="'.e(route($flightsRoutePrefix.'.flights.search')).'" class="btn btn-primary btn-sm"><i class="fas fa-search me-1"></i> New search</a>',
+    ])
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
