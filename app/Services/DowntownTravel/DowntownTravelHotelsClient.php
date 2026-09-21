@@ -260,8 +260,8 @@ class DowntownTravelHotelsClient
             'check_out' => $checkOut,
             'rooms' => [
                 [
+                    // API rejects empty kids_ages list — omit when no children.
                     'adults_count' => $adults,
-                    'kids_ages' => [],
                 ],
             ],
             'search_by' => [
