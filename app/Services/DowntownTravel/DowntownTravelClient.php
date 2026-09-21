@@ -246,17 +246,52 @@ class DowntownTravelClient
             ];
         }
 
-        $err = is_array($json)
-            ? (string) ($json['message'] ?? $json['error_description'] ?? $json['error'] ?? '')
-            : '';
-
         return [
             'ok' => false,
-            'message' => $err !== '' ? $err : ('Downtown Travel request failed (HTTP '.$response->status().').'),
+            'message' => $this->formatErrorMessage($json, $response->status()),
             'http_status' => $response->status(),
             'data' => $json,
             'response_excerpt' => $excerpt,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $json
+     */
+    protected function formatErrorMessage(?array $json, int $status): string
+    {
+        if (is_array($json)) {
+            foreach (['display_message', 'message', 'error_description', 'error', 'detail', 'title'] as $key) {
+                $value = $json[$key] ?? null;
+                if (is_string($value) && trim($value) !== '') {
+                    $reason = is_string($json['reason'] ?? null) ? trim((string) $json['reason']) : '';
+                    if ($reason !== '' && ! str_contains(strtolower($value), strtolower($reason))) {
+                        return trim($value).' ('.$reason.')';
+                    }
+
+                    return trim($value);
+                }
+            }
+
+            if (isset($json['errors']) && is_array($json['errors'])) {
+                $parts = [];
+                foreach ($json['errors'] as $key => $err) {
+                    if (is_string($err)) {
+                        $parts[] = $err;
+                    } elseif (is_array($err)) {
+                        $parts[] = is_string($err[0] ?? null)
+                            ? ((is_string($key) ? $key.': ' : '').$err[0])
+                            : json_encode($err);
+                    }
+                }
+                $joined = implode(' ', array_filter($parts));
+                if ($joined !== '') {
+                    return $joined;
+                }
+            }
+        }
+
+        return 'Downtown Travel request failed (HTTP '.$status.').';
     }
 
     /**

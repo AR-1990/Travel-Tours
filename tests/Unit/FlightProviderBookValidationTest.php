@@ -39,7 +39,7 @@ class FlightProviderBookValidationTest extends TestCase
         $this->assertArrayHasKey('passengers', $rules);
         $this->assertContains('nullable', $rules['passengers.*.passport_number']);
         $this->assertContains('required', $rules['passengers.0.phone']);
-        $this->assertSame('USA', FlightProvider::defaultNationality(FlightProvider::DOWNTOWN_TRAVEL));
+        $this->assertSame('US', FlightProvider::defaultNationality(FlightProvider::DOWNTOWN_TRAVEL));
         $this->assertSame('+1', FlightProvider::defaultCountryCode(FlightProvider::DOWNTOWN_TRAVEL));
     }
 }

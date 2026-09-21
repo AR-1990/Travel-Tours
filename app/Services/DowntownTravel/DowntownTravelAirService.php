@@ -130,22 +130,25 @@ class DowntownTravelAirService
             return ['ok' => false, 'message' => 'Price a Downtown Travel fare before booking.', 'provider' => 'downtown_travel'];
         }
 
-        $digest = (string) ($solution['digest'] ?? '');
-        if ($digest === '') {
+        $searchDigest = (string) ($solution['digest'] ?? '');
+        if ($searchDigest === '') {
             return ['ok' => false, 'message' => 'Missing Downtown Travel offer digest.', 'provider' => 'downtown_travel'];
         }
 
-        $passengers = $this->mapPassengers(is_array($params['passengers'] ?? null) ? $params['passengers'] : []);
+        $passengers = $this->mapPassengers(
+            is_array($params['passengers'] ?? null) ? $params['passengers'] : [],
+            (bool) ($solution['travel_document_required'] ?? false)
+        );
         if ($passengers === []) {
             return ['ok' => false, 'message' => 'At least one passenger is required.', 'provider' => 'downtown_travel'];
         }
 
-        $email = (string) ($params['email'] ?? $passengers[0]['email'] ?? data_get($params, 'passengers.0.email', ''));
-        $phone = (string) ($params['phone'] ?? data_get($params, 'passengers.0.phone', data_get($params, 'passengers.0.telephone', '')));
-        $expected = (float) ($solution['total_amount'] ?? 0);
+        $email = trim((string) ($params['email'] ?? data_get($params, 'passengers.0.email', '')));
+        $phone = $this->normalizePhone((string) ($params['phone'] ?? data_get($params, 'passengers.0.phone', '')));
 
+        // Preliminary renews pricing and returns a fresh digest that booking must use.
         $prelim = $this->client->postAir('/api/public/v2/orders/preliminary', [
-            'digest' => $digest,
+            'digest' => $searchDigest,
             'run_upsell' => false,
         ]);
         if (! ($prelim['ok'] ?? false)) {
@@ -157,10 +160,48 @@ class DowntownTravelAirService
             ];
         }
 
+        $prelimData = is_array($prelim['data'] ?? null) ? $prelim['data'] : [];
+        $bookOffer = is_array($prelimData['offers'][0] ?? null) ? $prelimData['offers'][0] : null;
+        $bookDigest = trim((string) ($bookOffer['digest'] ?? $searchDigest));
+        if ($bookDigest === '') {
+            return [
+                'ok' => false,
+                'message' => 'Downtown Travel preliminary did not return a bookable digest. Search and price again.',
+                'provider' => 'downtown_travel',
+                'raw' => $prelim,
+            ];
+        }
+
+        $agentNet = (float) (
+            data_get($bookOffer, 'price.pricing_options.agent_cash.agent_net_total')
+            ?? data_get($bookOffer, 'price.pricing_options.passenger_cc.agent_net_total')
+            ?? $solution['agent_net_total']
+            ?? $solution['total_amount']
+            ?? 0
+        );
+
+        $docsRequired = (bool) (
+            data_get($bookOffer, 'travel_document_required')
+            ?? $solution['travel_document_required']
+            ?? false
+        );
+        if ($docsRequired) {
+            foreach ($passengers as $row) {
+                $person = $row['adult'] ?? $row['child'] ?? $row['infant'] ?? null;
+                if (! is_array($person) || empty($person['travel_document']['number'] ?? null)) {
+                    return [
+                        'ok' => false,
+                        'message' => 'This fare requires a passport or travel document for every passenger.',
+                        'provider' => 'downtown_travel',
+                    ];
+                }
+            }
+        }
+
         $bookBody = [
-            'digest' => $digest,
+            'digest' => $bookDigest,
             'email' => $email !== '' ? $email : 'booking@wisetrust.com',
-            'expected_agent_net_price' => $expected,
+            'expected_agent_net_price' => round($agentNet, 2),
             'passengers' => $passengers,
             'payment_option' => 'agent_cash',
             'phone' => $phone !== '' ? $phone : '+10000000000',
@@ -172,7 +213,7 @@ class DowntownTravelAirService
                 'ok' => false,
                 'message' => $book['message'] ?? 'Downtown Travel booking failed.',
                 'provider' => 'downtown_travel',
-                'raw' => ['preliminary' => $prelim['data'] ?? null, 'book' => $book],
+                'raw' => ['preliminary' => $prelimData, 'book' => $book, 'request' => $bookBody],
             ];
         }
 
@@ -182,7 +223,7 @@ class DowntownTravelAirService
         session([
             'downtown_travel.last_booking' => [
                 'order_id' => $orderId,
-                'digest' => $digest,
+                'digest' => $bookDigest,
                 'response' => $data,
                 'solution' => $solution,
             ],
@@ -292,7 +333,7 @@ class DowntownTravelAirService
      * @param  list<array<string, mixed>>  $rows
      * @return list<array<string, mixed>>
      */
-    protected function mapPassengers(array $rows): array
+    protected function mapPassengers(array $rows, bool $travelDocumentRequired = false): array
     {
         $out = [];
         foreach ($rows as $p) {
@@ -303,12 +344,31 @@ class DowntownTravelAirService
             $sex = strtoupper(substr((string) ($p['gender'] ?? 'M'), 0, 1)) === 'F' ? 'female' : 'male';
             $person = [
                 'birthday' => (string) ($p['dob'] ?? $p['birthdate'] ?? '1990-01-01'),
-                'first_name' => (string) ($p['first'] ?? $p['given_name'] ?? ''),
-                'last_name' => (string) ($p['last'] ?? $p['surname'] ?? ''),
-                'middle_name' => (string) ($p['middle'] ?? ''),
-                'nationality' => strtoupper((string) ($p['nationality'] ?? 'USA')),
+                'first_name' => trim((string) ($p['first'] ?? $p['given_name'] ?? '')),
+                'last_name' => trim((string) ($p['last'] ?? $p['surname'] ?? '')),
+                'nationality' => $this->normalizeNationality((string) ($p['nationality'] ?? 'USA')),
                 'sex' => $sex,
             ];
+            $middle = trim((string) ($p['middle'] ?? ''));
+            if ($middle !== '') {
+                $person['middle_name'] = $middle;
+            }
+
+            $passportNumber = trim((string) ($p['passport_number'] ?? data_get($p, 'travel_document.number', '')));
+            $passportExpire = trim((string) ($p['passport_expire'] ?? data_get($p, 'travel_document.expires_at', '')));
+            if ($passportNumber !== '' && $passportExpire !== '') {
+                $person['travel_document'] = [
+                    'type' => 'passport',
+                    'number' => $passportNumber,
+                    'expires_at' => $passportExpire,
+                    'issued_by_country' => $this->normalizeNationality((string) (
+                        $p['passport_country'] ?? $p['nationality'] ?? $person['nationality']
+                    )),
+                ];
+            } elseif ($travelDocumentRequired) {
+                // Leave without document — caller validates and returns a clear error.
+            }
+
             if ($person['first_name'] === '' || $person['last_name'] === '') {
                 continue;
             }
@@ -316,7 +376,6 @@ class DowntownTravelAirService
             if (in_array($type, ['CNN', 'CHD', 'CHILD'], true)) {
                 $out[] = ['child' => $person];
             } elseif (in_array($type, ['INF', 'INFANT'], true)) {
-                // Attach infant to previous adult when possible.
                 if ($out !== [] && isset($out[count($out) - 1]['adult']) && ! isset($out[count($out) - 1]['infant'])) {
                     $out[count($out) - 1]['infant'] = $person;
                 } else {
@@ -328,5 +387,66 @@ class DowntownTravelAirService
         }
 
         return $out;
+    }
+
+    protected function normalizePhone(string $phone): string
+    {
+        $phone = trim($phone);
+        if ($phone === '') {
+            return '';
+        }
+
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($digits === '') {
+            return $phone;
+        }
+
+        if (str_starts_with(trim($phone), '+')) {
+            return '+'.$digits;
+        }
+
+        // US-style numbers without country code.
+        if (strlen($digits) === 10) {
+            return '+1'.$digits;
+        }
+
+        return '+'.$digits;
+    }
+
+    /**
+     * Downtown Person.nationality accepts ISO country codes; map common alpha-3 → alpha-2.
+     */
+    protected function normalizeNationality(string $value): string
+    {
+        $value = strtoupper(trim($value));
+        if ($value === '') {
+            return 'US';
+        }
+
+        static $map = [
+            'USA' => 'US',
+            'ARE' => 'AE',
+            'GBR' => 'GB',
+            'IRN' => 'IR',
+            'PAK' => 'PK',
+            'IND' => 'IN',
+            'CAN' => 'CA',
+            'AUS' => 'AU',
+            'SAU' => 'SA',
+            'QAT' => 'QA',
+            'BHR' => 'BH',
+            'KWT' => 'KW',
+            'OMN' => 'OM',
+            'EGY' => 'EG',
+            'TUR' => 'TR',
+            'FRA' => 'FR',
+            'DEU' => 'DE',
+        ];
+
+        if (isset($map[$value])) {
+            return $map[$value];
+        }
+
+        return strlen($value) > 2 ? substr($value, 0, 2) : $value;
     }
 }

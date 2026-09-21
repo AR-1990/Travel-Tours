@@ -118,6 +118,15 @@
                         <label class="form-label">Passport expiry</label>
                         <input type="date" name="passengers[{{ $index }}][passport_expire]" class="{{ $control }}" value="{{ $old['passport_expire'] ?? '2030-12-31' }}" required>
                     </div>
+                @elseif($providerId === \App\Support\FlightProvider::DOWNTOWN_TRAVEL)
+                    <div class="col-md-4">
+                        <label class="form-label">Passport number <span class="text-muted">(if required)</span></label>
+                        <input type="text" name="passengers[{{ $index }}][passport_number]" class="{{ $control }}" value="{{ $old['passport_number'] ?? '' }}" maxlength="32" placeholder="Optional">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Passport expiry</label>
+                        <input type="date" name="passengers[{{ $index }}][passport_expire]" class="{{ $control }}" value="{{ $old['passport_expire'] ?? '' }}">
+                    </div>
                 @endif
             </div>
         </div>

@@ -81,7 +81,11 @@ class FlightProvider
 
     public static function defaultNationality(?string $provider = null): string
     {
-        return self::requiresTravelDocuments($provider) ? 'IRN' : 'USA';
+        return match (strtolower((string) ($provider ?? self::current()))) {
+            self::SUNSPRING => 'IRN',
+            self::DOWNTOWN_TRAVEL => 'US',
+            default => 'US',
+        };
     }
 
     public static function defaultCountryCode(?string $provider = null): string

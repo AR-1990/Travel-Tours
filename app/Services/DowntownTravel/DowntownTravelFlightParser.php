@@ -53,11 +53,16 @@ class DowntownTravelFlightParser
         }
 
         $currency = strtoupper((string) data_get($offer, 'price.currency_code', 'USD'));
-        $total = (float) (
+        $passengerTotal = (float) (
             data_get($offer, 'price.pricing_options.agent_cash.passenger_total')
             ?? data_get($offer, 'price.pricing_options.passenger_cc.passenger_total')
             ?? data_get($offer, 'price.airline_total')
             ?? 0
+        );
+        $agentNetTotal = (float) (
+            data_get($offer, 'price.pricing_options.agent_cash.agent_net_total')
+            ?? data_get($offer, 'price.pricing_options.passenger_cc.agent_net_total')
+            ?? $passengerTotal
         );
         $base = (float) (data_get($offer, 'price.airline_base_fare') ?? 0);
         $carrierIata = strtoupper((string) data_get($offer, 'validating_carrier.iata', ''));
@@ -102,10 +107,14 @@ class DowntownTravelFlightParser
             'provider' => 'downtown_travel',
             'digest' => $digest,
             'offer_index' => $index,
-            'total_price' => $this->money($total, $currency),
+            'total_price' => $this->money($passengerTotal, $currency),
             'base_price' => $base > 0 ? $this->money($base, $currency) : null,
             'currency' => $currency,
-            'total_amount' => $total,
+            'total_amount' => $passengerTotal,
+            'agent_net_total' => $agentNetTotal,
+            'passenger_total' => $passengerTotal,
+            'travel_document_required' => (bool) ($offer['travel_document_required'] ?? false),
+            'date_of_birth_required' => (bool) ($offer['date_of_birth_required'] ?? true),
             'plating_carrier' => $carrierIata,
             'airline_name' => $carrierName !== '' ? $carrierName : $carrierIata,
             'booking_supported' => (bool) ($offer['booking_supported'] ?? true),
