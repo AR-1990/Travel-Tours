@@ -167,19 +167,37 @@ class PublicHotelController extends Controller
             return redirect()->route('frontend.hotels.hub')->with('error', 'Select a hotel rate first.');
         }
 
+        $bookProvider = strtolower((string) ($priced['provider'] ?? ''));
+        if (! in_array($bookProvider, HotelProvider::all(), true)) {
+            $bookProvider = HotelProvider::current();
+        }
+        HotelProvider::set($bookProvider);
+
         return view('frontend.hotels.book', $this->hotelViewBase([
             'priced' => $priced,
+            'hotelProvider' => $bookProvider,
         ]));
     }
 
     public function hotelBookStore(Request $request, XconnectHotelService $xconnect, DowntownTravelHotelService $downtown)
     {
+        $priced = session('public.hotel_prebook');
+        $bookProvider = strtolower(trim((string) $request->input('provider', '')));
+        if (! in_array($bookProvider, HotelProvider::all(), true) && is_array($priced)) {
+            $bookProvider = strtolower((string) ($priced['provider'] ?? ''));
+        }
+        if (! in_array($bookProvider, HotelProvider::all(), true)) {
+            $bookProvider = HotelProvider::current();
+        }
+        HotelProvider::set($bookProvider);
+
         $data = $request->validate([
+            'provider' => ['nullable', Rule::in(HotelProvider::all())],
             'prefix' => ['required', 'string', 'max:10'],
             'first_name' => ['required', 'string', 'max:80'],
             'last_name' => ['required', 'string', 'max:80'],
-            'email' => ['nullable', 'email', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['required', 'email', 'max:120'],
+            'phone' => ['required', 'string', 'max:40'],
             'guest2_first' => ['nullable', 'string', 'max:80'],
             'guest2_last' => ['nullable', 'string', 'max:80'],
         ]);
@@ -215,7 +233,7 @@ class PublicHotelController extends Controller
             'last_name' => $data['last_name'],
         ];
 
-        $result = HotelProvider::isDowntownTravel()
+        $result = $bookProvider === HotelProvider::DOWNTOWN_TRAVEL_HOTELS
             ? $downtown->book($bookParams)
             : $xconnect->book($bookParams);
 
@@ -231,7 +249,7 @@ class PublicHotelController extends Controller
             'tenant_id' => $user?->tenant_id,
             'user_id' => Auth::id(),
             'channel' => 'public',
-            'provider' => HotelProvider::current(),
+            'provider' => $bookProvider,
             'status' => HotelReservation::STATUS_CONFIRMED,
             'booking_id' => isset($booking['booking_id']) ? (string) $booking['booking_id'] : null,
             'reference_no' => $booking['reference_no'] ?? null,

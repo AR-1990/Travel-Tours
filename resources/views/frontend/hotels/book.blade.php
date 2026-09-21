@@ -30,6 +30,16 @@
 
         <form method="POST" action="{{ route('frontend.hotels.book.store') }}" class="border rounded p-4 bg-white">
             @csrf
+            <input type="hidden" name="provider" value="{{ $hotelProvider ?? \App\Support\HotelProvider::current() }}">
+            @if($errors->any())
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Prefix</label>
@@ -49,11 +59,11 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email</label>
-                    <input type="email" name="email" class="form-control" value="{{ old('email') }}">
+                    <input type="email" name="email" class="form-control" required value="{{ old('email') }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Phone</label>
-                    <input type="text" name="phone" class="form-control" value="{{ old('phone') }}">
+                    <input type="text" name="phone" class="form-control" required value="{{ old('phone') }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">2nd adult first (optional)</label>

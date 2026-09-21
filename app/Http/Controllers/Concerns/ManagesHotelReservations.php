@@ -45,7 +45,7 @@ trait ManagesHotelReservations
 
         $reservations = $query->paginate(20)->withQueryString();
 
-        return view('hotels.reservations.index', [
+        $payload = [
             'reservations' => $reservations,
             'hotelsRoutePrefix' => $this->hotelsRoutePrefix(),
             'panelLabel' => method_exists($this, 'panelLabel') ? $this->panelLabel() : 'Admin',
@@ -55,7 +55,13 @@ trait ManagesHotelReservations
                 'provider' => $request->input('provider'),
             ],
             'providerOptions' => HotelProvider::options(),
-        ]);
+        ];
+
+        if ($request->ajax()) {
+            return view('hotels.reservations.partials.results', $payload);
+        }
+
+        return view('hotels.reservations.index', $payload);
     }
 
     public function reservationsShow(int $id, XconnectHotelService $hotels)

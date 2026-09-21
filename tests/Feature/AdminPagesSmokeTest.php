@@ -31,6 +31,20 @@ class AdminPagesSmokeTest extends TestCase
         }
 
         $this->actingAs($user)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->get(route('admin.flights.reservations.index'))
+            ->assertOk()
+            ->assertSee('table', false)
+            ->assertDontSee('<html', false);
+
+        $this->actingAs($user)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->get(route('admin.hotels.reservations.index'))
+            ->assertOk()
+            ->assertSee('table', false)
+            ->assertDontSee('<html', false);
+
+        $this->actingAs($user)
             ->get(route('admin.integrations.edit', ['slug' => 'sunspring']))
             ->assertOk()
             ->assertSee('SunSpring Airline API')

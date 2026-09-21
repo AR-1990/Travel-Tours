@@ -214,6 +214,7 @@ class XconnectHotelWorkflowFeatureTest extends TestCase
             'first_name' => 'Test',
             'last_name' => 'Traveller',
             'email' => 'test@example.com',
+            'phone' => '+15551234567',
         ])->assertRedirect(route('frontend.hotels.confirmation'));
 
         $reservationId = session('public.hotel_booking.reservation_id');

@@ -27,13 +27,16 @@
         <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     @endif
 
-    <form method="GET" class="card border-0 shadow-sm mb-3">
+    <form method="GET"
+        action="{{ route($hotelsRoutePrefix . '.hotels.reservations.index') }}"
+        class="card border-0 shadow-sm mb-3 js-ajax-filter-form"
+        data-results="#js-ajax-filter-results">
         <div class="card-body py-3">
             <div class="row g-2 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label small text-muted mb-1">Search</label>
-                    <input type="text" name="q" value="{{ $filters['q'] ?? '' }}" class="form-control form-control-sm"
-                        placeholder="Reference, hotel, guest, city…">
+                    <input type="search" name="q" value="{{ $filters['q'] ?? '' }}" class="form-control form-control-sm"
+                        placeholder="Reference, hotel, guest, city…" autocomplete="off">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small text-muted mb-1">Status</label>
@@ -61,59 +64,11 @@
         </div>
     </form>
 
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Booked</th>
-                        <th>Guest</th>
-                        <th>Hotel</th>
-                        <th>Dates</th>
-                        <th>Provider</th>
-                        <th>Reference</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($reservations as $reservation)
-                        <tr>
-                            <td class="small text-muted">{{ optional($reservation->booked_at)->format('d M Y H:i') ?? '—' }}</td>
-                            <td>
-                                <div class="fw-semibold">{{ $reservation->passengerName() ?: '—' }}</div>
-                                <div class="small text-muted">{{ $reservation->passenger_email }}</div>
-                            </td>
-                            <td>
-                                <div class="fw-semibold">{{ $reservation->hotel_name ?: '—' }}</div>
-                                @if($reservation->city_id)
-                                    <div class="small text-muted">{{ $reservation->city_id }}</div>
-                                @endif
-                            </td>
-                            <td class="small">{{ $reservation->datesLabel() }}</td>
-                            <td>
-                                @php $badge = \App\Support\HotelProvider::badge($reservation->provider); @endphp
-                                <span class="{{ $badge['css'] }} provider-badge--sm">{{ $badge['label'] }}</span>
-                            </td>
-                            <td><code>{{ $reservation->referenceLabel() }}</code></td>
-                            <td class="small">{{ $reservation->total_price }} {{ $reservation->currency }}</td>
-                            <td><span class="badge {{ $reservation->statusBadgeClass() }}">{{ $reservation->statusLabel() }}</span></td>
-                            <td class="text-end">
-                                <a href="{{ route($hotelsRoutePrefix . '.hotels.reservations.show', $reservation) }}" class="btn btn-sm btn-outline-primary">Open</a>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="9" class="text-center text-muted py-4">No hotel reservations yet.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        @if($reservations->hasPages())
-            <div class="card-footer bg-white">{{ $reservations->links() }}</div>
-        @endif
+    <div class="card border-0 shadow-sm" id="js-ajax-filter-results" data-ajax-filter-results>
+        @include('hotels.reservations.partials.results', [
+            'reservations' => $reservations,
+            'hotelsRoutePrefix' => $hotelsRoutePrefix,
+        ])
     </div>
 </div>
 <style>
@@ -123,3 +78,7 @@
 .provider-badge--xconnect{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
 </style>
 @endsection
+
+@push('scripts')
+    @include('admin.partials.ajax-filters')
+@endpush

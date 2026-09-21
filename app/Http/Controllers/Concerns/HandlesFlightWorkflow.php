@@ -227,32 +227,20 @@ trait HandlesFlightWorkflow
                 ->with('error', 'Please confirm a fare before booking.');
         }
 
-        // Prefer the provider that produced this priced fare (not a stale session toggle).
-        $pricedProvider = strtolower((string) ($price['provider'] ?? ''));
-        if (! in_array($pricedProvider, FlightProvider::all(), true)) {
-            $pricedProvider = FlightProvider::fromResult(is_array($price['result'] ?? null) ? $price['result'] : null);
-        }
-        if ($pricedProvider === FlightProvider::DOWNTOWN_TRAVEL && session('downtown_travel.last_price')) {
-            FlightProvider::set(FlightProvider::DOWNTOWN_TRAVEL);
-        } elseif ($pricedProvider === FlightProvider::SUNSPRING && session('sunspring.last_price')) {
-            FlightProvider::set(FlightProvider::SUNSPRING);
-        } elseif (session('travelport.last_air_price_xml')) {
-            FlightProvider::set(FlightProvider::TRAVELPORT);
-        } elseif (in_array($pricedProvider, FlightProvider::all(), true)) {
-            FlightProvider::set($pricedProvider);
-        }
+        $bookProvider = $this->resolveWorkflowBookProvider(null, $price);
+        FlightProvider::set($bookProvider);
 
-        if (FlightProvider::isDowntownTravel() && ! session('downtown_travel.last_price')) {
+        if ($bookProvider === FlightProvider::DOWNTOWN_TRAVEL && ! session('downtown_travel.last_price')) {
             return redirect()->to($this->workflowSearchUrl())
                 ->with('error', 'Pricing session expired. Search and price again.');
         }
 
-        if (! FlightProvider::isSunSpring() && ! FlightProvider::isDowntownTravel() && ! session('travelport.last_air_price_xml')) {
+        if ($bookProvider === FlightProvider::SUNSPRING && ! session('sunspring.last_price')) {
             return redirect()->to($this->workflowSearchUrl())
                 ->with('error', 'Pricing session expired. Search and price again.');
         }
 
-        if (FlightProvider::isSunSpring() && ! session('sunspring.last_price')) {
+        if ($bookProvider === FlightProvider::TRAVELPORT && ! session('travelport.last_air_price_xml')) {
             return redirect()->to($this->workflowSearchUrl())
                 ->with('error', 'Pricing session expired. Search and price again.');
         }
@@ -266,6 +254,8 @@ trait HandlesFlightWorkflow
 
         return view($this->workflowView('book'), array_merge($this->workflowViewBase(), [
             'flightPriceResult' => $price['result'],
+            'flightProvider' => $bookProvider,
+            'providerReady' => FlightProvider::isReady(),
             'bookInput' => $defaults,
             'passengerSlots' => $this->passengerSlotsFromSearch(is_array($search['input'] ?? null) ? $search['input'] : []),
             'workflowStep' => 'book',
@@ -276,13 +266,16 @@ trait HandlesFlightWorkflow
     {
         $this->ensureFlightBookPermission();
 
-        if (FlightProvider::isDowntownTravel()) {
-            $downtown = app(DowntownTravelAirService::class);
-            if (! $downtown->isReady()) {
+        $price = $this->workflowPriceStore();
+        $bookProvider = $this->resolveWorkflowBookProvider($request, is_array($price) ? $price : null);
+        FlightProvider::set($bookProvider);
+
+        if ($bookProvider === FlightProvider::DOWNTOWN_TRAVEL) {
+            if (! app(DowntownTravelAirService::class)->isReady()) {
                 return redirect()->route($this->flightsRoutePrefix().'.flights.book')
                     ->with('error', 'Flight booking is not configured.');
             }
-        } elseif (FlightProvider::isSunSpring()) {
+        } elseif ($bookProvider === FlightProvider::SUNSPRING) {
             $sunspring ??= app(SunSpringAirService::class);
             if (! $sunspring->isReady()) {
                 return redirect()->route($this->flightsRoutePrefix().'.flights.book')
@@ -293,39 +286,15 @@ trait HandlesFlightWorkflow
                 ->with('error', 'Flight booking is not configured.');
         }
 
-        if (FlightProvider::isDowntownTravel() || FlightProvider::isSunSpring()) {
-            $search = $this->workflowSearchStore() ?? [];
-            $searchInput = is_array($search['input'] ?? null) ? $search['input'] : [];
-            $slots = $this->passengerSlotsFromSearch($searchInput);
-            $expected = max(1, count($slots));
+        $search = $this->workflowSearchStore() ?? [];
+        $searchInput = is_array($search['input'] ?? null) ? $search['input'] : [];
+        $slots = $this->passengerSlotsFromSearch($searchInput);
+        $expected = max(1, count($slots));
 
-            $passengerRules = [
-                'passengers' => ['required', 'array', 'min:'.$expected, 'max:'.$expected],
-                'passengers.*.type' => ['required', 'in:ADT,CHD,INF'],
-                'passengers.*.first' => ['required', 'string', 'max:80'],
-                'passengers.*.last' => ['required', 'string', 'max:80'],
-                'passengers.*.dob' => ['required', 'date', 'before:today'],
-                'passengers.*.gender' => ['required', 'in:M,F'],
-                'passengers.*.prefix' => ['nullable', 'string', 'max:10'],
-                'passengers.*.email' => ['nullable', 'email', 'max:120'],
-                'passengers.*.phone' => ['nullable', 'string', 'max:30'],
-                'passengers.*.nationality' => ['nullable', 'string', 'max:8'],
-                'country_code' => ['nullable', 'string', 'max:8'],
-                'form_of_payment' => ['nullable', 'string', 'max:20'],
-            ];
+        $request->validate(FlightProvider::bookValidationRules($bookProvider, $expected));
 
-            if (FlightProvider::isSunSpring()) {
-                $passengerRules['passengers.*.national_id'] = ['required', 'string', 'min:8', 'max:32'];
-                $passengerRules['passengers.*.passport_number'] = ['required', 'string', 'min:5', 'max:32'];
-                $passengerRules['passengers.*.passport_expire'] = ['required', 'date', 'after:today'];
-            } else {
-                $passengerRules['passengers.*.national_id'] = ['nullable', 'string', 'max:32'];
-                $passengerRules['passengers.*.passport_number'] = ['nullable', 'string', 'max:32'];
-                $passengerRules['passengers.*.passport_expire'] = ['nullable', 'date', 'after:today'];
-            }
-
-            $request->validate($passengerRules);
-
+        if (FlightProvider::usesPassengerArray($bookProvider)) {
+            $defaultNationality = FlightProvider::defaultNationality($bookProvider);
             $passengers = [];
             foreach (array_values($request->input('passengers', [])) as $i => $row) {
                 if (! is_array($row)) {
@@ -342,7 +311,7 @@ trait HandlesFlightWorkflow
                     'dob' => (string) ($row['dob'] ?? ''),
                     'gender' => (string) ($row['gender'] ?? 'M'),
                     'national_id' => (string) ($row['national_id'] ?? ''),
-                    'nationality' => (string) ($row['nationality'] ?? 'IRN'),
+                    'nationality' => (string) ($row['nationality'] ?? $defaultNationality),
                     'passport_number' => (string) ($row['passport_number'] ?? ''),
                     'passport_expire' => (string) ($row['passport_expire'] ?? ''),
                     'accompanied' => '',
@@ -358,7 +327,7 @@ trait HandlesFlightWorkflow
 
             $lead = $passengers[0];
             $params = [
-                'country_code' => (string) $request->input('country_code', '+98'),
+                'country_code' => (string) $request->input('country_code', FlightProvider::defaultCountryCode($bookProvider)),
                 'passengers' => $passengers,
                 'passenger_prefix' => (string) ($lead['prefix'] ?? 'Mr'),
                 'passenger_first' => (string) ($lead['first'] ?? ''),
@@ -371,12 +340,10 @@ trait HandlesFlightWorkflow
                 'phone' => (string) ($lead['phone'] ?? ''),
             ];
 
-            if (FlightProvider::isDowntownTravel()) {
-                $result = app(DowntownTravelAirService::class)->book($params);
-            } else {
-                $sunspring ??= app(SunSpringAirService::class);
-                $result = $sunspring->book($params);
-            }
+            $result = $bookProvider === FlightProvider::DOWNTOWN_TRAVEL
+                ? app(DowntownTravelAirService::class)->book($params)
+                : ($sunspring ??= app(SunSpringAirService::class))->book($params);
+
             if (! ($result['ok'] ?? false)) {
                 return redirect()
                     ->route($this->flightsRoutePrefix().'.flights.book')
@@ -390,17 +357,6 @@ trait HandlesFlightWorkflow
                 ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
                 ->with('success', $result['message'] ?? 'Booking created. Your reservation details are below.');
         }
-
-        $request->validate([
-            'passenger_first' => ['required', 'string', 'max:80'],
-            'passenger_last' => ['required', 'string', 'max:80'],
-            'passenger_email' => ['required', 'email', 'max:120'],
-            'passenger_phone' => ['required', 'string', 'max:30'],
-            'passenger_dob' => ['required', 'date', 'before:today'],
-            'passenger_gender' => ['required', 'in:M,F'],
-            'passenger_prefix' => ['nullable', 'string', 'max:10'],
-            'form_of_payment' => ['nullable', 'string', 'max:20'],
-        ]);
 
         $params = $this->flightOperationParams($request, 'air_create_reservation');
         $result = $air->execute('air_create_reservation', $params);
@@ -549,6 +505,52 @@ trait HandlesFlightWorkflow
         }
 
         return 'flights.workflow.'.$page;
+    }
+
+    /**
+     * Lock book form + validation to the priced fare's provider (not a stale session toggle).
+     *
+     * @param  array<string, mixed>|null  $price
+     */
+    protected function resolveWorkflowBookProvider(?Request $request = null, ?array $price = null): string
+    {
+        $fromRequest = strtolower(trim((string) ($request?->input('provider', '') ?? '')));
+        if (in_array($fromRequest, FlightProvider::all(), true)) {
+            return $fromRequest;
+        }
+
+        $price ??= $this->workflowPriceStore();
+        if (is_array($price)) {
+            $fromPrice = strtolower((string) ($price['provider'] ?? ''));
+            if (in_array($fromPrice, FlightProvider::all(), true)) {
+                return $fromPrice;
+            }
+
+            $fromResult = FlightProvider::fromResult(is_array($price['result'] ?? null) ? $price['result'] : null);
+            if (in_array($fromResult, FlightProvider::all(), true)) {
+                // fromResult falls back to current(); only trust when the result itself stamped a provider.
+                $stamped = strtolower((string) data_get($price, 'result.provider', ''));
+                if (in_array($stamped, FlightProvider::all(), true)) {
+                    return $stamped;
+                }
+                $solutionProvider = strtolower((string) data_get($price, 'result.solutions.0.provider', ''));
+                if (in_array($solutionProvider, FlightProvider::all(), true)) {
+                    return $solutionProvider;
+                }
+            }
+        }
+
+        if (session('downtown_travel.last_price')) {
+            return FlightProvider::DOWNTOWN_TRAVEL;
+        }
+        if (session('sunspring.last_price')) {
+            return FlightProvider::SUNSPRING;
+        }
+        if (session('travelport.last_air_price_xml')) {
+            return FlightProvider::TRAVELPORT;
+        }
+
+        return FlightProvider::current();
     }
 
     /**

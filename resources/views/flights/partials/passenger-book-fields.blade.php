@@ -1,6 +1,22 @@
 @php
-    $isSunSpring = ($flightProvider ?? '') === 'sunspring'
-        || \App\Support\FlightProvider::fromResult($flightPriceResult ?? null) === 'sunspring';
+    $pricedProvider = \App\Support\FlightProvider::fromResult($flightPriceResult ?? null);
+    $providerId = strtolower((string) ($flightProvider ?? $pricedProvider ?: \App\Support\FlightProvider::current()));
+    if (! in_array($providerId, \App\Support\FlightProvider::all(), true)) {
+        $providerId = \App\Support\FlightProvider::TRAVELPORT;
+    }
+    // Prefer stamped price result when it disagrees with a stale session toggle.
+    $stamped = strtolower((string) data_get($flightPriceResult ?? [], 'provider', ''));
+    if (in_array($stamped, \App\Support\FlightProvider::all(), true)) {
+        $providerId = $stamped;
+    } elseif (in_array($pricedProvider, [\App\Support\FlightProvider::SUNSPRING, \App\Support\FlightProvider::DOWNTOWN_TRAVEL], true)
+        && \App\Support\FlightProvider::usesPassengerArray($pricedProvider)) {
+        $providerId = $pricedProvider;
+    }
+
+    $usesPassengerArray = \App\Support\FlightProvider::usesPassengerArray($providerId);
+    $requiresDocs = \App\Support\FlightProvider::requiresTravelDocuments($providerId);
+    $defaultNationality = \App\Support\FlightProvider::defaultNationality($providerId);
+    $defaultCountryCode = \App\Support\FlightProvider::defaultCountryCode($providerId);
     $slots = $passengerSlots ?? [];
     if ($slots === []) {
         $slots = [[
@@ -16,9 +32,15 @@
     $select = $compact ? 'form-select form-select-sm' : 'form-control';
 @endphp
 
-@if($isSunSpring)
+<input type="hidden" name="provider" value="{{ $providerId }}">
+
+@if($usesPassengerArray)
     <p class="small text-muted mb-3">
-        Enter every traveler from your search. SunSpring needs a valid national ID and passport (e.g. <code>A12345678</code>).
+        @if($requiresDocs)
+            Enter every traveler from your search. SunSpring needs a valid national ID and passport (e.g. <code>A12345678</code>).
+        @else
+            Enter every traveler from your search. Passport details are optional for Downtown Travel.
+        @endif
     </p>
     @foreach($slots as $index => $slot)
         @php
@@ -72,29 +94,31 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Country code</label>
-                        <input type="text" name="country_code" class="{{ $control }}" value="{{ old('country_code', '+98') }}" maxlength="8">
+                        <input type="text" name="country_code" class="{{ $control }}" value="{{ old('country_code', $defaultCountryCode) }}" maxlength="8">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Nationality</label>
-                        <input type="text" name="passengers[{{ $index }}][nationality]" class="{{ $control }}" value="{{ $old['nationality'] ?? 'IRN' }}" maxlength="8" required>
+                        <input type="text" name="passengers[{{ $index }}][nationality]" class="{{ $control }}" value="{{ $old['nationality'] ?? $defaultNationality }}" maxlength="8" required>
                     </div>
                 @else
                     <input type="hidden" name="passengers[{{ $index }}][email]" value="{{ $old['email'] ?? old('passenger_email', 'cert.test@example.com') }}">
                     <input type="hidden" name="passengers[{{ $index }}][phone]" value="{{ $old['phone'] ?? old('passenger_phone', '9151112233') }}">
-                    <input type="hidden" name="passengers[{{ $index }}][nationality]" value="{{ $old['nationality'] ?? 'IRN' }}">
+                    <input type="hidden" name="passengers[{{ $index }}][nationality]" value="{{ $old['nationality'] ?? $defaultNationality }}">
                 @endif
-                <div class="col-md-4">
-                    <label class="form-label">National ID</label>
-                    <input type="text" name="passengers[{{ $index }}][national_id]" class="{{ $control }}" value="{{ $old['national_id'] ?? '' }}" maxlength="32" required placeholder="10-digit national ID">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Passport number</label>
-                    <input type="text" name="passengers[{{ $index }}][passport_number]" class="{{ $control }}" value="{{ $old['passport_number'] ?? '' }}" maxlength="32" required placeholder="A12345678">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Passport expiry</label>
-                    <input type="date" name="passengers[{{ $index }}][passport_expire]" class="{{ $control }}" value="{{ $old['passport_expire'] ?? '2030-12-31' }}" required>
-                </div>
+                @if($requiresDocs)
+                    <div class="col-md-4">
+                        <label class="form-label">National ID</label>
+                        <input type="text" name="passengers[{{ $index }}][national_id]" class="{{ $control }}" value="{{ $old['national_id'] ?? '' }}" maxlength="32" required placeholder="10-digit national ID">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Passport number</label>
+                        <input type="text" name="passengers[{{ $index }}][passport_number]" class="{{ $control }}" value="{{ $old['passport_number'] ?? '' }}" maxlength="32" required placeholder="A12345678">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Passport expiry</label>
+                        <input type="date" name="passengers[{{ $index }}][passport_expire]" class="{{ $control }}" value="{{ $old['passport_expire'] ?? '2030-12-31' }}" required>
+                    </div>
+                @endif
             </div>
         </div>
     @endforeach

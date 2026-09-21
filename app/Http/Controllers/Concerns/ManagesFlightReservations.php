@@ -62,7 +62,7 @@ trait ManagesFlightReservations
 
         $reservations = $query->paginate(20)->withQueryString();
 
-        return view('flights.reservations.index', array_merge($this->travelportViewBase(), [
+        $payload = [
             'reservations' => $reservations,
             'flightProviders' => FlightProvider::options(),
             'filters' => [
@@ -70,7 +70,13 @@ trait ManagesFlightReservations
                 'status' => $request->input('status'),
                 'provider' => $request->input('provider'),
             ],
-        ]));
+        ];
+
+        if ($request->ajax()) {
+            return view('flights.reservations.partials.results', array_merge($this->travelportViewBase(), $payload));
+        }
+
+        return view('flights.reservations.index', array_merge($this->travelportViewBase(), $payload));
     }
 
     public function reservationsShow(int $id)

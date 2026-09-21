@@ -61,6 +61,94 @@ class FlightProvider
         return self::current() === self::DOWNTOWN_TRAVEL;
     }
 
+    /**
+     * SunSpring + Downtown book APIs expect passengers[] rows (not Travelport flat fields).
+     */
+    public static function usesPassengerArray(?string $provider = null): bool
+    {
+        $provider = strtolower((string) ($provider ?? self::current()));
+
+        return in_array($provider, [self::SUNSPRING, self::DOWNTOWN_TRAVEL], true);
+    }
+
+    /**
+     * SunSpring requires national ID + passport on every traveler.
+     */
+    public static function requiresTravelDocuments(?string $provider = null): bool
+    {
+        return strtolower((string) ($provider ?? self::current())) === self::SUNSPRING;
+    }
+
+    public static function defaultNationality(?string $provider = null): string
+    {
+        return self::requiresTravelDocuments($provider) ? 'IRN' : 'USA';
+    }
+
+    public static function defaultCountryCode(?string $provider = null): string
+    {
+        return self::requiresTravelDocuments($provider) ? '+98' : '+1';
+    }
+
+    /**
+     * Validation rules for the public/admin book form for a given provider.
+     *
+     * @return array<string, list<string>|string>
+     */
+    public static function bookValidationRules(string $provider, int $expectedPassengers = 1): array
+    {
+        $provider = strtolower(trim($provider));
+        if (! in_array($provider, self::all(), true)) {
+            $provider = self::TRAVELPORT;
+        }
+
+        $expected = max(1, $expectedPassengers);
+
+        if (! self::usesPassengerArray($provider)) {
+            return [
+                'provider' => ['nullable', 'in:'.implode(',', self::all())],
+                'passenger_first' => ['required', 'string', 'max:80'],
+                'passenger_last' => ['required', 'string', 'max:80'],
+                'passenger_email' => ['required', 'email', 'max:120'],
+                'passenger_phone' => ['required', 'string', 'max:30'],
+                'passenger_dob' => ['required', 'date', 'before:today'],
+                'passenger_gender' => ['required', 'in:M,F'],
+                'passenger_prefix' => ['nullable', 'string', 'max:10'],
+                'form_of_payment' => ['nullable', 'string', 'max:20'],
+            ];
+        }
+
+        $rules = [
+            'provider' => ['nullable', 'in:'.implode(',', self::all())],
+            'passengers' => ['required', 'array', 'min:'.$expected, 'max:'.$expected],
+            'passengers.*.type' => ['required', 'in:ADT,CHD,INF'],
+            'passengers.*.first' => ['required', 'string', 'max:80'],
+            'passengers.*.last' => ['required', 'string', 'max:80'],
+            'passengers.*.dob' => ['required', 'date', 'before:today'],
+            'passengers.*.gender' => ['required', 'in:M,F'],
+            'passengers.*.prefix' => ['nullable', 'string', 'max:10'],
+            'passengers.*.email' => ['nullable', 'email', 'max:120'],
+            'passengers.*.phone' => ['nullable', 'string', 'max:30'],
+            'passengers.*.nationality' => ['nullable', 'string', 'max:8'],
+            'passengers.0.email' => ['required', 'email', 'max:120'],
+            'passengers.0.phone' => ['required', 'string', 'max:30'],
+            'passengers.0.nationality' => ['required', 'string', 'max:8'],
+            'country_code' => ['nullable', 'string', 'max:8'],
+            'form_of_payment' => ['nullable', 'string', 'max:20'],
+        ];
+
+        if (self::requiresTravelDocuments($provider)) {
+            $rules['passengers.*.national_id'] = ['required', 'string', 'min:8', 'max:32'];
+            $rules['passengers.*.passport_number'] = ['required', 'string', 'min:5', 'max:32'];
+            $rules['passengers.*.passport_expire'] = ['required', 'date', 'after:today'];
+        } else {
+            $rules['passengers.*.national_id'] = ['nullable', 'string', 'max:32'];
+            $rules['passengers.*.passport_number'] = ['nullable', 'string', 'max:32'];
+            $rules['passengers.*.passport_expire'] = ['nullable', 'date', 'after:today'];
+        }
+
+        return $rules;
+    }
+
     public static function isReady(): bool
     {
         return match (self::current()) {
