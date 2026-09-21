@@ -48,7 +48,23 @@ Route::get('/', function () {
     $stored = session('public.flight_search');
     $flightSearchInput = is_array($stored) ? ($stored['input'] ?? []) : [];
 
-    return view('frontend.index', compact('recentBlogs', 'airportOptions', 'flightSearchInput'));
+    $hotelStored = session('public.hotel_search');
+    $hotelSearchInput = is_array($hotelStored) ? ($hotelStored['input'] ?? []) : [];
+    $hotelReady = \App\Support\HotelProvider::anyReady();
+    $providerOptions = \App\Support\HotelProvider::options();
+    $hotelProvider = \App\Support\HotelProvider::current();
+    $downtownDestinations = \App\Services\DowntownTravel\DowntownTravelHotelService::destinationOptions();
+
+    return view('frontend.index', compact(
+        'recentBlogs',
+        'airportOptions',
+        'flightSearchInput',
+        'hotelSearchInput',
+        'hotelReady',
+        'providerOptions',
+        'hotelProvider',
+        'downtownDestinations',
+    ));
 })->name('home');
 Route::get('/flights', [PublicFlightController::class, 'flightHub'])->name('frontend.flights.hub');
 Route::post('/search/flights', [PublicFlightController::class, 'flightSearch'])->name('frontend.flights.search');

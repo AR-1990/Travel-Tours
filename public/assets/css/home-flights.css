@@ -779,3 +779,49 @@
 .flight-next-actions .theme-btn2 {
     background: #053750;
 }
+
+/* Home Flights / Hotels tab switcher */
+#home-flight-search .home-search-tabs {
+    margin: 0 0 0.85rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+}
+
+#home-flight-search .home-search-tabs .search-nav .nav {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.3rem;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 999px;
+    border: 1px solid rgba(5, 55, 80, 0.12);
+    box-shadow: 0 10px 30px rgba(5, 55, 80, 0.12);
+}
+
+#home-flight-search .home-search-tabs .nav-link {
+    border-radius: 999px !important;
+    padding: 0.55rem 1.15rem !important;
+    font-weight: 700;
+    color: #053750 !important;
+    background: transparent !important;
+}
+
+#home-flight-search .home-search-tabs .nav-link i {
+    margin-right: 0.4rem;
+    color: #ffb400;
+}
+
+#home-flight-search .home-search-tabs .nav-link.active {
+    background: #053750 !important;
+    color: #fff !important;
+}
+
+#home-flight-search .home-search-tabs .nav-link.active i {
+    color: #ffb400;
+}
+
+#home-flight-search .home-hotel-search select.form-control {
+    appearance: auto;
+    padding-right: 2rem;
+}

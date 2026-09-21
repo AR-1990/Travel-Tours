@@ -30,6 +30,16 @@
     }
     $multiLegs = array_values(array_slice($multiLegs, 0, 6));
 @endphp
+@php
+    $hotelInput = $hotelSearchInput ?? session('public.hotel_search.input', []);
+    $hotelProviders = $providerOptions ?? \App\Support\HotelProvider::options();
+    $hotelDestinations = $downtownDestinations ?? \App\Services\DowntownTravel\DowntownTravelHotelService::destinationOptions();
+    $hotelProviderSelected = old('provider', $hotelInput['provider'] ?? ($hotelProvider ?? \App\Support\HotelProvider::current()));
+    $hotelIsDowntown = $hotelProviderSelected === \App\Support\HotelProvider::DOWNTOWN_TRAVEL_HOTELS;
+    $hotelCheckIn = old('check_in', $hotelInput['check_in'] ?? now()->addMonths(2)->format('Y-m-d'));
+    $hotelCheckOut = old('check_out', $hotelInput['check_out'] ?? now()->addMonths(2)->addDay()->format('Y-m-d'));
+    $openHotelsTab = request()->query('tab') === 'hotels';
+@endphp
 <div class="search-area home-flight-search-area" id="home-flight-search">
     <div class="container">
         <div class="search-wrapper home-flight-search-only">
@@ -38,8 +48,30 @@
                     {{ session('error') ?? session('success') }}
                 </div>
             @endif
+
+            <div class="home-search-tabs search-header">
+                <div class="search-nav">
+                    <ul class="nav nav-pills" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {{ $openHotelsTab ? '' : 'active' }}" id="home-tab-flights"
+                                data-bs-toggle="pill" data-bs-target="#pills-1" type="button" role="tab"
+                                aria-controls="pills-1" aria-selected="{{ $openHotelsTab ? 'false' : 'true' }}">
+                                <i class="far fa-plane-departure"></i>Flights
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {{ $openHotelsTab ? 'active' : '' }}" id="home-tab-hotels"
+                                data-bs-toggle="pill" data-bs-target="#pills-hotels" type="button" role="tab"
+                                aria-controls="pills-hotels" aria-selected="{{ $openHotelsTab ? 'true' : 'false' }}">
+                                <i class="far fa-hotel"></i>Hotels
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
             <div class="tab-content home-flight-panel" id="pills-tabContent">
-                <div class="tab-pane fade show active" id="pills-1" role="tabpanel" tabindex="0">
+                <div class="tab-pane fade {{ $openHotelsTab ? '' : 'show active' }}" id="pills-1" role="tabpanel" tabindex="0">
                     <div class="flight-search ft-group home-flight-search">
                         <div class="search-form">
                             <form action="{{ route('frontend.flights.search') }}" method="POST" id="homeFlightSearchForm">
@@ -207,10 +239,155 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="tab-pane fade {{ $openHotelsTab ? 'show active' : '' }}" id="pills-hotels" role="tabpanel" tabindex="0">
+                    <div class="flight-search ft-group home-flight-search home-hotel-search">
+                        <div class="search-form">
+                            <form action="{{ route('frontend.hotels.search') }}" method="POST" id="homeHotelSearchForm">
+                                @csrf
+
+                                <div class="home-flight-toolbar">
+                                    <div class="home-flight-toolbar-copy">
+                                        <span class="home-flight-kicker"><i class="far fa-hotel"></i> Hotel Search</span>
+                                        <p>Search stays by city with live wholesale rates</p>
+                                    </div>
+                                    <div class="home-trip-toggle home-hotel-provider-toggle" role="radiogroup" aria-label="Hotel provider">
+                                        @foreach($hotelProviders as $option)
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input js-home-hotel-provider" type="radio"
+                                                    name="provider" value="{{ $option['id'] }}"
+                                                    id="home-hotel-provider-{{ $option['id'] }}"
+                                                    @checked($hotelProviderSelected === $option['id'])
+                                                    @disabled(empty($option['ready']))>
+                                                <label class="form-check-label" for="home-hotel-provider-{{ $option['id'] }}">
+                                                    {{ $option['label'] }}@if(empty($option['ready'])) (off)@endif
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                @unless($hotelReady ?? \App\Support\HotelProvider::anyReady())
+                                    <div class="alert alert-warning py-2 small">
+                                        Hotel search is not configured yet. Ask admin to enable Downtown Travel Hotels or Xconnect.
+                                    </div>
+                                @endunless
+
+                                <div class="flight-search-wrapper">
+                                    <div class="flight-search-content">
+                                        <div class="flight-search-item">
+                                            <div class="row g-3 align-items-stretch home-flight-fields">
+                                                <div class="col-lg-3 col-md-6 js-home-downtown-fields" style="{{ $hotelIsDowntown ? '' : 'display:none' }}">
+                                                    <div class="form-group home-field-card">
+                                                        <label class="flight-field-label">City</label>
+                                                        <div class="form-group-icon">
+                                                            <select name="destination" class="form-control" @disabled(! $hotelIsDowntown)>
+                                                                <option value="">Select city</option>
+                                                                @foreach($hotelDestinations as $dest)
+                                                                    <option value="{{ $dest['id'] }}"
+                                                                        @selected(old('destination', $hotelInput['destination'] ?? '') === $dest['id'])>
+                                                                        {{ $dest['label'] }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            <i class="fal fa-map-marker-alt"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-3 col-md-6 js-home-xconnect-fields" style="{{ $hotelIsDowntown ? 'display:none' : '' }}">
+                                                    <div class="form-group home-field-card">
+                                                        <label class="flight-field-label">City ID</label>
+                                                        <div class="form-group-icon">
+                                                            <input type="text" name="city_id" class="form-control"
+                                                                value="{{ old('city_id', $hotelInput['city_id'] ?? '') }}"
+                                                                placeholder="Xconnect city ID"
+                                                                @disabled($hotelIsDowntown)>
+                                                            <i class="fal fa-city"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-3 col-md-6">
+                                                    <div class="form-group home-field-card">
+                                                        <div class="search-form-date">
+                                                            <div class="search-form-journey">
+                                                                <label>Check-in</label>
+                                                                <div class="form-group-icon">
+                                                                    <input type="date" name="check_in" class="form-control"
+                                                                        value="{{ $hotelCheckIn }}" required>
+                                                                    <i class="fal fa-calendar-days"></i>
+                                                                </div>
+                                                            </div>
+                                                            <div class="search-form-return">
+                                                                <label>Check-out</label>
+                                                                <div class="form-group-icon">
+                                                                    <input type="date" name="check_out" class="form-control"
+                                                                        value="{{ $hotelCheckOut }}" required>
+                                                                    <i class="fal fa-calendar-days"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-2 col-md-6">
+                                                    <div class="form-group home-field-card">
+                                                        <label class="flight-field-label">Adults</label>
+                                                        <div class="form-group-icon">
+                                                            <input type="number" name="adults" class="form-control" min="1" max="8"
+                                                                value="{{ old('adults', $hotelInput['adults'] ?? 2) }}">
+                                                            <i class="fal fa-user"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-1 col-md-6">
+                                                    <div class="form-group home-field-card">
+                                                        <label class="flight-field-label">Kids</label>
+                                                        <div class="form-group-icon">
+                                                            <input type="number" name="children" class="form-control" min="0" max="6"
+                                                                value="{{ old('children', $hotelInput['children'] ?? 0) }}">
+                                                            <i class="fal fa-child"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="search-btn home-search-btn">
+                                        <button type="submit" class="theme-btn home-search-submit"
+                                            @disabled(!($hotelReady ?? \App\Support\HotelProvider::anyReady()))>
+                                            <span class="far fa-search"></span> Search Hotels
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+@once
+<script>
+(function () {
+    function syncHomeHotelProvider() {
+        var selected = document.querySelector('.js-home-hotel-provider:checked');
+        var isDowntown = selected && selected.value === 'downtown_travel_hotels';
+        document.querySelectorAll('.js-home-downtown-fields').forEach(function (el) {
+            el.style.display = isDowntown ? '' : 'none';
+            el.querySelectorAll('select,input').forEach(function (field) { field.disabled = !isDowntown; });
+        });
+        document.querySelectorAll('.js-home-xconnect-fields').forEach(function (el) {
+            el.style.display = isDowntown ? 'none' : '';
+            el.querySelectorAll('select,input').forEach(function (field) { field.disabled = !!isDowntown; });
+        });
+    }
+    document.querySelectorAll('.js-home-hotel-provider').forEach(function (el) {
+        el.addEventListener('change', syncHomeHotelProvider);
+    });
+    syncHomeHotelProvider();
+})();
+</script>
+@endonce
 
 <template id="homeMultiCityLegTemplate">
     @include('frontend.partials.flight-multicity-leg', [
