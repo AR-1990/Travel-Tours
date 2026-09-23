@@ -231,6 +231,32 @@ class FlightProvider
     }
 
     /**
+     * Iranian national ID (کد ملی): exactly 10 digits with a valid check digit.
+     * Required by SunSpring / Sepehran Book payloads.
+     */
+    public static function isValidIranianNationalId(string $value): bool
+    {
+        $nid = preg_replace('/\D+/', '', $value) ?? '';
+        if (! preg_match('/^\d{10}$/', $nid)) {
+            return false;
+        }
+
+        // Reject all-identical digits (0000000000, 1111111111, …).
+        if (preg_match('/^(\d)\1{9}$/', $nid)) {
+            return false;
+        }
+
+        $sum = 0;
+        for ($i = 0; $i < 9; $i++) {
+            $sum += (int) $nid[$i] * (10 - $i);
+        }
+        $rem = $sum % 11;
+        $check = $rem < 2 ? $rem : 11 - $rem;
+
+        return $check === (int) $nid[9];
+    }
+
+    /**
      * HTML + validation constraints for book-form fields, keyed by provider.
      *
      * @return array{
@@ -279,7 +305,7 @@ class FlightProvider
 
         return match ($provider) {
             self::SUNSPRING => [
-                'hint' => 'Enter every traveler from your search. SunSpring needs a valid national ID and passport (e.g. A12345678).',
+                'hint' => 'Enter every traveler from your search. Passport is required for everyone. Iranian national ID (کد ملی) is required only when nationality is Iran (IRN).',
                 'name_pattern' => $namePattern,
                 'name_title' => $nameTitle,
                 'name_min' => 2,
@@ -289,17 +315,17 @@ class FlightProvider
                 'phone_min' => 7,
                 'phone_max' => 20,
                 'nationality_pattern' => '[A-Za-z]{3}',
-                'nationality_title' => '3-letter country code (e.g. IRN)',
+                'nationality_title' => '3-letter country code (e.g. IRN, PAK)',
                 'nationality_max' => 3,
                 'nationality_min' => 3,
                 'nationality_placeholder' => 'IRN',
                 'country_code_pattern' => '\\+[0-9]{1,4}',
-                'country_code_title' => 'Dialing code like +98',
+                'country_code_title' => 'Dialing code like +98 or +92',
                 'country_code_max' => 5,
-                'national_id_pattern' => '[0-9]{8,12}',
-                'national_id_title' => '8–12 digit national ID',
-                'national_id_min' => 8,
-                'national_id_max' => 12,
+                'national_id_pattern' => '[0-9]{10}',
+                'national_id_title' => '10-digit Iranian national ID (required for IRN only)',
+                'national_id_min' => 10,
+                'national_id_max' => 10,
                 'passport_pattern' => '[A-Za-z0-9]{5,15}',
                 'passport_title' => 'Passport: 5–15 letters/numbers',
                 'passport_min' => 5,
@@ -449,13 +475,41 @@ class FlightProvider
             }];
         }
 
+        if ($provider === self::SUNSPRING) {
+            $allowedNationalities = array_keys(self::nationalityOptions(self::SUNSPRING));
+            $rules['passengers.*.nationality'] = ['required', 'string', 'size:3', 'in:'.implode(',', $allowedNationalities)];
+            $rules['passengers.0.nationality'] = ['required', 'string', 'size:3', 'in:'.implode(',', $allowedNationalities)];
+            $rules['country_code'] = ['required', 'string', 'max:'.$spec['country_code_max'], 'regex:'.$countryRegex];
+        }
+
         if ($spec['docs_required']) {
-            $rules['passengers.*.national_id'] = [
-                'required', 'string',
-                'min:'.(int) $spec['national_id_min'],
-                'max:'.(int) $spec['national_id_max'],
-                'regex:/^[0-9]{'.(int) $spec['national_id_min'].','.(int) $spec['national_id_max'].'}$/',
-            ];
+            // Passport always required; Iranian national ID only when nationality is IRN.
+            $rules['passengers.*.national_id'] = ['nullable', 'string', 'max:20'];
+            $rules['passengers.*'] = array_values(array_filter([
+                $rules['passengers.*'] ?? null,
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_array($value)) {
+                        return;
+                    }
+                    $nationality = strtoupper(trim((string) ($value['nationality'] ?? '')));
+                    $nid = preg_replace('/\D+/', '', (string) ($value['national_id'] ?? '')) ?? '';
+                    $isIranian = $nationality === 'IRN';
+
+                    if ($isIranian && $nid === '') {
+                        $fail('Iranian passengers need a valid 10-digit national ID (کد ملی).');
+
+                        return;
+                    }
+
+                    if ($nid === '') {
+                        return;
+                    }
+
+                    if ($isIranian && ! self::isValidIranianNationalId($nid)) {
+                        $fail('National ID must be a valid 10-digit Iranian national ID (کد ملی) with a correct check digit.');
+                    }
+                },
+            ]));
             $rules['passengers.*.passport_number'] = [
                 'required', 'string',
                 'min:'.$spec['passport_min'],

@@ -46,7 +46,7 @@
             <p class="small text-muted mb-3">{{ $spec['hint'] }}</p>
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label">Prefix</label>
+                    <label class="form-label">Prefix <span class="text-danger">*</span></label>
                     <select name="prefix" class="form-select" required>
                         @foreach(['Mr.','Mrs.','Ms.','Miss.'] as $p)
                             <option value="{{ $p }}" @selected(old('prefix', 'Mr.') === $p)>{{ $p }}</option>
@@ -54,7 +54,7 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">First name (lead)</label>
+                    <label class="form-label">First name (lead) <span class="text-danger">*</span></label>
                     <input type="text" name="first_name" class="form-control"
                         required value="{{ old('first_name') }}"
                         minlength="{{ $spec['name_min'] }}"
@@ -64,7 +64,7 @@
                         autocomplete="given-name">
                 </div>
                 <div class="col-md-5">
-                    <label class="form-label">Last name (lead)</label>
+                    <label class="form-label">Last name (lead) <span class="text-danger">*</span></label>
                     <input type="text" name="last_name" class="form-control"
                         required value="{{ old('last_name') }}"
                         minlength="{{ $spec['name_min'] }}"
@@ -74,11 +74,11 @@
                         autocomplete="family-name">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Email</label>
+                    <label class="form-label">Email <span class="text-danger">*</span></label>
                     <input type="email" name="email" class="form-control" required maxlength="120" value="{{ old('email') }}" autocomplete="email">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Phone</label>
+                    <label class="form-label">Phone <span class="text-danger">*</span></label>
                     <input type="tel" name="phone" class="form-control"
                         required value="{{ old('phone') }}"
                         minlength="{{ $spec['phone_min'] }}"
@@ -90,7 +90,7 @@
                 </div>
                 @if(!empty($spec['requires_nationality']))
                     <div class="col-md-6">
-                        <label class="form-label">Nationality</label>
+                        <label class="form-label">Nationality <span class="text-danger">*</span></label>
                         <select name="nationality" class="form-select" required>
                             @foreach(\App\Support\HotelProvider::nationalityOptions() as $code => $label)
                                 <option value="{{ $code }}" @selected(old('nationality', 'US') === $code)>{{ $label }}</option>
@@ -99,7 +99,7 @@
                     </div>
                 @endif
                 <div class="col-md-6">
-                    <label class="form-label">2nd adult first (optional)</label>
+                    <label class="form-label">2nd adult first <span class="text-muted">(optional)</span></label>
                     <input type="text" name="guest2_first" class="form-control"
                         value="{{ old('guest2_first') }}"
                         minlength="{{ $spec['name_min'] }}"
@@ -108,7 +108,7 @@
                         title="{{ $spec['name_title'] }}">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">2nd adult last (optional)</label>
+                    <label class="form-label">2nd adult last <span class="text-muted">(optional)</span></label>
                     <input type="text" name="guest2_last" class="form-control"
                         value="{{ old('guest2_last') }}"
                         minlength="{{ $spec['name_min'] }}"

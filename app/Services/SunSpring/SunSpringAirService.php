@@ -810,12 +810,12 @@ class SunSpringAirService
             'birthdate' => (string) ($p['dob'] ?? $p['birthdate'] ?? ''),
             'telephone' => (string) ($p['phone'] ?? $p['telephone'] ?? ''),
             'email' => (string) ($p['email'] ?? ''),
-            'nationality' => (string) ($p['nationality'] ?? 'USA'),
-            'national_id' => (string) ($p['national_id'] ?? '0000000000'),
+            'nationality' => (string) ($p['nationality'] ?? 'IRN'),
+            'national_id' => preg_replace('/\D+/', '', (string) ($p['national_id'] ?? '')) ?: '',
             'passport' => [
                 'id' => (string) data_get($p, 'passport.id', $p['passport_number'] ?? ''),
                 'expire_date' => (string) data_get($p, 'passport.expire_date', $p['passport_expire'] ?? ''),
-                'doc_issue_country' => (string) data_get($p, 'passport.doc_issue_country', $p['nationality'] ?? 'USA'),
+                'doc_issue_country' => (string) data_get($p, 'passport.doc_issue_country', $p['nationality'] ?? 'IRN'),
             ],
         ];
     }

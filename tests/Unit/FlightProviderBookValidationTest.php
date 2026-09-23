@@ -28,11 +28,76 @@ class FlightProviderBookValidationTest extends TestCase
         $this->assertTrue(FlightProvider::usesPassengerArray(FlightProvider::SUNSPRING));
         $this->assertTrue($spec['docs_required']);
         $this->assertSame(3, $spec['nationality_max']);
+        $this->assertSame(10, $spec['national_id_min']);
+        $this->assertSame(10, $spec['national_id_max']);
         $this->assertSame(['required', 'array', 'min:2', 'max:2'], $rules['passengers']);
-        $this->assertContains('required', $rules['passengers.*.national_id']);
+        $this->assertContains('nullable', $rules['passengers.*.national_id']);
         $this->assertContains('required', $rules['passengers.*.passport_number']);
         $this->assertContains('required', $rules['passengers.0.email']);
         $this->assertSame('IRN', FlightProvider::defaultNationality(FlightProvider::SUNSPRING));
+    }
+
+    public function test_sunspring_national_id_requires_iranian_checksum(): void
+    {
+        $this->assertTrue(FlightProvider::isValidIranianNationalId('0013542419'));
+        $this->assertTrue(FlightProvider::isValidIranianNationalId('5001000009'));
+        $this->assertFalse(FlightProvider::isValidIranianNationalId('0000000000'));
+        $this->assertFalse(FlightProvider::isValidIranianNationalId('1234567890'));
+        $this->assertFalse(FlightProvider::isValidIranianNationalId('12345678'));
+
+        $rules = FlightProvider::bookValidationRules(FlightProvider::SUNSPRING, 1);
+        $base = [
+            'type' => 'ADT',
+            'prefix' => 'Mr',
+            'first' => 'Ali',
+            'last' => 'Ahmadi',
+            'dob' => '1990-01-01',
+            'gender' => 'M',
+            'email' => 'ali@example.com',
+            'phone' => '9151112233',
+            'passport_number' => 'A12345678',
+            'passport_expire' => '2030-12-31',
+        ];
+
+        $invalidIranian = \Illuminate\Support\Facades\Validator::make([
+            'country_code' => '+98',
+            'passengers' => [array_merge($base, [
+                'nationality' => 'IRN',
+                'national_id' => '1234567890',
+            ])],
+        ], $rules);
+        $this->assertTrue($invalidIranian->fails());
+        $this->assertTrue(collect($invalidIranian->errors()->all())->contains(
+            fn (string $m): bool => str_contains($m, 'Iranian national ID')
+        ));
+
+        $missingIranianId = \Illuminate\Support\Facades\Validator::make([
+            'country_code' => '+98',
+            'passengers' => [array_merge($base, [
+                'nationality' => 'IRN',
+                'national_id' => '',
+            ])],
+        ], $rules);
+        $this->assertTrue($missingIranianId->fails());
+
+        $validIranian = \Illuminate\Support\Facades\Validator::make([
+            'country_code' => '+98',
+            'passengers' => [array_merge($base, [
+                'nationality' => 'IRN',
+                'national_id' => '0013542419',
+            ])],
+        ], $rules);
+        $this->assertFalse($validIranian->fails(), implode('; ', $validIranian->errors()->all()));
+
+        $pakistaniWithoutNationalId = \Illuminate\Support\Facades\Validator::make([
+            'country_code' => '+92',
+            'passengers' => [array_merge($base, [
+                'nationality' => 'PAK',
+                'national_id' => '',
+                'phone' => '3001234567',
+            ])],
+        ], $rules);
+        $this->assertFalse($pakistaniWithoutNationalId->fails(), implode('; ', $pakistaniWithoutNationalId->errors()->all()));
     }
 
     public function test_downtown_requires_passengers_without_travel_documents(): void

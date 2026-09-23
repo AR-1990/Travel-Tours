@@ -40,11 +40,11 @@
 
 @if(in_array($key, ['flight_details', 'flight_information'], true))
     <div class="col-md-2">
-        <label class="flight-field-label">Carrier</label>
+        <label class="flight-field-label">Carrier <span class="text-danger">*</span></label>
         <input type="text" name="carrier" class="form-control text-uppercase" maxlength="3" value="{{ $input['carrier'] ?? '' }}" required>
     </div>
     <div class="col-md-2">
-        <label class="flight-field-label">Flight #</label>
+        <label class="flight-field-label">Flight # <span class="text-danger">*</span></label>
         <input type="text" name="flight_number" class="form-control" value="{{ $input['flight_number'] ?? '' }}" required>
     </div>
     <div class="col-md-4">
@@ -68,7 +68,7 @@
         ])
     </div>
     <div class="col-md-4">
-        <label class="flight-field-label">Journey Date</label>
+        <label class="flight-field-label">Journey Date <span class="text-danger">*</span></label>
         <input type="date" name="departure_date" class="form-control" value="{{ $input['departure_date'] ?? '' }}" required>
     </div>
 @endif
@@ -109,35 +109,35 @@
         </select>
     </div>
     <div class="col-md-3">
-        <label class="form-label">First name</label>
+        <label class="form-label">First name <span class="text-danger">*</span></label>
         <input type="text" name="passenger_first" class="form-control" value="{{ $input['passenger_first'] ?? '' }}"
             required minlength="{{ $opSpec['name_min'] }}" maxlength="{{ $opSpec['name_max'] }}"
             pattern="{{ $opSpec['name_pattern'] }}" title="{{ $opSpec['name_title'] }}">
     </div>
     <div class="col-md-3">
-        <label class="form-label">Last name</label>
+        <label class="form-label">Last name <span class="text-danger">*</span></label>
         <input type="text" name="passenger_last" class="form-control" value="{{ $input['passenger_last'] ?? '' }}"
             required minlength="{{ $opSpec['name_min'] }}" maxlength="{{ $opSpec['name_max'] }}"
             pattern="{{ $opSpec['name_pattern'] }}" title="{{ $opSpec['name_title'] }}">
     </div>
     <div class="col-md-2">
-        <label class="form-label">Gender</label>
+        <label class="form-label">Gender <span class="text-danger">*</span></label>
         <select name="passenger_gender" class="form-control" required>
             <option value="M" @selected(($input['passenger_gender'] ?? 'M') === 'M')>Male</option>
             <option value="F" @selected(($input['passenger_gender'] ?? '') === 'F')>Female</option>
         </select>
     </div>
     <div class="col-md-2">
-        <label class="form-label">Date of birth</label>
+        <label class="form-label">Date of birth <span class="text-danger">*</span></label>
         <input type="date" name="passenger_dob" class="form-control" value="{{ $input['passenger_dob'] ?? '' }}"
             required max="{{ $opToday }}" min="{{ now()->subYears(100)->format('Y-m-d') }}">
     </div>
     <div class="col-md-4">
-        <label class="form-label">Email</label>
+        <label class="form-label">Email <span class="text-danger">*</span></label>
         <input type="email" name="passenger_email" class="form-control" value="{{ $input['passenger_email'] ?? '' }}" required maxlength="120">
     </div>
     <div class="col-md-4">
-        <label class="form-label">Phone</label>
+        <label class="form-label">Phone <span class="text-danger">*</span></label>
         <input type="tel" name="passenger_phone" class="form-control" value="{{ $input['passenger_phone'] ?? '' }}"
             required minlength="{{ $opSpec['phone_min'] }}" maxlength="{{ $opSpec['phone_max'] }}"
             pattern="{{ $opSpec['phone_pattern'] }}" title="{{ $opSpec['phone_title'] }}">
@@ -155,7 +155,7 @@
 @if(in_array($key, ['universal_record_retrieve', 'universal_record_cancel', 'universal_record_modify', 'air_ticketing', 'air_retrieve_document', 'air_cancel', 'air_refund_quote', 'air_refund', 'air_exchange_quote', 'air_exchange', 'air_exchange_ticketing', 'air_reprice', 'air_void_ticket', 'air_pre_pay'], true))
     <div class="row g-3">
         <div class="col-md-6">
-            <label class="form-label">Universal Record locator</label>
+            <label class="form-label">Universal Record locator <span class="text-danger">*</span></label>
             <input type="text" name="universal_locator" class="form-control text-uppercase" value="{{ $input['universal_locator'] ?? '' }}" placeholder="e.g. 0TU8VK" required>
         </div>
         @if(in_array($key, ['air_ticketing', 'air_retrieve_document', 'air_cancel', 'air_reprice', 'air_refund_quote', 'air_refund', 'air_void_ticket', 'air_exchange_quote', 'air_exchange', 'air_exchange_ticketing', 'air_pre_pay'], true))

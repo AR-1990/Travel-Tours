@@ -31,6 +31,7 @@
     $select = $compact ? 'form-select form-select-sm' : 'form-control';
     $today = now()->subDay()->format('Y-m-d');
     $passportMin = now()->addDay()->format('Y-m-d');
+    $req = '<span class="text-danger">*</span>';
 @endphp
 
 <input type="hidden" name="provider" value="{{ $providerId }}">
@@ -66,7 +67,7 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">First name</label>
+                    <label class="form-label">First name {!! $req !!}</label>
                     <input type="text" name="passengers[{{ $index }}][first]" class="{{ $control }}"
                         value="{{ $old['first'] ?? '' }}"
                         required
@@ -77,7 +78,7 @@
                         autocomplete="given-name">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Last name</label>
+                    <label class="form-label">Last name {!! $req !!}</label>
                     <input type="text" name="passengers[{{ $index }}][last]" class="{{ $control }}"
                         value="{{ $old['last'] ?? '' }}"
                         required
@@ -88,14 +89,14 @@
                         autocomplete="family-name">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Gender</label>
+                    <label class="form-label">Gender {!! $req !!}</label>
                     <select name="passengers[{{ $index }}][gender]" class="{{ $select }}" required>
                         <option value="M" @selected(($old['gender'] ?? $defaultGender) === 'M')>Male</option>
                         <option value="F" @selected(($old['gender'] ?? $defaultGender) === 'F')>Female</option>
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Date of birth</label>
+                    <label class="form-label">Date of birth {!! $req !!}</label>
                     <input type="date" name="passengers[{{ $index }}][dob]" class="{{ $control }}"
                         value="{{ $old['dob'] ?? '' }}"
                         required
@@ -105,13 +106,13 @@
                 </div>
                 @if($index === 0)
                     <div class="col-md-4">
-                        <label class="form-label">Email</label>
+                        <label class="form-label">Email {!! $req !!}</label>
                         <input type="email" name="passengers[{{ $index }}][email]" class="{{ $control }}"
                             value="{{ $old['email'] ?? old('passenger_email', $bookInput['passenger_email'] ?? '') }}"
                             required maxlength="120" autocomplete="email">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Phone</label>
+                        <label class="form-label">Phone {!! $req !!}</label>
                         <input type="tel" name="passengers[{{ $index }}][phone]" class="{{ $control }}"
                             value="{{ $old['phone'] ?? old('passenger_phone', $bookInput['passenger_phone'] ?? '') }}"
                             required
@@ -124,9 +125,10 @@
                     </div>
                     @if($spec['show_country_code'])
                         <div class="col-md-4">
-                            <label class="form-label">Country code</label>
+                            <label class="form-label">Country code @if($providerId === 'sunspring'){!! $req !!}@endif</label>
                             <input type="text" name="country_code" class="{{ $control }}"
                                 value="{{ old('country_code', $defaultCountryCode) }}"
+                                @if($providerId === 'sunspring') required @endif
                                 maxlength="{{ $spec['country_code_max'] }}"
                                 pattern="{{ $spec['country_code_pattern'] }}"
                                 title="{{ $spec['country_code_title'] }}"
@@ -134,40 +136,47 @@
                                 inputmode="tel">
                         </div>
                     @endif
-                    @if($spec['show_nationality'])
-                        <div class="col-md-4">
-                            <label class="form-label">Nationality</label>
-                            @php
-                                $nationalityOptions = \App\Support\FlightProvider::nationalityOptions($providerId);
-                                $selectedNationality = strtoupper((string) ($old['nationality'] ?? $defaultNationality));
-                            @endphp
-                            <select name="passengers[{{ $index }}][nationality]" class="{{ $select }}" required>
-                                @foreach($nationalityOptions as $code => $label)
-                                    <option value="{{ $code }}" @selected($selectedNationality === $code)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    @endif
                 @else
                     <input type="hidden" name="passengers[{{ $index }}][email]" value="{{ $old['email'] ?? old('passenger_email', 'cert.test@example.com') }}">
                     <input type="hidden" name="passengers[{{ $index }}][phone]" value="{{ $old['phone'] ?? old('passenger_phone', '9151112233') }}">
-                    <input type="hidden" name="passengers[{{ $index }}][nationality]" value="{{ $old['nationality'] ?? $defaultNationality }}">
+                @endif
+                @if($spec['show_nationality'])
+                    <div class="col-md-4">
+                        <label class="form-label">Nationality {!! $req !!}</label>
+                        @php
+                            $nationalityOptions = \App\Support\FlightProvider::nationalityOptions($providerId);
+                            $selectedNationality = strtoupper((string) ($old['nationality'] ?? $defaultNationality));
+                        @endphp
+                        <select name="passengers[{{ $index }}][nationality]" class="{{ $select }} js-passenger-nationality" required
+                            data-passenger-index="{{ $index }}">
+                            @foreach($nationalityOptions as $code => $label)
+                                <option value="{{ $code }}" @selected($selectedNationality === $code)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 @endif
                 @if($spec['show_docs'] && $spec['docs_required'])
                     <div class="col-md-4">
-                        <label class="form-label">National ID</label>
-                        <input type="text" name="passengers[{{ $index }}][national_id]" class="{{ $control }}"
+                        <label class="form-label">
+                            National ID
+                            <span class="text-danger js-national-id-required-mark @if(strtoupper((string) ($old['nationality'] ?? $defaultNationality)) !== 'IRN') d-none @endif">*</span>
+                            <span class="text-muted small js-national-id-optional-mark @if(strtoupper((string) ($old['nationality'] ?? $defaultNationality)) === 'IRN') d-none @endif">(Iran only)</span>
+                        </label>
+                        <input type="text" name="passengers[{{ $index }}][national_id]" class="{{ $control }} js-sunspring-national-id"
                             value="{{ $old['national_id'] ?? '' }}"
-                            required
                             minlength="{{ $spec['national_id_min'] }}"
                             maxlength="{{ $spec['national_id_max'] }}"
                             pattern="{{ $spec['national_id_pattern'] }}"
                             title="{{ $spec['national_id_title'] }}"
-                            placeholder="{{ $spec['national_id_title'] }}"
-                            inputmode="numeric">
+                            placeholder="IRN only — e.g. 0013542419"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            data-national-id-check="1"
+                            data-passenger-index="{{ $index }}">
+                        <div class="form-text">Required only for Iranian (IRN) nationality · 10-digit کد ملی</div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Passport number</label>
+                        <label class="form-label">Passport number {!! $req !!}</label>
                         <input type="text" name="passengers[{{ $index }}][passport_number]" class="{{ $control }}"
                             value="{{ $old['passport_number'] ?? '' }}"
                             required
@@ -178,7 +187,7 @@
                             placeholder="A12345678">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Passport expiry</label>
+                        <label class="form-label">Passport expiry {!! $req !!}</label>
                         <input type="date" name="passengers[{{ $index }}][passport_expire]" class="{{ $control }}"
                             value="{{ $old['passport_expire'] ?? '2030-12-31' }}"
                             required
@@ -227,7 +236,7 @@
             </select>
         </div>
         <div class="col-md-4">
-            <label class="form-label">First name</label>
+            <label class="form-label">First name {!! $req !!}</label>
             <input type="text" name="passenger_first" class="{{ $control }}"
                 value="{{ old('passenger_first', $bookInput['passenger_first'] ?? '') }}"
                 required
@@ -238,7 +247,7 @@
                 autocomplete="given-name">
         </div>
         <div class="col-md-4">
-            <label class="form-label">Last name</label>
+            <label class="form-label">Last name {!! $req !!}</label>
             <input type="text" name="passenger_last" class="{{ $control }}"
                 value="{{ old('passenger_last', $bookInput['passenger_last'] ?? '') }}"
                 required
@@ -249,14 +258,14 @@
                 autocomplete="family-name">
         </div>
         <div class="col-md-2">
-            <label class="form-label">Gender</label>
+            <label class="form-label">Gender {!! $req !!}</label>
             <select name="passenger_gender" class="{{ $select }}" required>
                 <option value="M" @selected(old('passenger_gender', $bookInput['passenger_gender'] ?? 'M') === 'M')>Male</option>
                 <option value="F" @selected(old('passenger_gender', $bookInput['passenger_gender'] ?? '') === 'F')>Female</option>
             </select>
         </div>
         <div class="col-md-4">
-            <label class="form-label">Date of birth</label>
+            <label class="form-label">Date of birth {!! $req !!}</label>
             <input type="date" name="passenger_dob" class="{{ $control }}"
                 value="{{ old('passenger_dob', $bookInput['passenger_dob'] ?? '') }}"
                 required
@@ -264,13 +273,13 @@
                 min="{{ now()->subYears(100)->format('Y-m-d') }}">
         </div>
         <div class="col-md-4">
-            <label class="form-label">Email</label>
+            <label class="form-label">Email {!! $req !!}</label>
             <input type="email" name="passenger_email" class="{{ $control }}"
                 value="{{ old('passenger_email', $bookInput['passenger_email'] ?? '') }}"
                 required maxlength="120" autocomplete="email">
         </div>
         <div class="col-md-4">
-            <label class="form-label">Phone</label>
+            <label class="form-label">Phone {!! $req !!}</label>
             <input type="tel" name="passenger_phone" class="{{ $control }}"
                 value="{{ old('passenger_phone', $bookInput['passenger_phone'] ?? '') }}"
                 required
@@ -290,3 +299,63 @@
         </div>
     </div>
 @endif
+
+@once
+@push('scripts')
+<script>
+(function () {
+    function isValidIranianNationalId(value) {
+        var nid = String(value || '').replace(/\D+/g, '');
+        if (!/^\d{10}$/.test(nid)) return false;
+        if (/^(\d)\1{9}$/.test(nid)) return false;
+        var sum = 0;
+        for (var i = 0; i < 9; i++) sum += parseInt(nid.charAt(i), 10) * (10 - i);
+        var rem = sum % 11;
+        var check = rem < 2 ? rem : 11 - rem;
+        return check === parseInt(nid.charAt(9), 10);
+    }
+
+    function passengerRow(el) {
+        return el.closest('.border.rounded') || el.closest('.row') || document;
+    }
+
+    function syncNationalIdField(input) {
+        var row = passengerRow(input);
+        var nationality = row.querySelector('.js-passenger-nationality');
+        var code = nationality ? String(nationality.value || '').toUpperCase() : '';
+        var iranian = code === 'IRN';
+        var reqMark = row.querySelector('.js-national-id-required-mark');
+        var optMark = row.querySelector('.js-national-id-optional-mark');
+        if (reqMark) reqMark.classList.toggle('d-none', !iranian);
+        if (optMark) optMark.classList.toggle('d-none', iranian);
+        input.required = iranian;
+        if (!iranian) {
+            input.setCustomValidity('');
+            return;
+        }
+        var ok = isValidIranianNationalId(input.value);
+        input.setCustomValidity(ok ? '' : 'Iranian passengers need a valid 10-digit national ID (کد ملی).');
+    }
+
+    function bindNationalIdChecks(root) {
+        (root || document).querySelectorAll('[data-national-id-check="1"]').forEach(function (input) {
+            if (input.dataset.nidBound === '1') return;
+            input.dataset.nidBound = '1';
+            var row = passengerRow(input);
+            var nationality = row.querySelector('.js-passenger-nationality');
+            input.addEventListener('input', function () { syncNationalIdField(input); });
+            input.addEventListener('blur', function () { syncNationalIdField(input); });
+            if (nationality) {
+                nationality.addEventListener('change', function () { syncNationalIdField(input); });
+            }
+            syncNationalIdField(input);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        bindNationalIdChecks(document);
+    });
+})();
+</script>
+@endpush
+@endonce
