@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\System\Permission;
 use App\Models\System\Role;
 use App\Models\System\Tenant;
 use App\Models\Users\User;
@@ -57,7 +58,7 @@ class TenantProvisioningService
 
     public function ensureTenantAdminRole(Tenant $tenant): Role
     {
-        return Role::firstOrCreate(
+        $role = Role::firstOrCreate(
             ['slug' => 'admin', 'tenant_id' => $tenant->id],
             [
                 'name' => 'Admin',
@@ -66,6 +67,49 @@ class TenantProvisioningService
                 'is_system' => true,
             ]
         );
+
+        // Login requires dashboard.view (and agent panel needs the full permission set).
+        // Previously firstOrCreate left new agency roles with zero permissions → Access denied.
+        $this->syncTenantAdminPermissions($role);
+
+        return $role;
+    }
+
+    /**
+     * Attach the full permission catalog to a tenant Admin role (same as TenantRbacSeeder).
+     */
+    public function syncTenantAdminPermissions(Role $role): void
+    {
+        $permissionIds = Permission::query()->pluck('id');
+        if ($permissionIds->isEmpty()) {
+            return;
+        }
+
+        $role->permissions()->sync($permissionIds->all());
+    }
+
+    /**
+     * Repair tenant Admin roles that were provisioned without permissions.
+     *
+     * @return int Number of roles updated
+     */
+    public function repairTenantAdminRolesMissingPermissions(): int
+    {
+        $roles = Role::query()
+            ->where('slug', 'admin')
+            ->whereNotNull('tenant_id')
+            ->get();
+
+        $fixed = 0;
+        foreach ($roles as $role) {
+            if ($role->permissions()->exists()) {
+                continue;
+            }
+            $this->syncTenantAdminPermissions($role);
+            $fixed++;
+        }
+
+        return $fixed;
     }
 
     public function resolveUsername(?string $username, string $email): string

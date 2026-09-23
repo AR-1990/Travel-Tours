@@ -114,8 +114,13 @@ class AdminController extends Controller
             } else {
                 Auth::logout();
 
+                $reason = 'Your account is inactive or awaiting approval.';
+                if ($user->is_active && $user->tenant && $user->tenant->is_active && $user->tenant->status === 'approved') {
+                    $reason = 'Your agency role has no panel permissions. Ask Super Admin to re-save the agency or contact support.';
+                }
+
                 return redirect()->route($errorRoute)->withErrors([
-                    'login' => 'Access denied for '.$label.'. Your account is inactive or awaiting approval.',
+                    'login' => 'Access denied for '.$label.'. '.$reason,
                 ]);
             }
         }
