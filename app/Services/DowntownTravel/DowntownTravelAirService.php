@@ -179,6 +179,10 @@ class DowntownTravelAirService
             ?? $solution['total_amount']
             ?? 0
         );
+        // Allow cert / callers to force a wrong expected price to exercise price_changed.
+        if (isset($params['expected_agent_net_price']) && is_numeric($params['expected_agent_net_price'])) {
+            $agentNet = (float) $params['expected_agent_net_price'];
+        }
 
         $docsRequired = (bool) (
             data_get($bookOffer, 'travel_document_required')
@@ -208,9 +212,11 @@ class DowntownTravelAirService
         ];
 
         $book = $this->client->postAir('/api/public/v2/orders/booking', $bookBody);
+        $priceChanged = false;
         if (! ($book['ok'] ?? false)) {
             $confirmed = $this->confirmPriceChangeIfNeeded($book);
             if ($confirmed !== null) {
+                $priceChanged = true;
                 $book = $confirmed;
             }
         }
@@ -221,6 +227,7 @@ class DowntownTravelAirService
                 'message' => $book['message'] ?? 'Downtown Travel booking failed.',
                 'provider' => 'downtown_travel',
                 'raw' => ['preliminary' => $prelimData, 'book' => $book, 'request' => $bookBody],
+                'price_changed' => $priceChanged,
             ];
         }
 
@@ -257,7 +264,10 @@ class DowntownTravelAirService
             'provider_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
             'air_reservation_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
             'air_locator' => $airlinePnr !== '' ? $airlinePnr : ($readable !== '' ? $readable : $orderId),
+            'order_id' => $orderId !== '' ? $orderId : null,
+            'readable_id' => $readable !== '' ? $readable : null,
             'booking_record_id' => $bookingRecordId !== '' ? $bookingRecordId : null,
+            'price_changed' => $priceChanged,
             'raw' => $data,
         ];
     }
@@ -346,6 +356,35 @@ class DowntownTravelAirService
         }
 
         $response = $this->client->postAir('/api/public/v2/booking_records/'.$recordId.'/issue', $body);
+        $priceChangedRetried = false;
+        // Ticketing price_changed returns the real order id (not temporary) — retry issue with the new net.
+        if (! ($response['ok'] ?? false)) {
+            $payload = is_array($response['data'] ?? null) ? $response['data'] : null;
+            if (is_array($payload) && ($payload['reason'] ?? '') === 'price_changed') {
+                $newNet = data_get($payload, 'pricing.pricing_options.agent_cash.agent_net_total');
+                if ($newNet === null) {
+                    $newNet = data_get($payload, 'pricing.pricing_options.passenger_cc.agent_net_total');
+                }
+                if ($newNet !== null) {
+                    $body['expected_agent_net_price'] = round((float) $newNet, 2);
+                    $retry = $this->client->postAir('/api/public/v2/booking_records/'.$recordId.'/issue', $body);
+                    if ($retry['ok'] ?? false) {
+                        $response = $retry;
+                        $priceChangedRetried = true;
+                    } else {
+                        return [
+                            'ok' => false,
+                            'message' => 'Price changed on issue; retry with new agent net failed: '.($retry['message'] ?? 'unknown'),
+                            'provider' => 'downtown_travel',
+                            'http_status' => $retry['http_status'] ?? null,
+                            'raw' => ['price_changed' => $payload, 'retry' => $retry],
+                            'price_changed' => true,
+                        ];
+                    }
+                }
+            }
+        }
+
         if (! ($response['ok'] ?? false)) {
             return [
                 'ok' => false,
@@ -357,7 +396,9 @@ class DowntownTravelAirService
         }
 
         $data = is_array($response['data'] ?? null) ? $response['data'] : [];
-        $tickets = $this->extractTicketNumbers(['booking_records' => [$data]]);
+        $tickets = $this->extractTicketNumbers(
+            isset($data['booking_records']) ? $data : ['booking_records' => [$data]]
+        );
 
         return [
             'ok' => true,
@@ -368,6 +409,7 @@ class DowntownTravelAirService
             'ticket_numbers' => $tickets,
             'booking_record' => $data,
             'raw' => $data,
+            'price_changed' => $priceChangedRetried,
         ];
     }
 
