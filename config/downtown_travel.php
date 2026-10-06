@@ -49,6 +49,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Search inventory source
+    |--------------------------------------------------------------------------
+    |
+    | Always send this on POST /api/public/v2/search. Omitting it makes Downtown
+    | query every GDS/NDC source and slows the response.
+    |
+    */
+    'search_sources' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('DOWNTOWN_TRAVEL_SEARCH_SOURCES', 'amadeus'))
+    ))),
+
+    /*
+    |--------------------------------------------------------------------------
     | Optional host overrides (no trailing slash)
     |--------------------------------------------------------------------------
     |

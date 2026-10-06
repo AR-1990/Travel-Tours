@@ -102,6 +102,15 @@
                 </li>
 
                 <li>
+                    <a href="{{ route('admin.partner-inquiries.index') }}" class="{{ request()->routeIs('admin.partner-inquiries*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
+                        </svg>
+                        <span class="menu-text">Partner applications</span>
+                    </a>
+                </li>
+
+                <li>
                     <a href="{{ route('admin.blogs.index') }}" class="{{ request()->routeIs('admin.blogs*') ? 'active' : '' }}">
                         <svg fill="currentColor" viewBox="0 0 24 24">
                             <path d="M19 2H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 0h11c2.21 0 4 1.79 4 4v14c0 2.21-1.79 4-4 4H8c-2.21 0-4-1.79-4-4V4c0-2.21 1.79-4 4-4zm3 7h8v2h-8V7zm0 4h8v2h-8v-2zm0 4h5v2h-5v-2zM7 7h2v2H7V7zm0 4h2v2H7v-2zm0 4h2v2H7v-2z"/>

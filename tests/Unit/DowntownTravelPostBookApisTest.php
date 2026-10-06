@@ -138,4 +138,70 @@ class DowntownTravelPostBookApisTest extends TestCase
         $this->assertTrue($added['ok']);
         $this->assertSame('Follow up', $client->calls[array_key_last($client->calls)]['body']['comment']);
     }
+
+    public function test_issue_tickets_calls_get_order_details_afterwards(): void
+    {
+        $client = new class extends DowntownTravelClient
+        {
+            /** @var list<array{method: string, path: string, body: array<string, mixed>}> */
+            public array $calls = [];
+
+            public function getAir(string $path, array $query = [], ?string $token = null): array
+            {
+                $this->calls[] = ['method' => 'GET', 'path' => $path, 'body' => $query];
+
+                return [
+                    'ok' => true,
+                    'http_status' => 200,
+                    'data' => [
+                        'id' => '202faab1-ca19-4d07-b9c1-291f83d55077',
+                        'booking_records' => [[
+                            'id' => 'br-1',
+                            'passengers' => [[
+                                'adult' => ['air_ticket' => ['ticket_number' => '0161111111111']],
+                            ]],
+                        ]],
+                    ],
+                ];
+            }
+
+            public function postAir(string $path, array $body = [], ?string $token = null): array
+            {
+                $this->calls[] = ['method' => 'POST', 'path' => $path, 'body' => $body];
+
+                return [
+                    'ok' => true,
+                    'http_status' => 200,
+                    'data' => [
+                        'id' => 'br-1',
+                        'passengers' => [[
+                            'adult' => ['air_ticket' => ['ticket_number' => '0160000000000']],
+                        ]],
+                    ],
+                ];
+            }
+        };
+
+        $service = new DowntownTravelAirService($client, new DowntownTravelFlightParser);
+        $issue = $service->issueTickets([
+            'booking_record_id' => 'br-1',
+            'order_id' => '202faab1-ca19-4d07-b9c1-291f83d55077',
+            'phone' => '+14057787503',
+            'passengers' => [[
+                'type' => 'ADT',
+                'first' => 'Eve',
+                'last' => 'Certthreea',
+                'dob' => '1987-04-04',
+                'gender' => 'F',
+                'nationality' => 'US',
+            ]],
+        ]);
+
+        $this->assertTrue($issue['ok']);
+        $this->assertSame('POST', $client->calls[0]['method']);
+        $this->assertStringContainsString('/issue', $client->calls[0]['path']);
+        $this->assertSame('GET', $client->calls[1]['method']);
+        $this->assertSame('/api/public/v2/orders/202faab1-ca19-4d07-b9c1-291f83d55077', $client->calls[1]['path']);
+        $this->assertSame(['0161111111111'], $issue['ticket_numbers']);
+    }
 }

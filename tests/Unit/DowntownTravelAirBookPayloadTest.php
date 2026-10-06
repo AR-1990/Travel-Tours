@@ -216,4 +216,19 @@ class DowntownTravelAirBookPayloadTest extends TestCase
         $this->assertSame(412.75, $client->calls[2]['body']['expected_agent_net_price']);
         $this->assertStringContainsString('confirm_price_change/tmp-order-uuid', $client->calls[2]['path']);
     }
+
+    public function test_search_body_always_includes_inventory_source(): void
+    {
+        $service = new DowntownTravelAirService(new DowntownTravelClient, new DowntownTravelFlightParser);
+        $method = new \ReflectionMethod($service, 'searchBody');
+        $body = $method->invoke($service, [
+            'origin' => 'NYC',
+            'destination' => 'ZRH',
+            'departure_date' => '2026-11-01',
+            'adults' => 1,
+        ]);
+
+        $this->assertIsArray($body);
+        $this->assertSame(['amadeus'], $body['sources']);
+    }
 }

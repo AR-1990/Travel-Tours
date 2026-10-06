@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\FlightController as AdminFlightController;
 use App\Http\Controllers\Admin\HotelController as AdminHotelController;
 use App\Http\Controllers\Admin\IntegrationsController;
 use App\Http\Controllers\Admin\ManagersController;
+use App\Http\Controllers\Admin\PartnerInquiryController as AdminPartnerInquiryController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TenantController;
@@ -236,6 +237,11 @@ Route::middleware(['auth', RoleMiddleware::class.':1'])->prefix('admin')->name('
     Route::post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
     Route::post('/tenants/{tenant}/approve', [TenantController::class, 'approve'])->name('tenants.approve');
     Route::post('/tenants/{tenant}/reject', [TenantController::class, 'reject'])->name('tenants.reject');
+
+    Route::get('/partner-inquiries', [AdminPartnerInquiryController::class, 'index'])->name('partner-inquiries.index');
+    Route::get('/partner-inquiries/{partnerInquiry}', [AdminPartnerInquiryController::class, 'show'])->name('partner-inquiries.show');
+    Route::put('/partner-inquiries/{partnerInquiry}', [AdminPartnerInquiryController::class, 'update'])->name('partner-inquiries.update');
+    Route::delete('/partner-inquiries/{partnerInquiry}', [AdminPartnerInquiryController::class, 'destroy'])->name('partner-inquiries.destroy');
 
     Route::get('/blogs', [AdminBlogController::class, 'index'])->name('blogs.index');
     Route::get('/blogs/create', [AdminBlogController::class, 'create'])->name('blogs.create');

@@ -547,6 +547,7 @@ trait RunsFlightWorkflow
 
         $result = $dt->issueTickets([
             'booking_record_id' => $resolved['booking_record_id'],
+            'order_id' => (string) ($reservation->universal_locator ?? ''),
             'email' => (string) ($reservation->passenger_email ?? ''),
             'phone' => (string) ($reservation->passenger_phone ?? ''),
             'payment_option' => 'agent_cash',
@@ -575,6 +576,7 @@ trait RunsFlightWorkflow
                 'ticketed_at' => now(),
                 'raw_result' => array_merge((array) $reservation->raw_result, [
                     'ticket' => $result,
+                    'order' => $result['order']['order'] ?? ($result['order'] ?? null),
                     'booking_record_id' => $resolved['booking_record_id'],
                 ]),
             ])->save();

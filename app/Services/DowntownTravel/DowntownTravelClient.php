@@ -361,7 +361,10 @@ class DowntownTravelClient
                     'to' => $destination,
                 ],
             ],
-            'sources' => ['amadeus'],
+            'sources' => array_values(array_filter(array_map(
+                'trim',
+                (array) (config('downtown_travel.search_sources', ['amadeus']))
+            ))) ?: ['amadeus'],
         ]);
 
         if (! ($result['ok'] ?? false)) {

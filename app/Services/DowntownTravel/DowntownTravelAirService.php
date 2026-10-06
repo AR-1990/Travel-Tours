@@ -372,27 +372,27 @@ class DowntownTravelAirService
                         $response = $retry;
                         $priceChangedRetried = true;
                     } else {
-                        return [
+                        return $this->issueResultWithOrderDetails([
                             'ok' => false,
                             'message' => 'Price changed on issue; retry with new agent net failed: '.($retry['message'] ?? 'unknown'),
                             'provider' => 'downtown_travel',
                             'http_status' => $retry['http_status'] ?? null,
                             'raw' => ['price_changed' => $payload, 'retry' => $retry],
                             'price_changed' => true,
-                        ];
+                        ], $params, is_array($retry['data'] ?? null) ? $retry['data'] : $payload);
                     }
                 }
             }
         }
 
         if (! ($response['ok'] ?? false)) {
-            return [
+            return $this->issueResultWithOrderDetails([
                 'ok' => false,
                 'message' => $response['message'] ?? 'Downtown Travel ticketing failed.',
                 'provider' => 'downtown_travel',
                 'http_status' => $response['http_status'] ?? null,
                 'raw' => $response,
-            ];
+            ], $params, is_array($response['data'] ?? null) ? $response['data'] : []);
         }
 
         $data = is_array($response['data'] ?? null) ? $response['data'] : [];
@@ -400,7 +400,7 @@ class DowntownTravelAirService
             isset($data['booking_records']) ? $data : ['booking_records' => [$data]]
         );
 
-        return [
+        return $this->issueResultWithOrderDetails([
             'ok' => true,
             'message' => $tickets !== []
                 ? 'Downtown Travel tickets issued ('.implode(', ', $tickets).').'
@@ -410,7 +410,7 @@ class DowntownTravelAirService
             'booking_record' => $data,
             'raw' => $data,
             'price_changed' => $priceChangedRetried,
-        ];
+        ], $params, $data);
     }
 
     /**
@@ -880,7 +880,7 @@ class DowntownTravelAirService
                     'infants' => $infants,
                 ],
                 'flights' => $flights,
-                'sources' => ['amadeus'],
+                'sources' => $this->searchSources(),
             ];
         }
 
@@ -904,8 +904,98 @@ class DowntownTravelAirService
                 'infants' => $infants,
             ],
             'flights' => $flights,
-            'sources' => ['amadeus'],
+            'sources' => $this->searchSources(),
         ];
+    }
+
+    /**
+     * Inventory sources Downtown should query. Required on every search.
+     *
+     * @return list<string>
+     */
+    public function searchSources(): array
+    {
+        $fromParams = config('downtown_travel.search_sources', ['amadeus']);
+        try {
+            $merged = DowntownTravelIntegrationConfig::merged()['search_sources'] ?? null;
+            if ($merged !== null && $merged !== []) {
+                $fromParams = $merged;
+            }
+        } catch (\Throwable) {
+            // Keep .env/config sources when the integrations table is unavailable.
+        }
+        $sources = [];
+        foreach ((array) $fromParams as $source) {
+            $value = strtolower(trim((string) $source));
+            if ($value !== '') {
+                $sources[] = $value;
+            }
+        }
+
+        return $sources !== [] ? array_values(array_unique($sources)) : ['amadeus'];
+    }
+
+    /**
+     * After issue (success or error), always GET /orders/{id} so ticket state is confirmed.
+     *
+     * @param  array<string, mixed>  $result
+     * @param  array<string, mixed>  $params
+     * @param  array<string, mixed>  $issuePayload
+     * @return array<string, mixed>
+     */
+    protected function issueResultWithOrderDetails(array $result, array $params, array $issuePayload): array
+    {
+        $orderId = $this->resolveOrderIdFromIssueContext($params, $issuePayload);
+        if ($orderId === '') {
+            return $result;
+        }
+
+        $order = $this->getOrder($orderId);
+        $result['order_id'] = $orderId;
+        $result['order'] = $order;
+
+        if (($order['ok'] ?? false) && ($result['ok'] ?? false)) {
+            $fromOrder = $order['ticket_numbers'] ?? [];
+            if (is_array($fromOrder) && $fromOrder !== []) {
+                $result['ticket_numbers'] = $fromOrder;
+                $result['message'] = 'Downtown Travel tickets issued ('.implode(', ', $fromOrder).').';
+            }
+        }
+
+        if (! ($order['ok'] ?? false)) {
+            $result['order_details_error'] = $order['message'] ?? 'Get Order Details failed after issue.';
+            if ($result['ok'] ?? false) {
+                $result['message'] = trim((string) ($result['message'] ?? 'Ticketing request completed.'))
+                    .' Get Order Details failed: '.$result['order_details_error'];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @param  array<string, mixed>  $issuePayload
+     */
+    protected function resolveOrderIdFromIssueContext(array $params, array $issuePayload): string
+    {
+        $candidates = [
+            $params['order_id'] ?? null,
+            $issuePayload['order_id'] ?? null,
+            data_get($issuePayload, 'order.id'),
+        ];
+        if (isset($issuePayload['booking_records']) && is_array($issuePayload['booking_records'])) {
+            $candidates[] = $issuePayload['id'] ?? null;
+        }
+
+        foreach ($candidates as $candidate) {
+            $orderId = trim((string) $candidate);
+            if ($orderId !== '') {
+                return $orderId;
+            }
+        }
+
+        return '';
     }
 
     /**

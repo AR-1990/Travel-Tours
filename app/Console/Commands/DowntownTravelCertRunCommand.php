@@ -206,6 +206,7 @@ class DowntownTravelCertRunCommand extends Command
 
         $issue = $air->issueTickets([
             'booking_record_id' => $recordId,
+            'order_id' => $orderId,
             'email' => 'cert.case2@example.com',
             'phone' => '+14057787503',
             'passengers' => $passengers,
@@ -322,6 +323,7 @@ class DowntownTravelCertRunCommand extends Command
 
         $issue = $air->issueTickets([
             'booking_record_id' => $recordId,
+            'order_id' => $orderId,
             'email' => 'cert.case3@example.com',
             'phone' => '+14057787503',
             'expected_agent_net_price' => $wrongNet,
@@ -329,7 +331,12 @@ class DowntownTravelCertRunCommand extends Command
         ]);
         File::put($dir.'/06-Issue.json', json_encode($issue, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-        $ok = (bool) ($issue['ok'] ?? false);
+        $orderAfterIssue = $orderId !== ''
+            ? $air->getOrder($orderId)
+            : ['ok' => false, 'message' => 'Missing order id after issue'];
+        File::put($dir.'/07-GetOrder-AfterIssue.json', json_encode($orderAfterIssue, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        $ok = (bool) ($issue['ok'] ?? false) && (bool) ($orderAfterIssue['ok'] ?? false);
 
         return [
             'case' => 3,
@@ -367,6 +374,13 @@ class DowntownTravelCertRunCommand extends Command
             ]);
             $this->line("  Searching {$origin}→{$destination} …");
             $search = $air->lowFareSearch($attempt);
+            $searchRequest = session('downtown_travel.last_search.request');
+            if (is_array($searchRequest)) {
+                File::put(
+                    $dir.'/00-SearchRequest-'.$origin.'-'.$destination.'.json',
+                    json_encode($searchRequest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+                );
+            }
             File::put(
                 $dir.'/01-Search-'.$origin.'-'.$destination.'.json',
                 json_encode($search, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)

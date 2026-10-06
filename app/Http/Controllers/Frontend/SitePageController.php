@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\Content\PartnerInquiry;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -50,15 +51,15 @@ class SitePageController extends Controller
 
     public function partnerWithUs(): View
     {
-        $partnerTypes = $this->partnerTypes();
+        $partnerTypes = PartnerInquiry::partnerTypes();
 
         return view('frontend.pages.partner-with-us', compact('partnerTypes'));
     }
 
     public function partnerWithUsSubmit(Request $request)
     {
-        $request->validate([
-            'partner_type' => ['required', 'string', 'in:'.implode(',', array_keys($this->partnerTypes()))],
+        $validated = $request->validate([
+            'partner_type' => ['required', 'string', 'in:'.implode(',', PartnerInquiry::typeKeys())],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:160'],
             'phone' => ['nullable', 'string', 'max:40'],
@@ -66,78 +67,17 @@ class SitePageController extends Controller
             'message' => ['required', 'string', 'max:2000'],
         ]);
 
-        return back()->with('success', 'Thank you! Your partnership inquiry has been received. Our team will contact you soon.');
-    }
+        PartnerInquiry::create([
+            'partner_type' => $validated['partner_type'],
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'company' => $validated['company'] ?? null,
+            'message' => $validated['message'],
+            'status' => PartnerInquiry::STATUS_NEW,
+            'ip_address' => $request->ip(),
+        ]);
 
-    /** @return array<string, array{number: int, title: string, text: string, icon: string, tone: string, features: list<string>}> */
-    private function partnerTypes(): array
-    {
-        return [
-            'b2b' => [
-                'number' => 1,
-                'title' => 'B2B Partner',
-                'text' => 'For travel agencies & businesses who want to sell travel services.',
-                'icon' => 'fas fa-user-friends',
-                'tone' => 'blue',
-                'features' => [
-                    'Agent Portal Access',
-                    'Competitive Rates',
-                    'Credit Facility',
-                    'Dedicated Support',
-                ],
-            ],
-            'b2c' => [
-                'number' => 2,
-                'title' => 'B2C Partner',
-                'text' => 'For businesses who want to sell travel services directly to customers.',
-                'icon' => 'fas fa-user',
-                'tone' => 'green',
-                'features' => [
-                    'Retail Booking System',
-                    'Best Customer Prices',
-                    'Multiple Payment Options',
-                    'Marketing Support',
-                ],
-            ],
-            'api' => [
-                'number' => 3,
-                'title' => 'API Partner',
-                'text' => 'Integrate our powerful travel API into your platform or system.',
-                'icon' => 'fas fa-code',
-                'tone' => 'purple',
-                'features' => [
-                    'Real-time Inventory',
-                    'Seamless Integration',
-                    'Global Content',
-                    'Technical Support',
-                ],
-            ],
-            'whitelabel' => [
-                'number' => 4,
-                'title' => 'Whitelable Partner',
-                'text' => 'Launch your own travel brand with our white-label solution.',
-                'icon' => 'fas fa-desktop',
-                'tone' => 'orange',
-                'features' => [
-                    'Your Own Brand',
-                    'Custom Domain',
-                    'Full System Control',
-                    'End-to-End Support',
-                ],
-            ],
-            'supplier' => [
-                'number' => 5,
-                'title' => 'Become Supplier',
-                'text' => 'For hotels, airlines, transfer services & other suppliers to connect with us.',
-                'icon' => 'fas fa-briefcase',
-                'tone' => 'teal',
-                'features' => [
-                    'Global Visibility',
-                    'Increase Bookings',
-                    'Secure Payments',
-                    'Long Term Partnership',
-                ],
-            ],
-        ];
+        return back()->with('success', 'Thank you! Your partnership inquiry has been received. Our team will contact you soon.');
     }
 }
