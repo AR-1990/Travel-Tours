@@ -7,9 +7,12 @@ use App\Models\Integration;
 class XconnectIntegrationConfig
 {
     /**
+     * When disabled, runtime callers get `.env` only. Admin forms use `$forAdminForm = true`
+     * so saved keys remain visible while the integration is toggled off.
+     *
      * @return array<string, mixed>
      */
-    public static function merged(): array
+    public static function merged(bool $forAdminForm = false): array
     {
         $base = config('xconnect');
         if (! is_array($base)) {
@@ -20,7 +23,7 @@ class XconnectIntegrationConfig
             ->where('slug', Integration::SLUG_XCONNECT)
             ->first();
 
-        if (! $row || ! is_array($row->payload) || ! $row->is_enabled) {
+        if (! $row || ! is_array($row->payload) || (! $forAdminForm && ! $row->is_enabled)) {
             return $base;
         }
 

@@ -8,11 +8,12 @@ class DowntownTravelIntegrationConfig
 {
     /**
      * Effective Downtown Travel options: `.env` defaults, overridden by Admin → Integrations (DB).
-     * When the integration row exists and is disabled, only `.env` applies.
+     * When disabled, runtime callers still get `.env` only (`$forAdminForm = false`).
+     * Admin edit forms pass `$forAdminForm = true` so saved keys stay visible while toggled off.
      *
      * @return array<string, mixed>
      */
-    public static function merged(): array
+    public static function merged(bool $forAdminForm = false): array
     {
         $base = config('downtown_travel');
         if (! is_array($base)) {
@@ -23,7 +24,7 @@ class DowntownTravelIntegrationConfig
             ->where('slug', Integration::SLUG_DOWNTOWN_TRAVEL)
             ->first();
 
-        if (! $row || ! is_array($row->payload) || ! $row->is_enabled) {
+        if (! $row || ! is_array($row->payload) || (! $forAdminForm && ! $row->is_enabled)) {
             return $base;
         }
 

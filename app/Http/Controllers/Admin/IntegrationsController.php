@@ -121,7 +121,8 @@ class IntegrationsController extends Controller
 
     private function viewTravelportEdit(TravelportSystemService $system)
     {
-        $tp = TravelportIntegrationConfig::merged();
+        // Include disabled DB payload so toggling enable off does not blank the form / wipe keys on re-save.
+        $tp = TravelportIntegrationConfig::merged(true);
         $row = Integration::query()
             ->where('slug', Integration::SLUG_TRAVELPORT)
             ->first();
@@ -140,7 +141,7 @@ class IntegrationsController extends Controller
 
     private function viewSunSpringEdit(SunSpringClient $client)
     {
-        $ss = SunSpringIntegrationConfig::merged();
+        $ss = SunSpringIntegrationConfig::merged(true);
         $row = Integration::query()
             ->where('slug', Integration::SLUG_SUNSPRING)
             ->first();
@@ -158,7 +159,7 @@ class IntegrationsController extends Controller
 
     private function viewXconnectEdit(XconnectClient $client)
     {
-        $xc = XconnectIntegrationConfig::merged();
+        $xc = XconnectIntegrationConfig::merged(true);
         $row = Integration::query()
             ->where('slug', Integration::SLUG_XCONNECT)
             ->first();
@@ -174,7 +175,7 @@ class IntegrationsController extends Controller
 
     private function viewDowntownTravelEdit(DowntownTravelClient $client)
     {
-        $dt = DowntownTravelIntegrationConfig::merged();
+        $dt = DowntownTravelIntegrationConfig::merged(true);
         $row = Integration::query()
             ->where('slug', Integration::SLUG_DOWNTOWN_TRAVEL)
             ->first();
@@ -195,7 +196,7 @@ class IntegrationsController extends Controller
 
     private function viewDowntownTravelHotelsEdit(DowntownTravelHotelsClient $client)
     {
-        $dt = DowntownTravelHotelsIntegrationConfig::merged();
+        $dt = DowntownTravelHotelsIntegrationConfig::merged(true);
         $row = Integration::query()
             ->where('slug', Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS)
             ->first();
