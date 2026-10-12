@@ -10,7 +10,7 @@
                                 <a href="https://www.facebook.com/share/1HjnhgKLtm/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer"><i class="fab fa-facebook-f"></i></a>
                                 <a href="https://x.com/wisetrusttrav?s=11" target="_blank" rel="noopener noreferrer"><i class="fab fa-x-twitter"></i></a>
                                 <a href="https://www.instagram.com/wisetrusttravelandtourismkhi?utm_source=qr" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i></a>
-                                <a href="https://www.tiktok.com/@wisetrusttravel.a" target="_blank" rel="noopener noreferrer"><i class="fab fa-tiktok"></i></a>
+                                <a href="https://www.tiktok.com/@wisetrusttravel" target="_blank" rel="noopener noreferrer"><i class="fab fa-tiktok"></i></a>
                             </div>
                             <div class="top-contact-info">
                                 <ul>
@@ -73,12 +73,12 @@
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">Home</a>
                             </li>
-                            <li class="nav-item">
+                           {{-- <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('pages.flights') || request()->routeIs('frontend.flights.*') ? 'active' : '' }}" href="{{ route('pages.flights') }}">Flight</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('pages.hotels') ? 'active' : '' }}" href="{{ route('pages.hotels') }}">Hotel</a>
-                            </li>
+                            </li> --}}
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('pages.activities') ? 'active' : '' }}" href="{{ route('pages.activities') }}">Activity</a>
                             </li>

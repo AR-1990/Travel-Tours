@@ -17,7 +17,7 @@
     'searchSubmitLabel' => 'Update Search',
 ])
 
-<div class="pt-40 pb-80">
+<div class="pt-40 pb-80" id="hotel-search-results">
     <div class="container">
         @if(session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
@@ -26,7 +26,7 @@
             <div class="alert alert-danger">{{ session('error') }}</div>
         @endif
 
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2" id="hotel-results-heading">
             <h4 class="mb-0 d-flex flex-wrap align-items-center gap-2">
                 {{ count($hotelSearchResult['solutions'] ?? []) }} hotel option(s)
                 <span class="{{ $providerBadge['css'] }} provider-badge--sm">{{ $providerBadge['label'] }}</span>
@@ -113,3 +113,52 @@
 .env-badge--sandbox{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
 </style>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    function stickyHeaderOffset() {
+        const nav = document.querySelector('.navbar.fixed-top')
+            || document.querySelector('.main-navigation')
+            || document.querySelector('.navbar');
+        const height = nav ? nav.getBoundingClientRect().height : 90;
+        return Math.ceil(height) + 24;
+    }
+
+    function absoluteTop(el) {
+        let y = 0;
+        while (el) {
+            y += el.offsetTop;
+            el = el.offsetParent;
+        }
+        return y;
+    }
+
+    function scrollToHotelResults() {
+        const target = document.querySelector('.home-flight-search-area, #home-flight-search')
+            || document.getElementById('hotel-search-results')
+            || document.getElementById('hotel-results-heading');
+        if (!target) return;
+
+        if (window.location.hash) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+
+        window.scrollTo({
+            top: Math.max(0, absoluteTop(target) - stickyHeaderOffset()),
+            behavior: 'smooth',
+        });
+    }
+
+    function scheduleScrollToResults() {
+        window.setTimeout(scrollToHotelResults, 200);
+    }
+
+    if (document.readyState === 'complete') {
+        scheduleScrollToResults();
+    } else {
+        window.addEventListener('load', scheduleScrollToResults);
+    }
+})();
+</script>
+@endpush

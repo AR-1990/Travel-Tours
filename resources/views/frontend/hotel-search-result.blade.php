@@ -822,8 +822,7 @@
                             <div class="col-md-6 col-lg-4">
                                 <div class="hotel-item">
                                     <div class="hotel-img">
-                                        <span class="badge badge-discount">25% Save</span>
-                                        <img src="assets/img/hotel/04.jpg" alt="">
+<img src="assets/img/hotel/04.jpg" alt="">
                                         <a href="#" class="add-wishlist"><i class="far fa-heart"></i></a>
                                     </div>
                                     <div class="hotel-content">

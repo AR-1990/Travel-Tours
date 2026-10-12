@@ -879,8 +879,7 @@
                                         </div>
                                         <div class="flight-booking-price">
                                             <div class="price-info">
-                                                <del class="discount-price">$5,548</del>
-                                                <span class="price-amount">$4,548</span>
+<span class="price-amount">$4,548</span>
                                             </div>
                                             <a href="#" class="theme-btn">Book Now<i class="fas fa-arrow-circle-right"></i></a>
                                         </div>
@@ -1135,8 +1134,7 @@
                                         </div>
                                         <div class="flight-booking-price">
                                             <div class="price-info">
-                                                <del class="discount-price">$5,548</del>
-                                                <span class="price-amount">$4,548</span>
+<span class="price-amount">$4,548</span>
                                             </div>
                                             <a href="#" class="theme-btn">Book Now<i class="fas fa-arrow-circle-right"></i></a>
                                         </div>
@@ -1448,8 +1446,7 @@
                                         </div>
                                         <div class="flight-booking-price">
                                             <div class="price-info">
-                                                <del class="discount-price">$5,548</del>
-                                                <span class="price-amount">$4,548</span>
+<span class="price-amount">$4,548</span>
                                             </div>
                                             <a href="#" class="theme-btn">Book Now<i class="fas fa-arrow-circle-right"></i></a>
                                         </div>

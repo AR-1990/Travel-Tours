@@ -875,8 +875,7 @@
                             <div class="col-md-6 col-lg-4">
                                 <div class="car-item">
                                     <div class="car-img">
-                                        <span class="badge badge-discount">25% Save</span>
-                                        <img src="assets/img/car/07.jpg" alt="">
+<img src="assets/img/car/07.jpg" alt="">
                                         <a href="#" class="add-wishlist"><i class="far fa-heart"></i></a>
                                     </div>
                                     <div class="car-content">

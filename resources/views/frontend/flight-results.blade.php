@@ -24,7 +24,7 @@
         'searchSubmitLabel' => 'Update Search',
     ])
 
-    <div class="flight-booking flight-list pt-80 pb-120">
+    <div class="flight-booking flight-list pt-80 pb-120" id="flight-search-results">
         <div class="container">
             @include('frontend.partials.flight-workflow-steps', ['workflowStep' => 'search'])
 
@@ -37,7 +37,7 @@
 
             <div class="row">
                 <div class="col-lg-12">
-                    <div class="booking-sort mb-4">
+                    <div class="booking-sort mb-4" id="flight-results-heading">
                         <div>
                             <h5 class="mb-2">
                                 @if(!empty($flightSearchResult['solutions']))
@@ -217,6 +217,51 @@
     bindPriceSort();
     // main.js may init nice-select slightly later on .select
     window.setTimeout(bindPriceSort, 50);
+
+    function stickyHeaderOffset() {
+        const nav = document.querySelector('.navbar.fixed-top')
+            || document.querySelector('.main-navigation')
+            || document.querySelector('.navbar');
+        const height = nav ? nav.getBoundingClientRect().height : 90;
+        // Extra gap so the sticky header does not cover the search UI.
+        return Math.ceil(height) + 24;
+    }
+
+    function absoluteTop(el) {
+        let y = 0;
+        while (el) {
+            y += el.offsetTop;
+            el = el.offsetParent;
+        }
+        return y;
+    }
+
+    function scrollToFlightResults() {
+        // Align to the top of the search box (slight scroll), not mid-form / deep results.
+        const target = document.getElementById('home-flight-search')
+            || document.getElementById('flight-search-results')
+            || document.getElementById('flight-results-heading');
+        if (!target) return;
+
+        if (window.location.hash) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+
+        window.scrollTo({
+            top: Math.max(0, absoluteTop(target) - stickyHeaderOffset()),
+            behavior: 'smooth',
+        });
+    }
+
+    function scheduleScrollToResults() {
+        window.setTimeout(scrollToFlightResults, 200);
+    }
+
+    if (document.readyState === 'complete') {
+        scheduleScrollToResults();
+    } else {
+        window.addEventListener('load', scheduleScrollToResults);
+    }
 })();
 </script>
 @endpush

@@ -36,6 +36,18 @@
         return url.origin === window.location.origin && url.pathname.includes('/flights');
     }
 
+    function scrollToFlightsResults() {
+        const target = document.querySelector(
+            '.flights-page [aria-label="Search results"], .flights-page .results-header, .flights-page .empty-results, .flights-page'
+        );
+        if (!target) return;
+
+        const nav = document.querySelector('.main-navigation, .navbar, .main-header');
+        const offset = (nav ? nav.offsetHeight : 72) + 20;
+        const top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+
     async function swapFlightsPageFromHtml(html, nextUrl) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const newPage = doc.querySelector('.flights-page');
@@ -48,6 +60,7 @@
         if (nextUrl) {
             history.pushState({}, '', nextUrl);
         }
+        window.setTimeout(scrollToFlightsResults, 50);
     }
 
     document.addEventListener('click', async function (e) {

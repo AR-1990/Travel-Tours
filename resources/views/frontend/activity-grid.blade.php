@@ -789,8 +789,7 @@ body[unresolved] {opacity: 0; display: block; overflow: hidden; position: relati
                             <div class="col-md-6 col-lg-4">
                                 <div class="activity-item">
                                     <div class="activity-img">
-                                        <span class="badge badge-discount">25% Save</span>
-                                        <img src="assets/img/activity/07.jpg" alt="">
+<img src="assets/img/activity/07.jpg" alt="">
                                         <a href="#" class="add-wishlist"><i class="far fa-heart"></i></a>
                                     </div>
                                     <div class="activity-content">

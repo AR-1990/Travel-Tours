@@ -544,8 +544,7 @@
                             <div class="col-md-12">
                                 <div class="room-item">
                                     <div class="room-img">
-                                        <span class="badge badge-discount">25% Save</span>
-                                        <img src="assets/img/hotel/room/05.jpg" alt="">
+<img src="assets/img/hotel/room/05.jpg" alt="">
                                     </div>
                                     <div class="room-content">
                                         <h4 class="room-title"><a href="#">Deluxe King Bed Private</a></h4>

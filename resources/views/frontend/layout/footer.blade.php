@@ -1,15 +1,14 @@
-    <footer class="footer-area ft-bg">
-        <div class="footer-widget pt-60">
+    <footer class="footer-area ft-bg footer-area--compact">
+        <div class="footer-widget">
             <div class="container">
-                <div class="row footer-widget-wrapper pt-100 pb-70">
-                    <div class="col-md-6 col-lg-3">
+                <div class="row footer-widget-wrapper g-4">
+                    <div class="col-md-6 col-lg-5">
                         <div class="footer-widget-box about-us">
                             <a href="{{ route('home') }}" class="footer-logo">
-                                <img src="{{ asset('assets/img/logo/logo.png') }}" alt="">
+                                <img src="{{ asset('assets/img/logo/logo.png') }}" alt="{{ config('app.name') }}">
                             </a>
-                            <p class="mb-4">
-                                We are many variations of passages available but the majority have suffer alteration
-                                in some form by injected.
+                            <p class="mb-3">
+                                Wise Trust Travel &amp; Tourism — your trusted partner for flights, stays, and journeys.
                             </p>
                             <ul class="footer-contact">
                                 <li>
@@ -23,76 +22,39 @@
                                         </div>
                                     </div>
                                 </li>
-                                <li><i class="far fa-map-marker-alt"></i>Office#204, Kababjees Fried Chicken Building, Crown square, adjacent to Usmania restaurant, Block 13 A Gulshan-e-Iqbal, Karachi, 76800</li>
-                                <li><a href="mailto:info@wisetrusttravel.com"><i
-                                            class="far fa-envelopes"></i><span>info@wisetrusttravel.com</span></a></li>
+                                <li>
+                                    <i class="far fa-map-marker-alt"></i>
+                                    Office#204, Kababjees Fried Chicken Building, Crown square, Block 13 A Gulshan-e-Iqbal, Karachi
+                                </li>
+                                <li>
+                                    <a href="mailto:info@wisetrusttravel.com">
+                                        <i class="far fa-envelopes"></i>
+                                        <span>info@wisetrusttravel.com</span>
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                     </div>
-                    <div class="col-md-6 col-lg-2">
+
+                    <div class="col-6 col-md-3 col-lg-3">
                         <div class="footer-widget-box list">
                             <h4 class="footer-widget-title">Our Company</h4>
                             <ul class="footer-list">
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> About Us</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Meet Our Team</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Contact Us</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Affiliate Program</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Advertising With Us</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Careers</a></li>
+                                <li><a href="{{ route('pages.about') }}"><i class="fas fa-angle-double-right"></i> About Us</a></li>
+                                <li><a href="{{ route('pages.contact') }}"><i class="fas fa-angle-double-right"></i> Contact Us</a></li>
+                                <li><a href="{{ route('pages.partner-with-us') }}"><i class="fas fa-angle-double-right"></i> Partner With Us</a></li>
                                 <li><a href="{{ route('blogs.index') }}"><i class="fas fa-angle-double-right"></i> Our Blog</a></li>
+                            </ul>
+                        </div>
+                    </div>
 
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-2">
+                    <div class="col-6 col-md-3 col-lg-4">
                         <div class="footer-widget-box list">
-                            <h4 class="footer-widget-title">Other Services</h4>
-                            <ul class="footer-list">
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Rewards Program</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Partners</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Community Program</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Investor Relations</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Developer Guide</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Travel API</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> PointsPLUS</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-2">
-                        <div class="footer-widget-box list">
-                            <h4 class="footer-widget-title">Help Center</h4>
-                            <ul class="footer-list">
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Account</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> FAQ's</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Legal Notice</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Privacy Policy</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Terms & Conditions</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Live Chat</a></li>
-                                <li><a href="#"><i class="fas fa-angle-double-right"></i> Sitemap</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="footer-widget-box list">
-                            <h4 class="footer-widget-title">Newsletter</h4>
-                            <div class="footer-newsletter">
-                                <p>Subscribe Our Newsletter To Get Latest Update And News</p>
-                                <div class="subscribe-form">
-                                    <form action="#">
-                                        <div class="form-group">
-                                            <div class="form-group-icon">
-                                                <input type="email" class="form-control" placeholder="Your Email">
-                                                <i class="far fa-envelopes"></i>
-                                            </div>
-                                        </div>
-                                        <button class="theme-btn" type="submit">
-                                            Subscribe Now <i class="far fa-paper-plane"></i>
-                                        </button>
-                                        <p><i class="far fa-lock"></i> Your information is safe with us.</p>
-                                    </form>
-                                </div>
-                            </div>
-                            <div class="footer-payment-method">
+                            <h4 class="footer-widget-title">Live Chat</h4>
+                            <p class="mb-3">Need help with flights or bookings? Reach us during working hours.</p>
+                            <p class="mb-3 footer-hours"><i class="far fa-clock"></i> 10:00 AM – 06:00 PM</p>
+                            <a href="{{ route('pages.contact') }}" class="theme-btn">Start Live Chat <i class="far fa-comments"></i></a>
+                            <div class="footer-payment-method mt-3">
                                 <h6>We Accept:</h6>
                                 <div class="payment-method-img">
                                     <img src="{{ asset('assets/img/payment/paypal.svg') }}" alt="">
@@ -112,7 +74,9 @@
                 <div class="row">
                     <div class="col-md-6 align-self-center">
                         <p class="copyright-text">
-                            &copy; Copyright <span id="date"></span> <a href="#"> Tavelo </a> All Rights Reserved.
+                            &copy; Copyright <span id="date"></span>
+                            <a href="{{ route('home') }}">{{ config('app.name') }}</a>
+                            All Rights Reserved.
                         </p>
                     </div>
                     <div class="col-md-6 align-self-center">

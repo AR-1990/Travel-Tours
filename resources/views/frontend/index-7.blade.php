@@ -574,7 +574,7 @@
                                                 <img src="assets/img/icon/deal.svg" alt="">
                                             </div>
                                             <div class="content">
-                                                <h6>Get Your Best Deals</h6>
+                                                <h6>Travel With Confidence</h6>
                                                 <p>Take a look at our up of the round shows</p>
                                             </div>
                                         </div>
@@ -817,8 +817,7 @@
                     <div class="col-md-6 col-lg-3">
                         <div class="activity-item wow fadeInUp" data-wow-duration="1s" data-wow-delay=".75s">
                             <div class="activity-img">
-                                <span class="badge badge-discount">25% Save</span>
-                                <img src="assets/img/activity/07.jpg" alt="">
+<img src="assets/img/activity/07.jpg" alt="">
                                 <a href="#" class="add-wishlist"><i class="far fa-heart"></i></a>
                             </div>
                             <div class="activity-content">
@@ -1439,7 +1438,7 @@
                     <div class="col-md-10 col-lg-8 col-xl-6 mx-auto">
                         <div class="cta-content">
                             <div class="cta-text">
-                                <h1>First Booking <span>Get 70%</span> Discount!</h1>
+                                <h1>Ready to Explore the World With Us?</h1>
                                 <p>It is a long established fact that a reader will be distracted by the readable
                                     content web page editors now use of a page when looking at its layout.</p>
                             </div>

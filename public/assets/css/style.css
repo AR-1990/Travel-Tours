@@ -9987,6 +9987,86 @@ sidebar css
   border-radius: 4px;
 }
 
+/* Compact footer — fewer columns, less vertical space */
+.footer-area--compact .footer-widget-wrapper {
+  padding-top: 2.5rem !important;
+  padding-bottom: 1.75rem !important;
+}
+
+.footer-area--compact .footer-widget {
+  padding-top: 0 !important;
+}
+
+.footer-area--compact .footer-logo img {
+  width: 150px;
+  margin-bottom: 0.85rem;
+}
+
+.footer-area--compact .footer-widget-box {
+  margin-bottom: 0;
+}
+
+.footer-area--compact .footer-widget-box p {
+  margin-bottom: 0.75rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.footer-area--compact .footer-widget-title {
+  margin-bottom: 0.85rem;
+  font-size: 1.1rem;
+}
+
+.footer-area--compact .footer-list li {
+  margin-bottom: 0.35rem;
+}
+
+.footer-area--compact .footer-contact li {
+  margin-bottom: 0.65rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.footer-area--compact .footer-call-info a {
+  font-size: 1.05rem;
+}
+
+.footer-area--compact .footer-hours {
+  color: var(--footer-text-color);
+  font-size: 0.9rem;
+}
+
+.footer-area--compact .footer-hours i {
+  margin-right: 0.4rem;
+  color: var(--theme-color2);
+}
+
+.footer-area--compact .footer-payment-method {
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.footer-area--compact .copyright {
+  padding: 0.85rem 0;
+}
+
+@media all and (max-width: 1199px) {
+  .footer-area--compact .footer-widget-box {
+    margin-bottom: 0.75rem !important;
+  }
+}
+
+@media all and (max-width: 767.98px) {
+  .footer-area--compact .footer-widget-wrapper {
+    padding-top: 2rem !important;
+    padding-bottom: 1.25rem !important;
+  }
+
+  .footer-area--compact .footer-widget-box {
+    margin-bottom: 0.5rem !important;
+  }
+}
+
 @media all and (min-width: 1199px) and (max-width: 1399px) {
   .payment-method-img img{
     width: 33px;

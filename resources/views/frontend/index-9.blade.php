@@ -561,7 +561,7 @@
                                                 <img src="assets/img/icon/deal.svg" alt="">
                                             </div>
                                             <div class="content">
-                                                <h6>Get Your Best Deals</h6>
+                                                <h6>Travel With Confidence</h6>
                                                 <p>Take a look at our up of the round shows</p>
                                             </div>
                                         </div>
@@ -747,8 +747,7 @@
                     <div class="col-md-6 col-lg-3">
                         <div class="cruise-item wow fadeInUp" data-wow-duration="1s" data-wow-delay="1s">
                             <div class="cruise-img">
-                                <span class="badge badge-discount">25% Save</span>
-                                <img src="assets/img/cruise/04.jpg" alt="">
+<img src="assets/img/cruise/04.jpg" alt="">
                                 <a href="#" class="add-wishlist"><i class="far fa-heart"></i></a>
                             </div>
                             <div class="cruise-content">
@@ -954,8 +953,8 @@
                 <div class="row">
                     <div class="col-lg-6 mx-auto wow fadeInDown" data-wow-duration="1s" data-wow-delay=".25s">
                         <div class="site-heading text-center">
-                            <span class="site-title-tagline"><i class="far fa-plane"></i> Offers</span>
-                            <h2 class="site-title">Let's Check Exclusive Offers</h2>
+                            <span class="site-title-tagline"><i class="far fa-plane"></i> Featured</span>
+                            <h2 class="site-title">Let's Explore Top Destinations</h2>
                         </div>
                     </div>
                 </div>
@@ -965,7 +964,7 @@
                             <img src="assets/img/banner/01.jpg" alt="">
                         </div>
                         <div class="banner-content">
-                            <h6>Get Upto <span>70%</span> Discount!</h6>
+                            <h6>Discover Your Next Destination</h6>
                             <p>It is a long established fact that reader distracted.</p>
                             <a href="contact.html" class="theme-btn">Learn More<i
                                     class="fas fa-arrow-circle-right"></i></a>
@@ -976,7 +975,7 @@
                             <img src="assets/img/banner/02.jpg" alt="">
                         </div>
                         <div class="banner-content">
-                            <h6>Get Upto <span>70%</span> Discount!</h6>
+                            <h6>Discover Your Next Destination</h6>
                             <p>It is a long established fact that reader distracted.</p>
                             <a href="contact.html" class="theme-btn">Learn More<i
                                     class="fas fa-arrow-circle-right"></i></a>
@@ -987,7 +986,7 @@
                             <img src="assets/img/banner/03.jpg" alt="">
                         </div>
                         <div class="banner-content">
-                            <h6>Get Upto <span>70%</span> Discount!</h6>
+                            <h6>Discover Your Next Destination</h6>
                             <p>It is a long established fact that reader distracted.</p>
                             <a href="contact.html" class="theme-btn">Learn More<i
                                     class="fas fa-arrow-circle-right"></i></a>
@@ -998,7 +997,7 @@
                             <img src="assets/img/banner/04.jpg" alt="">
                         </div>
                         <div class="banner-content">
-                            <h6>Get Upto <span>70%</span> Discount!</h6>
+                            <h6>Discover Your Next Destination</h6>
                             <p>It is a long established fact that reader distracted.</p>
                             <a href="contact.html" class="theme-btn">Learn More<i
                                     class="fas fa-arrow-circle-right"></i></a>
@@ -1620,7 +1619,7 @@
                     <div class="col-md-10 col-lg-8 col-xl-6 mx-auto">
                         <div class="cta-content">
                             <div class="cta-text">
-                                <h1>First Booking <span>Get 70%</span> Discount!</h1>
+                                <h1>Ready to Explore the World With Us?</h1>
                                 <p>It is a long established fact that a reader will be distracted by the readable
                                     content web page editors now use of a page when looking at its layout.</p>
                             </div>

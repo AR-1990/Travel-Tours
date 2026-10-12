@@ -513,7 +513,7 @@
                                     <ul>
                                         <li><strong>Sub Total:</strong> <span>$4,500.00</span></li>
                                         <li><strong>Vat:</strong> <span>$25.00</span></li>
-                                        <li><strong>Discount:</strong> <span>$5.00</span></li>
+                                        
                                         <li class="cart-total"><strong>Total:</strong> <span>$4,520.00</span></li>
                                     </ul>
                                     <div class="text-end mt-40">

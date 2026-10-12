@@ -691,7 +691,7 @@
                                     <h5>Booking Payment</h5>
                                     <ul>
                                         <li>Sub Total: <span>$50,540.00</span></li>
-                                        <li>Discount: <span>$600.00</span></li>
+                                        
                                         <li>Taxes: <span>$560.00</span></li>
                                         <li class="order-total">You Pay: <span>$51,543.00</span></li>
                                     </ul>
