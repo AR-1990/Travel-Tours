@@ -1764,11 +1764,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="row">
+                <div class="row align-items-stretch">
                     @forelse(($recentBlogs ?? collect()) as $blog)
-                        <div class="col-md-6 col-lg-4">
-                            <div class="blog-item wow fadeInUp" data-wow-duration="1s" data-wow-delay="{{ ['.25s', '.5s', '.75s'][$loop->index % 3] }}">
-                                <span class="blog-date">{{ $blog->updated_at?->format('F d, Y') }}</span>
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <article class="blog-item wow fadeInUp" data-wow-duration="1s" data-wow-delay="{{ ['.25s', '.5s', '.75s'][$loop->index % 3] }}">
+                                <span class="blog-date">{{ $blog->updated_at?->format('M d, Y') }}</span>
                                 <div class="blog-item-img">
                                     @if($blog->image)
                                         <img src="{{ asset('storage/'.$blog->image) }}" alt="{{ $blog->title }}">
@@ -1786,9 +1786,9 @@
                                     <h4 class="blog-title">
                                         <a href="{{ route('blogs.show', $blog->slug) }}">{{ $blog->title }}</a>
                                     </h4>
-                                    <a class="theme-btn mt-3" href="{{ route('blogs.show', $blog->slug) }}">Read More <i class="fas fa-arrow-circle-right"></i></a>
+                                    <a class="theme-btn" href="{{ route('blogs.show', $blog->slug) }}">Read More <i class="fas fa-arrow-circle-right"></i></a>
                                 </div>
-                            </div>
+                            </article>
                         </div>
                     @empty
                         <div class="col-12 text-center py-4">

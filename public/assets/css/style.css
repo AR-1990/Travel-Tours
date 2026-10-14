@@ -7326,6 +7326,10 @@ hero css
 49. Blog css 
 ====================== */
 
+.blog-area .row > [class*="col-"] {
+  display: flex;
+}
+
 .blog-item {
   margin-bottom: 25px;
   background: var(--color-white);
@@ -7334,31 +7338,54 @@ hero css
   box-shadow: var(--box-shadow);
   transition: var(--transition);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
 }
 
 .blog-date{
   position: absolute;
-  left: 100px;
-  top: 2px;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
   background: var(--color-white);
   color: var(--theme-color);
   font-weight: 500;
   border-radius: 50px;
   padding: 2px 15px;
-  z-index: 1;
+  z-index: 2;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(5, 55, 80, 0.08);
 }
 
 .blog-item-img {
   overflow: hidden;
   border-radius: 85px 85px 85px 0;
+  aspect-ratio: 16 / 10;
+  background: #eef3f7;
+  flex-shrink: 0;
 }
 
 .blog-item-img img {
   border-radius: 85px 85px 85px 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
 }
 
 .blog-item:hover .blog-item-img img {
-  transform: scale(1.1);
+  transform: scale(1.08);
+}
+
+.blog-item-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  padding-top: 0.35rem;
 }
 
 .blog-item-meta ul {
@@ -7385,9 +7412,15 @@ hero css
 }
 
 .blog-title {
-  font-size: 22px;
+  font-size: 1.2rem;
+  line-height: 1.35;
   margin-bottom: 15px;
   text-transform: capitalize;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  min-height: calc(1.35em * 2);
 }
 
 .blog-item-info p {
@@ -7400,6 +7433,11 @@ hero css
 
 .blog-item-info h4 a:hover {
   color: var(--theme-color);
+}
+
+.blog-item-info > .theme-btn {
+  margin-top: auto;
+  align-self: flex-start;
 }
 
 
@@ -9989,12 +10027,18 @@ sidebar css
 
 /* Compact footer — fewer columns, less vertical space */
 .footer-area--compact .footer-widget-wrapper {
-  padding-top: 2.5rem !important;
+  /* Keep room for .partner-negative (-60px) so the logo stays visible */
+  padding-top: 5.75rem !important;
   padding-bottom: 1.75rem !important;
 }
 
 .footer-area--compact .footer-widget {
   padding-top: 0 !important;
+}
+
+.footer-area--compact .footer-logo {
+  position: relative;
+  z-index: 3;
 }
 
 .footer-area--compact .footer-logo img {
@@ -10058,7 +10102,7 @@ sidebar css
 
 @media all and (max-width: 767.98px) {
   .footer-area--compact .footer-widget-wrapper {
-    padding-top: 2rem !important;
+    padding-top: 5rem !important;
     padding-bottom: 1.25rem !important;
   }
 

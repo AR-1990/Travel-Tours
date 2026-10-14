@@ -400,6 +400,11 @@
     font-size: 1.15rem;
     font-weight: 750;
     color: var(--sp-navy);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    min-height: calc(1.3em * 2);
 }
 
 .site-card__title a {
