@@ -140,6 +140,44 @@
                     </a>
                 </li>
 
+                <li class="sidebar-section-label">Finance</li>
+                <li>
+                    <a href="{{ route('admin.finance.wallets.index') }}" class="{{ request()->routeIs('admin.finance.wallets*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M21 7H3V5h18v2zm0 2v10H3V9h18zm-6 3h4v2h-4v-2z"/></svg>
+                        <span class="menu-text">Wallets</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('admin.finance.markups.index') }}" class="{{ request()->routeIs('admin.finance.markups*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5H7z"/></svg>
+                        <span class="menu-text">Markup rules</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('admin.finance.statement') }}" class="{{ request()->routeIs('admin.finance.statement') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm1 7V3.5L18.5 9H15zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>
+                        <span class="menu-text">Account statement</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('admin.finance.sales') }}" class="{{ request()->routeIs('admin.finance.sales') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h2v8H3v-8zm4-6h2v14H7V7zm4 3h2v11h-2V10zm4-5h2v16h-2V5zm4 8h2v8h-2v-8z"/></svg>
+                        <span class="menu-text">Sales report</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('admin.finance.currency-rates.index') }}" class="{{ request()->routeIs('admin.finance.currency-rates*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+                        <span class="menu-text">Currency rates</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('admin.finance.airline-fees.index') }}" class="{{ request()->routeIs('admin.finance.airline-fees*') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                        <span class="menu-text">Airline fees</span>
+                    </a>
+                </li>
+
                 @endif
 
                 @if(!$isSuperAdmin)

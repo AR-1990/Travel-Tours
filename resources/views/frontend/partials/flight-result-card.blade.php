@@ -22,6 +22,9 @@
         $destLabel = \App\Support\FlightDisplay::airportCity($last['destination'] ?? null);
     }
     $stops = max(0, count($segments) - 1);
+    $stopBucket = $stops === 0 ? '0' : ($stops === 1 ? '1' : '2');
+    $airlineCode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $carrier) ?: 'XX');
+    $airlineNameOnly = trim((string) ($sol['airline_name'] ?? $first['airline_name'] ?? \App\Support\FlightDisplay::airlineName($carrier)));
     $solProvider = strtolower((string) ($sol['provider'] ?? ($flightSearchResult['provider'] ?? 'travelport')));
     $solReady = match ($solProvider) {
         'sunspring' => (bool) ($sunspringReady ?? false),
@@ -32,8 +35,16 @@
     if (! is_finite($sortPrice) || $sortPrice >= 999999999) {
         $sortPrice = 999999999;
     }
+    $durationLabel = trim((string) ($sol['journeys'][0]['travel_time'] ?? $sol['travel_time'] ?? ''));
+    $detailsId = 'flight-details-'.md5((string) ($sol['key'] ?? ($airlineCode.'|'.$sortPrice.'|'.($first['departure'] ?? ''))));
 @endphp
-<div class="col-lg-12 js-flight-result" data-price="{{ number_format($sortPrice, 2, '.', '') }}">
+<div
+    class="col-lg-12 js-flight-result"
+    data-price="{{ number_format($sortPrice, 2, '.', '') }}"
+    data-stops="{{ $stopBucket }}"
+    data-airline="{{ $airlineCode }}"
+    data-airline-name="{{ e($airlineNameOnly !== '' ? $airlineNameOnly : $airlineCode) }}"
+>
     <div class="flight-booking-item wow fadeInUp">
         <div class="flight-booking-wrapper">
             <div class="flight-booking-info">
@@ -64,6 +75,9 @@
                         <div class="flight-stop">
                             <span class="flight-stop-number">{{ $stops === 0 ? 'Non Stop' : $stops.' Stop'.($stops > 1 ? 's' : '') }}</span>
                             <div class="flight-stop-arrow"></div>
+                            @if($durationLabel !== '')
+                                <small class="d-block text-muted mt-1">{{ $durationLabel }}</small>
+                            @endif
                         </div>
                         <div class="end-time">
                             <div class="start-time-icon">
@@ -77,6 +91,9 @@
                     </div>
                     <div class="flight-booking-duration">
                         <span class="duration-text">{{ $dep['date'] ?? '' }}</span>
+                        <button type="button" class="btn btn-link btn-sm p-0 js-toggle-flight-details" data-bs-toggle="collapse" data-bs-target="#{{ $detailsId }}" aria-expanded="false">
+                            Flight details
+                        </button>
                     </div>
                 </div>
             </div>
@@ -90,6 +107,7 @@
                     @if(!empty($sol['base_price']))
                         <small class="d-block text-muted mt-1">Base {{ $sol['base_price'] }}</small>
                     @endif
+                    <small class="d-block text-muted mt-1">{{ $stops === 0 ? 'Non-stop' : $stops.' stop'.($stops > 1 ? 's' : '') }} before select</small>
                 </div>
                 <form method="POST" action="{{ route('frontend.flights.price') }}" class="flight-price-form mt-2">
                     @csrf
@@ -101,6 +119,37 @@
                     </button>
                 </form>
             </div>
+        </div>
+        <div class="collapse border-top px-3 py-3" id="{{ $detailsId }}">
+            <div class="small text-muted mb-2">Segment details</div>
+            <ul class="list-unstyled mb-0 small">
+                @foreach($segments as $seg)
+                    <li class="mb-2">
+                        <strong>{{ $seg['carrier'] ?? '' }}{{ $seg['flight_number'] ?? '' }}</strong>
+                        {{ $seg['origin'] ?? '' }} → {{ $seg['destination'] ?? '' }}
+                        · {{ \App\Support\FlightDisplay::parseDateTime($seg['departure'] ?? null)['time'] ?? '' }}
+                        – {{ \App\Support\FlightDisplay::parseDateTime($seg['arrival'] ?? null)['time'] ?? '' }}
+                        @if(!empty($seg['cabin']))
+                            · {{ $seg['cabin'] }}
+                        @endif
+                        @if(!empty($seg['class_of_service']))
+                            · Class {{ $seg['class_of_service'] }}
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+            @if(!empty($sol['fare_basis']) || !empty($sol['cabin']) || !empty($sol['fare_brand']))
+                <div class="small text-muted mt-2">
+                    @if(!empty($sol['fare_brand']))
+                        Fare: <strong>{{ $sol['fare_brand'] }}</strong>
+                    @elseif(!empty($sol['cabin']))
+                        Cabin: <strong>{{ $sol['cabin'] }}</strong>
+                    @endif
+                    @if(!empty($sol['fare_basis']))
+                        · Fare basis <code>{{ $sol['fare_basis'] }}</code>
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 </div>

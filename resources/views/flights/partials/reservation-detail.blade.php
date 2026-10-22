@@ -136,6 +136,52 @@
         </div>
     </div>
 
+    @if($reservationModel)
+        @php
+            $afterPayment = [
+                'fare' => app(\App\Services\Finance\MarkupService::class)->money($reservationModel->base_price),
+                'taxes' => app(\App\Services\Finance\MarkupService::class)->money($reservationModel->taxes),
+                'airline_total' => app(\App\Services\Finance\MarkupService::class)->money($reservationModel->total_price),
+                'ticketing_fee' => 0,
+                'service_fee' => (float) ($reservationModel->service_fee ?? 0),
+                'markup_amount' => (float) ($reservationModel->markup_amount ?? 0),
+                'sell_total' => (float) ($reservationModel->sell_total ?? 0),
+                'agent_profit' => (float) ($reservationModel->agent_profit ?? 0),
+                'currency' => $reservationModel->currency ?: 'USD',
+                'form_of_payment' => $reservationModel->form_of_payment,
+            ];
+            $ticketPdfRoute = $ticketPdfRoute ?? null;
+            $ticketPrintRoute = $ticketPrintRoute ?? null;
+            if (! $ticketPdfRoute && ! empty($flightsRoutePrefix)) {
+                try {
+                    $ticketPdfRoute = route($flightsRoutePrefix.'.flights.reservations.ticket-pdf', $reservationModel->id);
+                    $ticketPrintRoute = route($flightsRoutePrefix.'.flights.reservations.ticket-print', $reservationModel->id);
+                } catch (\Throwable $e) {
+                    $ticketPdfRoute = null;
+                    $ticketPrintRoute = null;
+                }
+            }
+        @endphp
+        @include('flights.partials.payment-information', ['paymentInfo' => $afterPayment, 'readonly' => true])
+        @if($ticketPdfRoute || $ticketPrintRoute)
+            <div class="mb-4 d-flex flex-wrap gap-2">
+                @if($ticketPdfRoute)
+                    <a href="{{ $ticketPdfRoute }}?with_price=1" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pdf me-1"></i> Ticket PDF (with price)</a>
+                    <a href="{{ $ticketPdfRoute }}?with_price=0" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pdf me-1"></i> Ticket PDF (no price)</a>
+                @endif
+                @if($ticketPrintRoute)
+                    <a href="{{ $ticketPrintRoute }}?with_price=1" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i> Print with price</a>
+                    <a href="{{ $ticketPrintRoute }}?with_price=0" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i> Print without price</a>
+                @endif
+            </div>
+        @endif
+
+        @include('flights.partials.after-sale-service', [
+            'reservation' => $reservationModel,
+            'flightsRoutePrefix' => $flightsRoutePrefix ?? null,
+        ])
+    @endif
+
     @if($pax && (!empty($pax['first']) || !empty($pax['last'])))
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">

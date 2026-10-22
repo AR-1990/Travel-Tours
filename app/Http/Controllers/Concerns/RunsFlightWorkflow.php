@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Concerns;
 
 use App\Models\FlightReservation;
 use App\Services\DowntownTravel\DowntownTravelAirService;
+use App\Services\Finance\MarkupService;
+use App\Services\Finance\WalletService;
 use App\Services\SunSpring\SunSpringAirService;
 use App\Services\Travelport\TravelportAirService;
 use App\Support\FlightDisplay;
+use App\Support\FlightProvider;
 use Illuminate\Support\Facades\Auth;
 
 trait RunsFlightWorkflow
@@ -46,6 +49,24 @@ trait RunsFlightWorkflow
             };
         }
 
+        $providerId = FlightProvider::fromResult(is_array($priceResult) ? $priceResult : $result);
+        $serviceFee = (float) ($input['service_fee'] ?? 0);
+        $agentCurrency = strtoupper(trim((string) ($input['booking_currency'] ?? '')));
+        if ($agentCurrency === '' && $user?->tenant_id) {
+            $agentCurrency = strtoupper((string) (\App\Models\System\Tenant::query()->whereKey($user->tenant_id)->value('currency') ?: ''));
+        }
+        if ($agentCurrency === '') {
+            $agentCurrency = null;
+        }
+        $breakdown = app(MarkupService::class)->breakdown(
+            is_array($solution) ? $solution : null,
+            $user?->tenant_id ? (int) $user->tenant_id : null,
+            $providerId,
+            $serviceFee,
+            (string) ($input['form_of_payment'] ?? ''),
+            $agentCurrency
+        );
+
         $reservation = FlightReservation::query()->create([
             'tenant_id' => $user?->tenant_id,
             'user_id' => $user?->id,
@@ -71,6 +92,21 @@ trait RunsFlightWorkflow
             'base_price' => is_array($solution) ? ($solution['base_price'] ?? null) : null,
             'taxes' => is_array($solution) ? ($solution['taxes'] ?? null) : null,
             'fare_basis' => is_array($solution) ? ($solution['fare_basis'] ?? null) : null,
+            'form_of_payment' => $breakdown['form_of_payment'] ?: null,
+            'service_fee' => $breakdown['service_fee'],
+            'airline_fees_total' => $breakdown['airline_fees_total'] ?? 0,
+            'airline_fees_snapshot' => $breakdown['airline_fees'] ?? [],
+            'markup_amount' => $breakdown['markup_amount'],
+            'sell_total' => $breakdown['sell_total'],
+            'agent_profit' => $breakdown['agent_profit'],
+            'commission_amount' => $breakdown['commission_amount'] ?? $breakdown['agent_profit'],
+            'currency' => $breakdown['currency'],
+            'booking_currency' => $breakdown['booking_currency'] ?? $breakdown['currency'],
+            'currency_rate' => $breakdown['currency_rate'] ?? 1,
+            'currency_rate_base' => $breakdown['currency_rate_base'] ?? $breakdown['currency'],
+            'print_with_price' => array_key_exists('print_with_price', $input)
+                ? (bool) $input['print_with_price']
+                : true,
             'itinerary' => [
                 'journeys' => array_map(static fn (array $j): array => [
                     'label' => $j['label'] ?? null,
@@ -83,6 +119,14 @@ trait RunsFlightWorkflow
             'gds_version' => $result['version'] ?? null,
             'booked_at' => now(),
         ]);
+
+        try {
+            app(WalletService::class)->chargeReservationIfWallet($reservation, $user);
+        } catch (\Throwable $e) {
+            report($e);
+            // Reservation already exists with the GDS — surface wallet issue without rolling back host book.
+            session()->flash('warning', 'Booking saved, but wallet charge failed: '.$e->getMessage());
+        }
 
         $payload = [
             'id' => $reservation->id,

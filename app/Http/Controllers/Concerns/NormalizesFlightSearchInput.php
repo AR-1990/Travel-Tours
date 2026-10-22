@@ -112,6 +112,10 @@ trait NormalizesFlightSearchInput
         $adults = max(1, min(9, (int) $request->input('adults', (int) $request->input('adult', 1))));
         $children = max(0, min(8, (int) $request->input('children', (int) $request->input('child', 0))));
         $infants = max(0, min(8, (int) $request->input('infants', (int) $request->input('infant', (int) $request->input('inf', 0)))));
+        $cabinClass = trim((string) $request->input('cabin_class', 'Economy'));
+        if (! in_array($cabinClass, ['Economy', 'Business', 'First Class'], true)) {
+            $cabinClass = 'Economy';
+        }
 
         if ($tripType === 'multicity') {
             $legs = $this->parseSearchLegs($request);
@@ -134,6 +138,7 @@ trait NormalizesFlightSearchInput
                 'adults' => $adults,
                 'children' => $children,
                 'infants' => $infants,
+                'cabin_class' => $cabinClass,
                 'trip_type' => 'multicity',
                 'legs' => array_values($legs),
             ];
@@ -162,6 +167,7 @@ trait NormalizesFlightSearchInput
             'adults' => $adults,
             'children' => $children,
             'infants' => $infants,
+            'cabin_class' => $cabinClass,
             'trip_type' => $tripType,
         ];
     }

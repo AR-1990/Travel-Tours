@@ -287,7 +287,8 @@ class FlightProviderUiTest extends TestCase
 
     public function test_public_workflow_guards_still_redirect_cleanly(): void
     {
-        $this->get(route('frontend.flights.results'))->assertRedirect(route('home'));
+        $this->get(route('frontend.flights.results'))
+            ->assertRedirect(route('home').'?scroll=search#home-flight-search');
         $this->get(route('frontend.flights.price.show'))->assertRedirect();
         $this->get(route('frontend.flights.book'))->assertRedirect();
         $this->get(route('frontend.flights.confirmation'))->assertRedirect();

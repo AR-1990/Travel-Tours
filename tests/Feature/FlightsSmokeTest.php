@@ -169,7 +169,7 @@ class FlightsSmokeTest extends TestCase
     public function test_public_flight_results_redirects_without_session(): void
     {
         $this->get(route('frontend.flights.results'))
-            ->assertRedirect(route('home'));
+            ->assertRedirect(route('home').'?scroll=search#home-flight-search');
     }
 
     public function test_public_flight_price_redirects_without_session(): void

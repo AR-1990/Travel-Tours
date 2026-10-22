@@ -87,6 +87,8 @@ class DowntownTravelBookFormFeatureTest extends TestCase
         $response->assertSee('passengers[0][nationality]', false);
         $response->assertDontSee('name="passenger_first"', false);
         $response->assertDontSee('passengers[0][national_id]', false);
+        $response->assertSee('passengers[0][passport_number]', false);
+        $response->assertSee('Payment option', false);
     }
 
     public function test_book_store_rejects_travelport_flat_fields_for_downtown(): void
@@ -127,9 +129,18 @@ class DowntownTravelBookFormFeatureTest extends TestCase
     {
         $this->seedDowntownPriceSession();
 
-        $this->app->bind(DowntownTravelAirService::class, function () {
-            return new class
+        $captured = [];
+        $this->app->bind(DowntownTravelAirService::class, function () use (&$captured) {
+            return new class($captured)
             {
+                /** @var array<string, mixed> */
+                private array $captured;
+
+                public function __construct(array &$captured)
+                {
+                    $this->captured = &$captured;
+                }
+
                 public function isReady(): bool
                 {
                     return true;
@@ -137,6 +148,8 @@ class DowntownTravelBookFormFeatureTest extends TestCase
 
                 public function book(array $params): array
                 {
+                    $this->captured = $params;
+
                     return [
                         'ok' => true,
                         'message' => 'Downtown Travel booking created (order DT-99).',
@@ -153,21 +166,28 @@ class DowntownTravelBookFormFeatureTest extends TestCase
         $response = $this->post(route('frontend.flights.book.store'), [
             'provider' => FlightProvider::DOWNTOWN_TRAVEL,
             'country_code' => '+1',
+            'form_of_payment' => 'Credit',
             'passengers' => [[
                 'type' => 'ADT',
                 'prefix' => 'Mr',
                 'first' => 'Ubaid',
                 'last' => 'Syed',
                 'email' => 'qamuken@mailinator.com',
-                'phone' => '+12236826712',
+                'phone' => '2236826712',
                 'dob' => '1990-11-24',
                 'gender' => 'M',
                 'nationality' => 'US',
+                'passport_number' => 'P1234567',
+                'passport_expire' => '2030-12-31',
             ]],
         ]);
 
         $response->assertRedirect();
         $this->assertNotEmpty(session('public.last_reservation_id') ?? session('travelport.last_reservation_id'));
+        $this->assertSame('+12236826712', $captured['phone'] ?? null);
+        $this->assertSame('+12236826712', data_get($captured, 'passengers.0.phone'));
+        $this->assertSame('Credit', $captured['form_of_payment'] ?? null);
+        $this->assertSame('P1234567', data_get($captured, 'passengers.0.passport_number'));
     }
 
     public function test_passenger_partial_renders_travelport_flat_fields(): void

@@ -15,6 +15,8 @@ use Illuminate\Http\Request;
 
 trait HandlesTravelportAir
 {
+    use DownloadsFlightTicketPdf;
+    use HandlesAfterSaleRequests;
     use HandlesFlightWorkflow;
     use ManagesFlightReservations;
     use NormalizesFlightSearchInput;

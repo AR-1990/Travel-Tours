@@ -38,7 +38,10 @@
     $hotelIsDowntown = $hotelProviderSelected === \App\Support\HotelProvider::DOWNTOWN_TRAVEL_HOTELS;
     $hotelCheckIn = old('check_in', $hotelInput['check_in'] ?? now()->addMonths(2)->format('Y-m-d'));
     $hotelCheckOut = old('check_out', $hotelInput['check_out'] ?? now()->addMonths(2)->addDay()->format('Y-m-d'));
-    $openHotelsTab = request()->query('tab') === 'hotels';
+    $openTab = request()->query('tab', 'flights');
+    $openHotelsTab = $openTab === 'hotels';
+    $openActivityTab = $openTab === 'activity' || $openTab === 'activities';
+    $openFlightsTab = ! $openHotelsTab && ! $openActivityTab;
 @endphp
 <div class="search-area home-flight-search-area" id="home-flight-search">
     <div class="container">
@@ -53,9 +56,9 @@
                 <div class="search-nav">
                     <ul class="nav nav-pills" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link {{ $openHotelsTab ? '' : 'active' }}" id="home-tab-flights"
+                            <button class="nav-link {{ $openFlightsTab ? 'active' : '' }}" id="home-tab-flights"
                                 data-bs-toggle="pill" data-bs-target="#pills-1" type="button" role="tab"
-                                aria-controls="pills-1" aria-selected="{{ $openHotelsTab ? 'false' : 'true' }}">
+                                aria-controls="pills-1" aria-selected="{{ $openFlightsTab ? 'true' : 'false' }}">
                                 <i class="far fa-plane-departure"></i>Flights
                             </button>
                         </li>
@@ -66,12 +69,19 @@
                                 <i class="far fa-hotel"></i>Hotels
                             </button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {{ $openActivityTab ? 'active' : '' }}" id="home-tab-activity"
+                                data-bs-toggle="pill" data-bs-target="#pills-activity" type="button" role="tab"
+                                aria-controls="pills-activity" aria-selected="{{ $openActivityTab ? 'true' : 'false' }}">
+                                <i class="far fa-person-hiking"></i>Activity
+                            </button>
+                        </li>
                     </ul>
                 </div>
             </div>
 
             <div class="tab-content home-flight-panel" id="pills-tabContent">
-                <div class="tab-pane fade {{ $openHotelsTab ? '' : 'show active' }}" id="pills-1" role="tabpanel" tabindex="0">
+                <div class="tab-pane fade {{ $openFlightsTab ? 'show active' : '' }}" id="pills-1" role="tabpanel" tabindex="0">
                     <div class="flight-search ft-group home-flight-search">
                         <div class="search-form">
                             <form action="{{ route('frontend.flights.search') }}" method="POST" id="homeFlightSearchForm">
@@ -362,6 +372,22 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="tab-pane fade {{ $openActivityTab ? 'show active' : '' }}" id="pills-activity" role="tabpanel" tabindex="0">
+                    <div class="flight-search ft-group home-flight-search">
+                        <div class="home-flight-toolbar">
+                            <div class="home-flight-toolbar-copy">
+                                <span class="home-flight-kicker"><i class="far fa-person-hiking"></i> Activities</span>
+                                <p>Browse tours and experiences — coming soon in search</p>
+                            </div>
+                        </div>
+                        <div class="search-btn home-search-btn mt-3">
+                            <a href="{{ route('pages.activities') }}" class="theme-btn home-search-submit">
+                                <span class="far fa-arrow-right"></span> View activities
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -369,6 +395,21 @@
 @once
 <script>
 (function () {
+    function scrollToHomeSearch() {
+        var el = document.getElementById('home-flight-search');
+        if (!el) return;
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    }
+    if (window.location.hash === '#home-flight-search' || new URLSearchParams(window.location.search).get('scroll') === 'search') {
+        window.setTimeout(scrollToHomeSearch, 80);
+    }
+    document.querySelectorAll('a[href*="#home-flight-search"]').forEach(function (a) {
+        a.addEventListener('click', function () {
+            window.setTimeout(scrollToHomeSearch, 50);
+        });
+    });
+
     function syncHomeHotelProvider() {
         var selected = document.querySelector('.js-home-hotel-provider:checked');
         var isDowntown = selected && selected.value === 'downtown_travel_hotels';

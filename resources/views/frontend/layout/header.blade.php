@@ -73,15 +73,7 @@
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">Home</a>
                             </li>
-                           {{-- <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('pages.flights') || request()->routeIs('frontend.flights.*') ? 'active' : '' }}" href="{{ route('pages.flights') }}">Flight</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('pages.hotels') ? 'active' : '' }}" href="{{ route('pages.hotels') }}">Hotel</a>
-                            </li> --}}
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('pages.activities') ? 'active' : '' }}" href="{{ route('pages.activities') }}">Activity</a>
-                            </li>
+                            {{-- Flight / Hotel / Activity live in home search tabs — not main nav --}}
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('blogs.*') ? 'active' : '' }}" href="{{ route('blogs.index') }}">Blog</a>
                             </li>

@@ -36,6 +36,18 @@
 
 <input type="hidden" name="provider" value="{{ $providerId }}">
 
+@php
+    $pricedSolution = data_get($flightPriceResult ?? [], 'solutions.0');
+    $paymentInfo = app(\App\Services\Finance\MarkupService::class)->breakdown(
+        is_array($pricedSolution) ? $pricedSolution : null,
+        auth()->user()?->tenant_id ? (int) auth()->user()->tenant_id : null,
+        $providerId,
+        (float) old('service_fee', 0),
+        (string) old('form_of_payment', '')
+    );
+@endphp
+@include('flights.partials.payment-information', ['paymentInfo' => $paymentInfo])
+
 @if($usesPassengerArray)
     <p class="small text-muted mb-3">{{ $spec['hint'] }}</p>
     @foreach($slots as $index => $slot)
@@ -105,6 +117,16 @@
                         title="Date of birth must match {{ $type }} age band">
                 </div>
                 @if($index === 0)
+                    @php
+                        $oldPhone = (string) ($old['phone'] ?? old('passenger_phone', $bookInput['passenger_phone'] ?? ''));
+                        $oldCountry = (string) old('country_code', $defaultCountryCode);
+                        if ($oldPhone !== '' && str_starts_with($oldPhone, '+') && ! old('country_code')) {
+                            if (preg_match('/^(\+\d{1,4})(.*)$/', $oldPhone, $m)) {
+                                $oldCountry = $m[1];
+                                $oldPhone = trim($m[2]);
+                            }
+                        }
+                    @endphp
                     <div class="col-md-4">
                         <label class="form-label">Email {!! $req !!}</label>
                         <input type="email" name="passengers[{{ $index }}][email]" class="{{ $control }}"
@@ -112,30 +134,28 @@
                             required maxlength="120" autocomplete="email">
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label">Country code {!! $req !!}</label>
+                        @php $dialingOptions = \App\Support\FlightProvider::dialingCodeOptions(); @endphp
+                        <select name="country_code" class="{{ $select }}" required aria-label="Country code">
+                            @foreach($dialingOptions as $code => $label)
+                                <option value="{{ $code }}" @selected(($oldCountry ?: $defaultCountryCode) === $code)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label">Phone {!! $req !!}</label>
-                        <input type="tel" name="passengers[{{ $index }}][phone]" class="{{ $control }}"
-                            value="{{ $old['phone'] ?? old('passenger_phone', $bookInput['passenger_phone'] ?? '') }}"
+                        <input type="tel" name="passengers[{{ $index }}][phone]" class="{{ $control }} js-merged-phone"
+                            value="{{ $oldPhone }}"
                             required
                             minlength="{{ $spec['phone_min'] }}"
                             maxlength="{{ $spec['phone_max'] }}"
-                            pattern="{{ $spec['phone_pattern'] }}"
-                            title="{{ $spec['phone_title'] }}"
+                            pattern="[0-9() \\-]{7,20}"
+                            title="Local phone number without country code"
                             autocomplete="tel"
-                            placeholder="{{ $providerId === 'downtown_travel' ? '+14057787503' : '9151112233' }}">
+                            inputmode="tel"
+                            placeholder="{{ $providerId === 'downtown_travel' ? '4057787503' : '3330248947' }}">
+                        <div class="form-text">Side by side with country code; validated dialing code list.</div>
                     </div>
-                    @if($spec['show_country_code'])
-                        <div class="col-md-4">
-                            <label class="form-label">Country code @if($providerId === 'sunspring'){!! $req !!}@endif</label>
-                            <input type="text" name="country_code" class="{{ $control }}"
-                                value="{{ old('country_code', $defaultCountryCode) }}"
-                                @if($providerId === 'sunspring') required @endif
-                                maxlength="{{ $spec['country_code_max'] }}"
-                                pattern="{{ $spec['country_code_pattern'] }}"
-                                title="{{ $spec['country_code_title'] }}"
-                                placeholder="{{ $defaultCountryCode }}"
-                                inputmode="tel">
-                        </div>
-                    @endif
                 @else
                     <input type="hidden" name="passengers[{{ $index }}][email]" value="{{ $old['email'] ?? old('passenger_email', 'cert.test@example.com') }}">
                     <input type="hidden" name="passengers[{{ $index }}][phone]" value="{{ $old['phone'] ?? old('passenger_phone', '9151112233') }}">
@@ -156,25 +176,27 @@
                     </div>
                 @endif
                 @if($spec['show_docs'] && $spec['docs_required'])
-                    <div class="col-md-4">
-                        <label class="form-label">
-                            National ID
-                            <span class="text-danger js-national-id-required-mark @if(strtoupper((string) ($old['nationality'] ?? $defaultNationality)) !== 'IRN') d-none @endif">*</span>
-                            <span class="text-muted small js-national-id-optional-mark @if(strtoupper((string) ($old['nationality'] ?? $defaultNationality)) === 'IRN') d-none @endif">(Iran only)</span>
-                        </label>
-                        <input type="text" name="passengers[{{ $index }}][national_id]" class="{{ $control }} js-sunspring-national-id"
-                            value="{{ $old['national_id'] ?? '' }}"
-                            minlength="{{ $spec['national_id_min'] }}"
-                            maxlength="{{ $spec['national_id_max'] }}"
-                            pattern="{{ $spec['national_id_pattern'] }}"
-                            title="{{ $spec['national_id_title'] }}"
-                            placeholder="IRN only — e.g. 0013542419"
-                            inputmode="numeric"
-                            autocomplete="off"
-                            data-national-id-check="1"
-                            data-passenger-index="{{ $index }}">
-                        <div class="form-text">Required only for Iranian (IRN) nationality · 10-digit کد ملی</div>
-                    </div>
+                    @if(! empty($spec['national_id_pattern']))
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                National ID
+                                <span class="text-danger js-national-id-required-mark @if(strtoupper((string) ($old['nationality'] ?? $defaultNationality)) !== 'IRN') d-none @endif">*</span>
+                                <span class="text-muted small js-national-id-optional-mark @if(strtoupper((string) ($old['nationality'] ?? $defaultNationality)) === 'IRN') d-none @endif">(Iran only)</span>
+                            </label>
+                            <input type="text" name="passengers[{{ $index }}][national_id]" class="{{ $control }} js-sunspring-national-id"
+                                value="{{ $old['national_id'] ?? '' }}"
+                                minlength="{{ $spec['national_id_min'] }}"
+                                maxlength="{{ $spec['national_id_max'] }}"
+                                pattern="{{ $spec['national_id_pattern'] }}"
+                                title="{{ $spec['national_id_title'] }}"
+                                placeholder="IRN only — e.g. 0013542419"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                data-national-id-check="1"
+                                data-passenger-index="{{ $index }}">
+                            <div class="form-text">Required only for Iranian (IRN) nationality · 10-digit کد ملی</div>
+                        </div>
+                    @endif
                     <div class="col-md-4">
                         <label class="form-label">Passport number {!! $req !!}</label>
                         <input type="text" name="passengers[{{ $index }}][passport_number]" class="{{ $control }}"
@@ -214,15 +236,45 @@
             </div>
         </div>
     @endforeach
+    @php
+        $isAgencyUser = auth()->check() && in_array(auth()->user()->user_type ?? '', ['tenant_admin', 'sub_agent', 'super_admin'], true);
+        $paymentOptions = $isAgencyUser
+            ? [
+                'Wallet' => 'Pay by wallet',
+                'Reserve' => 'Reserve',
+                'Credit' => 'Credit card',
+                'Debit' => 'Debit card',
+                'BankTransfer' => 'Bank transfer',
+            ]
+            : [
+                'Credit' => 'Credit card',
+                'Debit' => 'Debit card',
+                'BankTransfer' => 'Bank transfer',
+            ];
+        $selectedPayment = old('form_of_payment', $isAgencyUser ? 'Wallet' : 'Credit');
+    @endphp
     <div class="row g-3 mb-2">
-        <div class="col-md-4">
-            <label class="form-label">Form of payment</label>
-            <select name="form_of_payment" class="{{ $select }}">
-                <option value="Cash">Cash</option>
-                <option value="Credit">Credit</option>
-                <option value="Check">Check</option>
+        <div class="col-md-6">
+            <label class="form-label">Payment option {!! $req !!}</label>
+            <select name="form_of_payment" class="{{ $select }}" required>
+                @foreach($paymentOptions as $value => $label)
+                    <option value="{{ $value }}" @selected($selectedPayment === $value)>{{ $label }}</option>
+                @endforeach
             </select>
+            <div class="form-text">
+                {{ $isAgencyUser ? 'B2B options: wallet, reserve, cards, or bank transfer.' : 'B2C options: credit/debit card or bank transfer.' }}
+            </div>
         </div>
+        @if($isAgencyUser)
+            <div class="col-md-6">
+                <label class="form-label">Ticket print</label>
+                <select name="print_with_price" class="{{ $select }}">
+                    <option value="1" @selected(old('print_with_price', '1') == '1')>With price</option>
+                    <option value="0" @selected(old('print_with_price') === '0' || old('print_with_price') === 0)>Without price</option>
+                </select>
+                <div class="form-text">Agency can print e-ticket with or without fare amount.</div>
+            </div>
+        @endif
     </div>
 @else
     <p class="small text-muted mb-3">{{ $spec['hint'] }}</p>
@@ -278,25 +330,69 @@
                 value="{{ old('passenger_email', $bookInput['passenger_email'] ?? '') }}"
                 required maxlength="120" autocomplete="email">
         </div>
+        @php
+            $tpPhone = (string) old('passenger_phone', $bookInput['passenger_phone'] ?? '');
+            $tpCountry = (string) old('country_code', $defaultCountryCode);
+            if ($tpPhone !== '' && str_starts_with($tpPhone, '+') && ! old('country_code')) {
+                if (preg_match('/^(\+\d{1,4})(.*)$/', $tpPhone, $m)) {
+                    $tpCountry = $m[1];
+                    $tpPhone = trim($m[2]);
+                }
+            }
+            $isAgencyUserFlat = auth()->check() && in_array(auth()->user()->user_type ?? '', ['tenant_admin', 'sub_agent', 'super_admin'], true);
+            $paymentOptionsFlat = $isAgencyUserFlat
+                ? [
+                    'Wallet' => 'Pay by wallet',
+                    'Reserve' => 'Reserve',
+                    'Credit' => 'Credit card',
+                    'Debit' => 'Debit card',
+                    'BankTransfer' => 'Bank transfer',
+                ]
+                : [
+                    'Credit' => 'Credit card',
+                    'Debit' => 'Debit card',
+                    'BankTransfer' => 'Bank transfer',
+                ];
+            $selectedPaymentFlat = old('form_of_payment', $isAgencyUserFlat ? 'Wallet' : 'Credit');
+        @endphp
+        <div class="col-md-4">
+            <label class="form-label">Country code {!! $req !!}</label>
+            @php $dialingOptionsFlat = \App\Support\FlightProvider::dialingCodeOptions(); @endphp
+            <select name="country_code" class="{{ $select }}" required aria-label="Country code">
+                @foreach($dialingOptionsFlat as $code => $label)
+                    <option value="{{ $code }}" @selected(($tpCountry ?: $defaultCountryCode) === $code)>{{ $label }}</option>
+                @endforeach
+            </select>
+        </div>
         <div class="col-md-4">
             <label class="form-label">Phone {!! $req !!}</label>
             <input type="tel" name="passenger_phone" class="{{ $control }}"
-                value="{{ old('passenger_phone', $bookInput['passenger_phone'] ?? '') }}"
+                value="{{ $tpPhone }}"
                 required
                 minlength="{{ $spec['phone_min'] }}"
                 maxlength="{{ $spec['phone_max'] }}"
-                pattern="{{ $spec['phone_pattern'] }}"
-                title="{{ $spec['phone_title'] }}"
-                autocomplete="tel">
+                pattern="[0-9() \\-]{7,20}"
+                title="Local phone number without country code"
+                autocomplete="tel"
+                inputmode="tel">
         </div>
         <div class="col-md-4">
-            <label class="form-label">Form of payment</label>
-            <select name="form_of_payment" class="{{ $select }}">
-                <option value="Cash">Cash</option>
-                <option value="Credit">Credit</option>
-                <option value="Check">Check</option>
+            <label class="form-label">Payment option {!! $req !!}</label>
+            <select name="form_of_payment" class="{{ $select }}" required>
+                @foreach($paymentOptionsFlat as $value => $label)
+                    <option value="{{ $value }}" @selected($selectedPaymentFlat === $value)>{{ $label }}</option>
+                @endforeach
             </select>
         </div>
+        @if($isAgencyUserFlat)
+            <div class="col-md-4">
+                <label class="form-label">Ticket print</label>
+                <select name="print_with_price" class="{{ $select }}">
+                    <option value="1" @selected(old('print_with_price', '1') == '1')>With price</option>
+                    <option value="0" @selected(old('print_with_price') === '0' || old('print_with_price') === 0)>Without price</option>
+                </select>
+            </div>
+        @endif
     </div>
 @endif
 
@@ -352,8 +448,34 @@
         });
     }
 
+    function mergePhoneOnSubmit(form) {
+        var country = form.querySelector('input[name="country_code"]');
+        if (!country) return;
+        var cc = String(country.value || '').trim();
+        if (!cc) return;
+        var phones = form.querySelectorAll('input[name="passengers[0][phone]"], input[name="passenger_phone"]');
+        phones.forEach(function (input) {
+            var val = String(input.value || '').trim();
+            if (!val || val.charAt(0) === '+') return;
+            var ccDigits = cc.replace(/\D+/g, '');
+            var phoneDigits = val.replace(/\D+/g, '');
+            if (!ccDigits || !phoneDigits) return;
+            if (phoneDigits.indexOf(ccDigits) === 0 && phoneDigits.length >= ccDigits.length + 7) {
+                input.value = '+' + phoneDigits;
+            } else {
+                input.value = '+' + ccDigits + phoneDigits;
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         bindNationalIdChecks(document);
+        document.querySelectorAll('form').forEach(function (form) {
+            if (!form.querySelector('input[name="country_code"]')) return;
+            form.addEventListener('submit', function () {
+                mergePhoneOnSubmit(form);
+            });
+        });
     });
 })();
 </script>

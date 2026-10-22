@@ -81,6 +81,7 @@
                                 <div class="hero-content-wrapper">
                                     <h1 class="hero-title">Explore The World Together</h1>
                                     <p>Find awesome flight, hotel, tour, car and packages</p>
+                                    <a href="#home-flight-search" class="theme-btn mt-3 js-scroll-to-search">Search flights &amp; hotels</a>
                                 </div>
                             </div>
                         </div>

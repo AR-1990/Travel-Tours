@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\DownloadsFlightTicketPdf;
+use App\Http\Controllers\Concerns\HandlesAfterSaleRequests;
 use App\Http\Controllers\Concerns\HandlesFlightWorkflow;
 use App\Http\Controllers\Concerns\NormalizesFlightSearchInput;
 use App\Models\FlightReservation;
@@ -20,6 +22,8 @@ use Illuminate\Support\Facades\Auth;
 
 class PublicFlightController extends Controller
 {
+    use DownloadsFlightTicketPdf;
+    use HandlesAfterSaleRequests;
     use HandlesFlightWorkflow;
     use NormalizesFlightSearchInput;
 
@@ -42,7 +46,7 @@ class PublicFlightController extends Controller
                 ? 'Multi-city search needs at least two legs with valid airports and dates.'
                 : 'Please provide valid origin, destination, and journey date.';
 
-            return redirect()->route('home')->with('error', $message);
+            return redirect()->to(route('home').'?scroll=search#home-flight-search')->with('error', $message);
         }
 
         $searchResult = AggregatedFlightSearch::search($input, $air, $sunspring);
@@ -64,7 +68,8 @@ class PublicFlightController extends Controller
     {
         $stored = session('public.flight_search');
         if (! is_array($stored) || ! isset($stored['result'])) {
-            return redirect()->route('home')->with('error', 'Please run a flight search first.');
+            return redirect()->to(route('home').'?scroll=search#home-flight-search')
+                ->with('error', 'Please run a flight search first.');
         }
 
         return view('frontend.flight-results', $this->publicFlightViewData($stored));

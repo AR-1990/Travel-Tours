@@ -100,20 +100,21 @@ class FlightProviderBookValidationTest extends TestCase
         $this->assertFalse($pakistaniWithoutNationalId->fails(), implode('; ', $pakistaniWithoutNationalId->errors()->all()));
     }
 
-    public function test_downtown_requires_passengers_without_travel_documents(): void
+    public function test_downtown_requires_passengers_and_passport(): void
     {
         $rules = FlightProvider::bookValidationRules(FlightProvider::DOWNTOWN_TRAVEL, 1);
         $spec = FlightProvider::bookFieldSpecs(FlightProvider::DOWNTOWN_TRAVEL);
 
         $this->assertTrue(FlightProvider::usesPassengerArray(FlightProvider::DOWNTOWN_TRAVEL));
-        $this->assertFalse($spec['docs_required']);
-        $this->assertTrue($spec['passport_optional']);
+        $this->assertTrue($spec['docs_required']);
+        $this->assertFalse($spec['passport_optional']);
         $this->assertSame(2, $spec['nationality_max']);
         $this->assertSame(30, $spec['name_max']);
         $this->assertSame(50, $spec['name_combined_max']);
         $this->assertArrayHasKey('passengers', $rules);
         $this->assertArrayHasKey('passengers.*', $rules);
         $this->assertContains('required', $rules['passengers.0.phone']);
+        $this->assertContains('required', $rules['passengers.*.passport_number']);
         $this->assertSame('US', FlightProvider::defaultNationality(FlightProvider::DOWNTOWN_TRAVEL));
         $this->assertSame('+1', FlightProvider::defaultCountryCode(FlightProvider::DOWNTOWN_TRAVEL));
 
@@ -128,12 +129,34 @@ class FlightProviderBookValidationTest extends TestCase
                 'email' => 'a@example.com',
                 'phone' => '+14057787503',
                 'nationality' => 'US',
+                'passport_number' => 'A12345678',
+                'passport_expire' => '2030-12-31',
             ]],
         ], $rules);
         $this->assertTrue($tooLong->fails());
         $this->assertTrue(collect($tooLong->errors()->all())->contains(
             fn (string $m): bool => str_contains($m, '50 characters for the whole name')
         ));
+    }
+
+    public function test_merge_dialing_code_and_phone(): void
+    {
+        $this->assertSame('+14057787503', FlightProvider::mergeDialingCodeAndPhone('+1', '4057787503'));
+        $this->assertSame('+14057787503', FlightProvider::mergeDialingCodeAndPhone('+1', '+14057787503'));
+        $this->assertSame('+14057787503', FlightProvider::mergeDialingCodeAndPhone('+1', '14057787503'));
+        $this->assertSame('4057787503', FlightProvider::mergeDialingCodeAndPhone('', '4057787503'));
+        $this->assertSame('', FlightProvider::mergeDialingCodeAndPhone('+1', ''));
+    }
+
+    public function test_form_of_payment_allows_b2b_and_b2c_options(): void
+    {
+        foreach ([FlightProvider::TRAVELPORT, FlightProvider::SUNSPRING, FlightProvider::DOWNTOWN_TRAVEL] as $provider) {
+            $rules = FlightProvider::bookValidationRules($provider, 1);
+            $this->assertContains(
+                'in:Cash,Credit,Check,Debit,BankTransfer,Wallet,Reserve',
+                $rules['form_of_payment']
+            );
+        }
     }
 
     public function test_hotel_book_field_specs_differ_by_provider(): void

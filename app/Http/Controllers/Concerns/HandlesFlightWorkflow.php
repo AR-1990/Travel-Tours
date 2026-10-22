@@ -291,23 +291,41 @@ trait HandlesFlightWorkflow
         $slots = $this->passengerSlotsFromSearch($searchInput);
         $expected = max(1, count($slots));
 
-        $request->validate(FlightProvider::bookValidationRules($bookProvider, $expected));
+        $rules = FlightProvider::bookValidationRules($bookProvider, $expected);
+        $rules['service_fee'] = ['nullable', 'numeric', 'min:-999999', 'max:999999'];
+        $rules['print_with_price'] = ['nullable', 'boolean'];
+        $rules['booking_currency'] = ['nullable', 'string', 'size:3'];
+        $dialingCodes = array_keys(FlightProvider::dialingCodeOptions());
+        if (! empty($rules['country_code'])) {
+            $rules['country_code'] = ['required', 'string', 'in:'.implode(',', $dialingCodes)];
+        }
+        $request->validate($rules);
+
+        $walletGate = $this->assertWalletCanCoverBooking($request, $bookProvider, is_array($price) ? $price : null);
+        if ($walletGate !== null) {
+            return $walletGate;
+        }
 
         if (FlightProvider::usesPassengerArray($bookProvider)) {
             $defaultNationality = FlightProvider::defaultNationality($bookProvider);
+            $countryCode = (string) $request->input('country_code', FlightProvider::defaultCountryCode($bookProvider));
+            $mergePhone = $bookProvider !== FlightProvider::SUNSPRING;
             $passengers = [];
             foreach (array_values($request->input('passengers', [])) as $i => $row) {
                 if (! is_array($row)) {
                     continue;
                 }
                 $expectedType = (string) ($slots[$i]['type'] ?? 'ADT');
+                $rawPhone = (string) ($row['phone'] ?? $request->input('passengers.0.phone', ''));
                 $passengers[] = [
                     'type' => $expectedType,
                     'prefix' => (string) ($row['prefix'] ?? ($expectedType === 'CHD' ? 'Miss' : ($expectedType === 'INF' ? 'Mstr' : 'Mr'))),
                     'first' => (string) ($row['first'] ?? ''),
                     'last' => (string) ($row['last'] ?? ''),
                     'email' => (string) ($row['email'] ?? $request->input('passengers.0.email', '')),
-                    'phone' => (string) ($row['phone'] ?? $request->input('passengers.0.phone', '')),
+                    'phone' => $mergePhone
+                        ? FlightProvider::mergeDialingCodeAndPhone($countryCode, $rawPhone)
+                        : $rawPhone,
                     'dob' => (string) ($row['dob'] ?? ''),
                     'gender' => (string) ($row['gender'] ?? 'M'),
                     'national_id' => (string) ($row['national_id'] ?? ''),
@@ -327,7 +345,11 @@ trait HandlesFlightWorkflow
 
             $lead = $passengers[0];
             $params = [
-                'country_code' => (string) $request->input('country_code', FlightProvider::defaultCountryCode($bookProvider)),
+                'country_code' => $countryCode,
+                'form_of_payment' => (string) $request->input('form_of_payment', 'Cash'),
+                'service_fee' => (float) $request->input('service_fee', 0),
+                'print_with_price' => $request->boolean('print_with_price', true),
+                'booking_currency' => strtoupper((string) $request->input('booking_currency', '')),
                 'passengers' => $passengers,
                 'passenger_prefix' => (string) ($lead['prefix'] ?? 'Mr'),
                 'passenger_first' => (string) ($lead['first'] ?? ''),
@@ -376,7 +398,19 @@ trait HandlesFlightWorkflow
                 ->with('success', $result['message'] ?? 'Booking created. Your reservation details are below.');
         }
 
+        $mergedTravelportPhone = FlightProvider::mergeDialingCodeAndPhone(
+            (string) $request->input('country_code', FlightProvider::defaultCountryCode(FlightProvider::TRAVELPORT)),
+            (string) $request->input('passenger_phone', '')
+        );
+        if ($mergedTravelportPhone !== '') {
+            $request->merge(['passenger_phone' => $mergedTravelportPhone]);
+        }
+
         $params = $this->flightOperationParams($request, 'air_create_reservation');
+        $params['form_of_payment'] = (string) $request->input('form_of_payment', $params['form_of_payment'] ?? 'Cash');
+        $params['service_fee'] = (float) $request->input('service_fee', 0);
+        $params['print_with_price'] = $request->boolean('print_with_price', true);
+        $params['booking_currency'] = strtoupper((string) $request->input('booking_currency', ''));
         $result = $air->execute('air_create_reservation', $params);
 
         if (! ($result['ok'] ?? false)) {
@@ -640,6 +674,47 @@ trait HandlesFlightWorkflow
         }
 
         return $slots;
+    }
+
+    /**
+     * Block Wallet payment before calling the host if agency balance is too low.
+     *
+     * @param  array<string, mixed>|null  $price
+     * @return \Illuminate\Http\RedirectResponse|null
+     */
+    protected function assertWalletCanCoverBooking(Request $request, string $bookProvider, ?array $price)
+    {
+        $fop = (string) $request->input('form_of_payment', '');
+        if (strcasecmp($fop, 'Wallet') !== 0) {
+            return null;
+        }
+
+        $user = Auth::user();
+        if (! $user || ! $user->tenant_id) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.book')
+                ->withInput()
+                ->with('error', 'Wallet payment is only available for agency users.');
+        }
+
+        $solution = is_array($price['result']['solutions'][0] ?? null) ? $price['result']['solutions'][0] : null;
+        $breakdown = app(\App\Services\Finance\MarkupService::class)->breakdown(
+            $solution,
+            (int) $user->tenant_id,
+            $bookProvider,
+            (float) $request->input('service_fee', 0),
+            $fop
+        );
+        $needed = (float) $breakdown['sell_total'];
+        $balance = app(\App\Services\Finance\WalletService::class)->balance((int) $user->tenant_id);
+        if ($balance + 0.0001 < $needed) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.book')
+                ->withInput()
+                ->with('error', 'Insufficient wallet balance. Need '.$breakdown['currency'].' '.number_format($needed, 2).', available '.number_format($balance, 2).'.');
+        }
+
+        return null;
     }
 
     /**

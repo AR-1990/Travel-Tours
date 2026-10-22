@@ -231,6 +231,104 @@ class FlightProvider
     }
 
     /**
+     * Dialing codes for book-form country select (code => label).
+     *
+     * @return array<string, string>
+     */
+    public static function dialingCodeOptions(): array
+    {
+        return [
+            '+1' => 'United States / Canada (+1)',
+            '+44' => 'United Kingdom (+44)',
+            '+92' => 'Pakistan (+92)',
+            '+91' => 'India (+91)',
+            '+971' => 'UAE (+971)',
+            '+966' => 'Saudi Arabia (+966)',
+            '+974' => 'Qatar (+974)',
+            '+965' => 'Kuwait (+965)',
+            '+973' => 'Bahrain (+973)',
+            '+968' => 'Oman (+968)',
+            '+98' => 'Iran (+98)',
+            '+90' => 'Turkey (+90)',
+            '+20' => 'Egypt (+20)',
+            '+962' => 'Jordan (+962)',
+            '+961' => 'Lebanon (+961)',
+            '+964' => 'Iraq (+964)',
+            '+93' => 'Afghanistan (+93)',
+            '+880' => 'Bangladesh (+880)',
+            '+94' => 'Sri Lanka (+94)',
+            '+63' => 'Philippines (+63)',
+            '+62' => 'Indonesia (+62)',
+            '+60' => 'Malaysia (+60)',
+            '+65' => 'Singapore (+65)',
+            '+86' => 'China (+86)',
+            '+81' => 'Japan (+81)',
+            '+82' => 'South Korea (+82)',
+            '+61' => 'Australia (+61)',
+            '+64' => 'New Zealand (+64)',
+            '+49' => 'Germany (+49)',
+            '+33' => 'France (+33)',
+            '+39' => 'Italy (+39)',
+            '+34' => 'Spain (+34)',
+            '+31' => 'Netherlands (+31)',
+            '+41' => 'Switzerland (+41)',
+            '+46' => 'Sweden (+46)',
+            '+47' => 'Norway (+47)',
+            '+45' => 'Denmark (+45)',
+            '+353' => 'Ireland (+353)',
+            '+27' => 'South Africa (+27)',
+            '+234' => 'Nigeria (+234)',
+            '+254' => 'Kenya (+254)',
+            '+55' => 'Brazil (+55)',
+            '+52' => 'Mexico (+52)',
+        ];
+    }
+
+    public static function isValidDialingCode(?string $code): bool
+    {
+        $code = trim((string) $code);
+
+        return $code !== '' && array_key_exists($code, self::dialingCodeOptions());
+    }
+
+    /**
+     * Combine dialing code (+1) with a local number. Leaves E.164 numbers unchanged.
+     * SunSpring keeps country_code separate — do not use this for SunSpring mobile payloads.
+     */
+    public static function mergeDialingCodeAndPhone(?string $countryCode, ?string $phone): string
+    {
+        $phone = trim((string) $phone);
+        $countryCode = trim((string) $countryCode);
+
+        if ($phone === '') {
+            return '';
+        }
+
+        if (str_starts_with($phone, '+')) {
+            $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+            return $digits !== '' ? '+'.$digits : $phone;
+        }
+
+        $phoneDigits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($phoneDigits === '') {
+            return $phone;
+        }
+
+        $ccDigits = preg_replace('/\D+/', '', $countryCode) ?? '';
+        if ($ccDigits === '') {
+            return $phoneDigits;
+        }
+
+        // Already includes the country prefix (e.g. 14057787503 with country +1).
+        if (str_starts_with($phoneDigits, $ccDigits) && strlen($phoneDigits) >= strlen($ccDigits) + 7) {
+            return '+'.$phoneDigits;
+        }
+
+        return '+'.$ccDigits.$phoneDigits;
+    }
+
+    /**
      * Iranian national ID (کد ملی): exactly 10 digits with a valid check digit.
      * Required by SunSpring / Sepehran Book payloads.
      */
@@ -337,7 +435,7 @@ class FlightProvider
                 'show_nationality' => true,
             ],
             self::DOWNTOWN_TRAVEL => [
-                'hint' => 'Enter every traveler from your search. First and last name max 30 each; combined name max 50 characters. Pick a nationality and use a phone with country code.',
+                'hint' => 'Enter every traveler from your search. Passport details are required. First and last name max 30 each; combined name max 50 characters. Use the merged phone field (country code + number).',
                 'name_pattern' => '[A-Za-z][A-Za-z \\-\']{0,28}',
                 'name_title' => 'Letters only; max 30 characters (first + last together max 50)',
                 'name_min' => 2,
@@ -360,12 +458,12 @@ class FlightProvider
                 'national_id_min' => null,
                 'national_id_max' => null,
                 'passport_pattern' => '[A-Za-z0-9]{5,15}',
-                'passport_title' => 'Passport: 5–15 letters/numbers (optional)',
+                'passport_title' => 'Passport: 5–15 letters/numbers',
                 'passport_min' => 5,
                 'passport_max' => 15,
-                'passport_optional' => true,
+                'passport_optional' => false,
                 'show_docs' => true,
-                'docs_required' => false,
+                'docs_required' => true,
                 'show_country_code' => true,
                 'show_nationality' => true,
             ],
@@ -376,7 +474,7 @@ class FlightProvider
                 'name_min' => 2,
                 'name_max' => 80,
                 'phone_pattern' => '[0-9+() \\-]{7,30}',
-                'phone_title' => 'Phone digits (7–30 characters)',
+                'phone_title' => 'Phone with country code (e.g. +14055550100)',
                 'phone_min' => 7,
                 'phone_max' => 30,
                 'nationality_pattern' => '[A-Za-z]{2,3}',
@@ -398,7 +496,7 @@ class FlightProvider
                 'passport_optional' => true,
                 'show_docs' => false,
                 'docs_required' => false,
-                'show_country_code' => false,
+                'show_country_code' => true,
                 'show_nationality' => false,
             ],
         };
@@ -434,7 +532,8 @@ class FlightProvider
                 'passenger_dob' => ['required', 'date', 'before:today'],
                 'passenger_gender' => ['required', 'in:M,F'],
                 'passenger_prefix' => ['nullable', 'string', 'max:10'],
-                'form_of_payment' => ['nullable', 'in:Cash,Credit,Check'],
+                'country_code' => ['nullable', 'string', 'max:'.$spec['country_code_max'], 'regex:'.$countryRegex],
+                'form_of_payment' => ['nullable', 'in:Cash,Credit,Check,Debit,BankTransfer,Wallet,Reserve'],
             ];
         }
 
@@ -454,15 +553,18 @@ class FlightProvider
             'passengers.0.phone' => ['required', 'string', 'min:'.$spec['phone_min'], 'max:'.$spec['phone_max'], 'regex:'.$phoneRegex],
             'passengers.0.nationality' => ['required', 'string', 'min:'.$spec['nationality_min'], 'max:'.$spec['nationality_max'], 'regex:'.$nationalityRegex],
             'country_code' => ['nullable', 'string', 'max:'.$spec['country_code_max'], 'regex:'.$countryRegex],
-            'form_of_payment' => ['nullable', 'in:Cash,Credit,Check'],
+            'form_of_payment' => ['nullable', 'in:Cash,Credit,Check,Debit,BankTransfer,Wallet,Reserve'],
         ];
+
+        /** @var list<\Closure> $passengerRowRules */
+        $passengerRowRules = [];
 
         if ($provider === self::DOWNTOWN_TRAVEL) {
             $iso = self::isoAlpha2Nationalities();
             $rules['passengers.*.nationality'] = ['nullable', 'string', 'size:2', 'in:'.implode(',', $iso)];
             $rules['passengers.0.nationality'] = ['required', 'string', 'size:2', 'in:'.implode(',', $iso)];
             $combinedMax = (int) ($spec['name_combined_max'] ?? 50);
-            $rules['passengers.*'] = [function (string $attribute, mixed $value, \Closure $fail) use ($combinedMax): void {
+            $passengerRowRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($combinedMax): void {
                 if (! is_array($value)) {
                     return;
                 }
@@ -472,7 +574,7 @@ class FlightProvider
                 if ($full !== '' && mb_strlen($full) > $combinedMax) {
                     $fail('We allow only '.$combinedMax.' characters for the whole name, including spaces (first + last).');
                 }
-            }];
+            };
         }
 
         if ($provider === self::SUNSPRING) {
@@ -485,31 +587,28 @@ class FlightProvider
         if ($spec['docs_required']) {
             // Passport always required; Iranian national ID only when nationality is IRN.
             $rules['passengers.*.national_id'] = ['nullable', 'string', 'max:20'];
-            $rules['passengers.*'] = array_values(array_filter([
-                $rules['passengers.*'] ?? null,
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (! is_array($value)) {
-                        return;
-                    }
-                    $nationality = strtoupper(trim((string) ($value['nationality'] ?? '')));
-                    $nid = preg_replace('/\D+/', '', (string) ($value['national_id'] ?? '')) ?? '';
-                    $isIranian = $nationality === 'IRN';
+            $passengerRowRules[] = function (string $attribute, mixed $value, \Closure $fail): void {
+                if (! is_array($value)) {
+                    return;
+                }
+                $nationality = strtoupper(trim((string) ($value['nationality'] ?? '')));
+                $nid = preg_replace('/\D+/', '', (string) ($value['national_id'] ?? '')) ?? '';
+                $isIranian = $nationality === 'IRN';
 
-                    if ($isIranian && $nid === '') {
-                        $fail('Iranian passengers need a valid 10-digit national ID (کد ملی).');
+                if ($isIranian && $nid === '') {
+                    $fail('Iranian passengers need a valid 10-digit national ID (کد ملی).');
 
-                        return;
-                    }
+                    return;
+                }
 
-                    if ($nid === '') {
-                        return;
-                    }
+                if ($nid === '') {
+                    return;
+                }
 
-                    if ($isIranian && ! self::isValidIranianNationalId($nid)) {
-                        $fail('National ID must be a valid 10-digit Iranian national ID (کد ملی) with a correct check digit.');
-                    }
-                },
-            ]));
+                if ($isIranian && ! self::isValidIranianNationalId($nid)) {
+                    $fail('National ID must be a valid 10-digit Iranian national ID (کد ملی) with a correct check digit.');
+                }
+            };
             $rules['passengers.*.passport_number'] = [
                 'required', 'string',
                 'min:'.$spec['passport_min'],
@@ -526,6 +625,10 @@ class FlightProvider
                 'regex:/^[A-Za-z0-9]{'.$spec['passport_min'].','.$spec['passport_max'].'}$/',
             ];
             $rules['passengers.*.passport_expire'] = ['nullable', 'date', 'after:today', 'required_with:passengers.*.passport_number'];
+        }
+
+        if ($passengerRowRules !== []) {
+            $rules['passengers.*'] = $passengerRowRules;
         }
 
         return $rules;
