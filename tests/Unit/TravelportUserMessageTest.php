@@ -63,4 +63,16 @@ XML;
         $this->assertStringContainsString('We could not complete the booking.', $message);
         $this->assertStringContainsString('Some unexpected host failure.', $message);
     }
+
+    public function test_maps_invalid_credit_card_to_friendly_message(): void
+    {
+        $message = TravelportUserMessage::from(
+            'air_create_reservation',
+            'Invalid CreditCard , CardNumber invalid number | Invalid CreditCard',
+            ''
+        );
+
+        $this->assertStringContainsString('Bank transfer or Cash', $message);
+        $this->assertStringNotContainsString('Invalid CreditCard', $message);
+    }
 }

@@ -94,12 +94,13 @@ class DowntownTravelPostBookApisTest extends TestCase
                 'last' => 'Lovelace',
                 'dob' => '1990-01-01',
                 'gender' => 'F',
-                'nationality' => 'US',
+                'nationality' => 'USA',
             ]],
         ]);
         $this->assertTrue($issue['ok']);
         $this->assertSame(['0169999999999'], $issue['ticket_numbers']);
         $this->assertSame('agent_cash', $client->calls[1]['body']['payment_option']);
+        $this->assertSame('USA', $client->calls[1]['body']['passengers'][0]['adult']['nationality']);
 
         $cancel = $service->cancelBookingRecord('br-1');
         $this->assertTrue($cancel['ok']);
@@ -193,13 +194,14 @@ class DowntownTravelPostBookApisTest extends TestCase
                 'last' => 'Certthreea',
                 'dob' => '1987-04-04',
                 'gender' => 'F',
-                'nationality' => 'US',
+                'nationality' => 'USA',
             ]],
         ]);
 
         $this->assertTrue($issue['ok']);
         $this->assertSame('POST', $client->calls[0]['method']);
         $this->assertStringContainsString('/issue', $client->calls[0]['path']);
+        $this->assertSame('202faab1-ca19-4d07-b9c1-291f83d55077', $client->calls[0]['body']['order'] ?? null);
         $this->assertSame('GET', $client->calls[1]['method']);
         $this->assertSame('/api/public/v2/orders/202faab1-ca19-4d07-b9c1-291f83d55077', $client->calls[1]['path']);
         $this->assertSame(['0161111111111'], $issue['ticket_numbers']);

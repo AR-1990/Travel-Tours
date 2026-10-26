@@ -123,7 +123,7 @@ class DowntownTravelAirBookPayloadTest extends TestCase
         $this->assertSame(410.55, $client->calls[1]['body']['expected_agent_net_price']);
         $this->assertNotSame(459.20, $client->calls[1]['body']['expected_agent_net_price']);
         $this->assertSame('+12236826712', $client->calls[1]['body']['phone']);
-        $this->assertSame('US', $client->calls[1]['body']['passengers'][0]['adult']['nationality']);
+        $this->assertSame('USA', $client->calls[1]['body']['passengers'][0]['adult']['nationality']);
         $this->assertArrayNotHasKey('middle_name', $client->calls[1]['body']['passengers'][0]['adult']);
     }
 
@@ -207,7 +207,7 @@ class DowntownTravelAirBookPayloadTest extends TestCase
                 'last' => 'Lovelace',
                 'dob' => '1990-08-11',
                 'gender' => 'F',
-                'nationality' => 'US',
+                'nationality' => 'USA',
             ]],
         ]);
 
@@ -215,6 +215,154 @@ class DowntownTravelAirBookPayloadTest extends TestCase
         $this->assertSame('final-order-1', $result['universal_locator']);
         $this->assertSame(412.75, $client->calls[2]['body']['expected_agent_net_price']);
         $this->assertStringContainsString('confirm_price_change/tmp-order-uuid', $client->calls[2]['path']);
+    }
+
+    public function test_book_confirms_price_changed_when_reason_omitted_but_pricing_present(): void
+    {
+        $client = new class extends DowntownTravelClient
+        {
+            /** @var list<array{path: string, body: array<string, mixed>}> */
+            public array $calls = [];
+
+            public function postAir(string $path, array $body = [], ?string $token = null): array
+            {
+                $this->calls[] = ['path' => $path, 'body' => $body];
+
+                if (str_contains($path, 'preliminary')) {
+                    return [
+                        'ok' => true,
+                        'http_status' => 200,
+                        'data' => [
+                            'offers' => [[
+                                'digest' => 'prelim-digest',
+                                'travel_document_required' => false,
+                                'price' => [
+                                    'pricing_options' => [
+                                        'agent_cash' => ['agent_net_total' => 400.00, 'passenger_total' => 450.00],
+                                    ],
+                                ],
+                            ]],
+                        ],
+                    ];
+                }
+
+                if (str_contains($path, 'orders/booking')) {
+                    // Live sometimes returns message + pricing without reason.
+                    return [
+                        'ok' => false,
+                        'message' => 'Price changed',
+                        'http_status' => 400,
+                        'data' => [
+                            'message' => 'Price changed',
+                            'order_id' => 'tmp-live-order',
+                            'pricing' => [
+                                'pricing_options' => [
+                                    'passenger_cc_single_payment' => ['agent_net_total' => 421.10],
+                                ],
+                            ],
+                        ],
+                    ];
+                }
+
+                if (str_contains($path, 'confirm_price_change')) {
+                    return [
+                        'ok' => true,
+                        'http_status' => 200,
+                        'data' => ['id' => 'live-final-order', 'readable_id' => 'DT-200'],
+                    ];
+                }
+
+                return ['ok' => false, 'message' => 'unexpected', 'http_status' => 500];
+            }
+        };
+
+        $service = new DowntownTravelAirService($client, new DowntownTravelFlightParser);
+        session([
+            'downtown_travel.last_price' => [
+                'solution' => [
+                    'digest' => 'search-digest',
+                    'total_amount' => 450,
+                    'agent_net_total' => 400,
+                    'travel_document_required' => false,
+                ],
+            ],
+        ]);
+
+        $result = $service->book([
+            'email' => 'ada@example.com',
+            'phone' => '+14057787503',
+            'passengers' => [[
+                'type' => 'ADT',
+                'first' => 'Ada',
+                'last' => 'Lovelace',
+                'dob' => '1990-08-11',
+                'gender' => 'F',
+                'nationality' => 'USA',
+            ]],
+        ]);
+
+        $this->assertTrue($result['ok'] ?? false, (string) ($result['message'] ?? 'book failed'));
+        $this->assertTrue($result['price_changed'] ?? false);
+        $this->assertSame(421.10, $client->calls[2]['body']['expected_agent_net_price']);
+        $this->assertStringContainsString('confirm_price_change/tmp-live-order', $client->calls[2]['path']);
+    }
+
+    public function test_normalize_nationality_sends_iso_alpha3(): void
+    {
+        $service = new DowntownTravelAirService(new DowntownTravelClient, new DowntownTravelFlightParser);
+        $method = new \ReflectionMethod($service, 'normalizeNationality');
+
+        $this->assertSame('USA', $method->invoke($service, 'US'));
+        $this->assertSame('USA', $method->invoke($service, 'USA'));
+        $this->assertSame('PAK', $method->invoke($service, 'PK'));
+        $this->assertSame('GBR', $method->invoke($service, 'gbr'));
+    }
+
+    public function test_issue_includes_order_id_when_provided(): void
+    {
+        $client = new class extends DowntownTravelClient
+        {
+            /** @var list<array{path: string, body: array<string, mixed>}> */
+            public array $calls = [];
+
+            public function postAir(string $path, array $body = [], ?string $token = null): array
+            {
+                $this->calls[] = ['path' => $path, 'body' => $body];
+
+                return [
+                    'ok' => true,
+                    'http_status' => 200,
+                    'data' => ['id' => 'rec-1', 'tickets' => []],
+                ];
+            }
+
+            public function getAir(string $path, array $query = [], ?string $token = null): array
+            {
+                return ['ok' => true, 'http_status' => 200, 'data' => ['id' => 'ord-1', 'booking_records' => [['id' => 'rec-1']]]];
+            }
+        };
+
+        $service = new DowntownTravelAirService($client, new DowntownTravelFlightParser);
+        $result = $service->issueTickets([
+            'booking_record_id' => 'rec-1',
+            'order_id' => 'ord-uuid-99',
+            'email' => 'a@example.com',
+            'phone' => '+14057787503',
+            'expected_agent_net_price' => 100.5,
+            'passengers' => [[
+                'type' => 'ADT',
+                'first' => 'Ada',
+                'last' => 'Lovelace',
+                'dob' => '1990-08-11',
+                'gender' => 'F',
+                'nationality' => 'USA',
+            ]],
+        ]);
+
+        $this->assertTrue($result['ok'] ?? false);
+        $this->assertSame('ord-uuid-99', $client->calls[0]['body']['order']);
+        $this->assertSame(100.5, $client->calls[0]['body']['expected_agent_net_price']);
+        $this->assertSame('USA', $client->calls[0]['body']['passengers'][0]['adult']['nationality']);
     }
 
     public function test_search_body_always_includes_inventory_source(): void

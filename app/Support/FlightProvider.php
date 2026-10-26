@@ -162,27 +162,55 @@ class FlightProvider
     {
         return match (strtolower((string) ($provider ?? self::current()))) {
             self::SUNSPRING => 'IRN',
-            self::DOWNTOWN_TRAVEL => 'US',
+            self::DOWNTOWN_TRAVEL => 'USA',
             default => 'US',
         };
     }
 
     /**
-     * ISO 3166-1 alpha-2 codes accepted for Downtown Travel nationality.
+     * ISO 3166-1 alpha-3 codes for Downtown Travel (docs require alpha-3, e.g. USA).
+     *
+     * @return list<string>
+     */
+    public static function isoAlpha3Nationalities(): array
+    {
+        return array_values(array_unique(array_values(self::alpha2ToAlpha3Map())));
+    }
+
+    /**
+     * @return array<string, string> alpha-2 => alpha-3
+     */
+    public static function alpha2ToAlpha3Map(): array
+    {
+        return [
+            'AE' => 'ARE', 'AF' => 'AFG', 'AL' => 'ALB', 'AM' => 'ARM', 'AR' => 'ARG', 'AT' => 'AUT',
+            'AU' => 'AUS', 'AZ' => 'AZE', 'BA' => 'BIH', 'BD' => 'BGD', 'BE' => 'BEL', 'BG' => 'BGR',
+            'BH' => 'BHR', 'BR' => 'BRA', 'BY' => 'BLR', 'CA' => 'CAN', 'CH' => 'CHE', 'CL' => 'CHL',
+            'CN' => 'CHN', 'CO' => 'COL', 'CY' => 'CYP', 'CZ' => 'CZE', 'DE' => 'DEU', 'DK' => 'DNK',
+            'DZ' => 'DZA', 'EE' => 'EST', 'EG' => 'EGY', 'ES' => 'ESP', 'ET' => 'ETH', 'FI' => 'FIN',
+            'FR' => 'FRA', 'GB' => 'GBR', 'GE' => 'GEO', 'GH' => 'GHA', 'GR' => 'GRC', 'HK' => 'HKG',
+            'HR' => 'HRV', 'HU' => 'HUN', 'ID' => 'IDN', 'IE' => 'IRL', 'IL' => 'ISR', 'IN' => 'IND',
+            'IQ' => 'IRQ', 'IR' => 'IRN', 'IS' => 'ISL', 'IT' => 'ITA', 'JO' => 'JOR', 'JP' => 'JPN',
+            'KE' => 'KEN', 'KG' => 'KGZ', 'KR' => 'KOR', 'KW' => 'KWT', 'KZ' => 'KAZ', 'LB' => 'LBN',
+            'LK' => 'LKA', 'LT' => 'LTU', 'LU' => 'LUX', 'LV' => 'LVA', 'LY' => 'LBY', 'MA' => 'MAR',
+            'MD' => 'MDA', 'MK' => 'MKD', 'MT' => 'MLT', 'MX' => 'MEX', 'MY' => 'MYS', 'NG' => 'NGA',
+            'NL' => 'NLD', 'NO' => 'NOR', 'NP' => 'NPL', 'NZ' => 'NZL', 'OM' => 'OMN', 'PH' => 'PHL',
+            'PK' => 'PAK', 'PL' => 'POL', 'PT' => 'PRT', 'QA' => 'QAT', 'RO' => 'ROU', 'RS' => 'SRB',
+            'RU' => 'RUS', 'SA' => 'SAU', 'SD' => 'SDN', 'SE' => 'SWE', 'SG' => 'SGP', 'SI' => 'SVN',
+            'SK' => 'SVK', 'SO' => 'SOM', 'SY' => 'SYR', 'TH' => 'THA', 'TJ' => 'TJK', 'TM' => 'TKM',
+            'TN' => 'TUN', 'TR' => 'TUR', 'TZ' => 'TZA', 'UA' => 'UKR', 'UG' => 'UGA', 'US' => 'USA',
+            'UZ' => 'UZB', 'VN' => 'VNM', 'YE' => 'YEM', 'ZA' => 'ZAF', 'ZW' => 'ZWE',
+        ];
+    }
+
+    /**
+     * @deprecated Use isoAlpha3Nationalities() — Downtown docs require alpha-3.
      *
      * @return list<string>
      */
     public static function isoAlpha2Nationalities(): array
     {
-        return [
-            'AE', 'AF', 'AL', 'AM', 'AR', 'AT', 'AU', 'AZ', 'BA', 'BD', 'BE', 'BG', 'BH', 'BR', 'BY',
-            'CA', 'CH', 'CL', 'CN', 'CO', 'CY', 'CZ', 'DE', 'DK', 'DZ', 'EE', 'EG', 'ES', 'ET', 'FI',
-            'FR', 'GB', 'GE', 'GH', 'GR', 'HK', 'HR', 'HU', 'ID', 'IE', 'IL', 'IN', 'IQ', 'IR', 'IS',
-            'IT', 'JO', 'JP', 'KE', 'KG', 'KR', 'KW', 'KZ', 'LB', 'LK', 'LT', 'LU', 'LV', 'LY', 'MA',
-            'MD', 'MK', 'MT', 'MX', 'MY', 'NG', 'NL', 'NO', 'NP', 'NZ', 'OM', 'PH', 'PK', 'PL', 'PT',
-            'QA', 'RO', 'RS', 'RU', 'SA', 'SD', 'SE', 'SG', 'SI', 'SK', 'SO', 'SY', 'TH', 'TJ', 'TM',
-            'TN', 'TR', 'TZ', 'UA', 'UG', 'US', 'UZ', 'VN', 'YE', 'ZA', 'ZW',
-        ];
+        return array_keys(self::alpha2ToAlpha3Map());
     }
 
     /**
@@ -205,6 +233,24 @@ class FlightProvider
                 'QAT' => 'Qatar (QAT)',
                 'TUR' => 'Turkey (TUR)',
             ];
+        }
+
+        if ($provider === self::DOWNTOWN_TRAVEL) {
+            $labels = [
+                'USA' => 'United States', 'GBR' => 'United Kingdom', 'CAN' => 'Canada', 'ARE' => 'United Arab Emirates',
+                'PAK' => 'Pakistan', 'IND' => 'India', 'SAU' => 'Saudi Arabia', 'QAT' => 'Qatar', 'EGY' => 'Egypt',
+                'TUR' => 'Turkey', 'IRN' => 'Iran', 'IRQ' => 'Iraq', 'JOR' => 'Jordan', 'KWT' => 'Kuwait',
+                'BHR' => 'Bahrain', 'OMN' => 'Oman', 'AUS' => 'Australia', 'DEU' => 'Germany', 'FRA' => 'France',
+                'ITA' => 'Italy', 'ESP' => 'Spain', 'NLD' => 'Netherlands', 'CHN' => 'China', 'JPN' => 'Japan',
+                'KOR' => 'South Korea', 'PHL' => 'Philippines', 'NGA' => 'Nigeria', 'ZAF' => 'South Africa',
+                'BRA' => 'Brazil', 'MEX' => 'Mexico', 'NZL' => 'New Zealand',
+            ];
+            $out = [];
+            foreach (self::isoAlpha3Nationalities() as $code) {
+                $out[$code] = ($labels[$code] ?? $code).' ('.$code.')';
+            }
+
+            return $out;
         }
 
         $labels = [
@@ -445,11 +491,11 @@ class FlightProvider
                 'phone_title' => 'Phone with country code digits (e.g. +14057787503)',
                 'phone_min' => 7,
                 'phone_max' => 20,
-                'nationality_pattern' => '[A-Za-z]{2}',
-                'nationality_title' => '2-letter country code (e.g. US)',
-                'nationality_max' => 2,
-                'nationality_min' => 2,
-                'nationality_placeholder' => 'US',
+                'nationality_pattern' => '[A-Za-z]{3}',
+                'nationality_title' => '3-letter country code (e.g. USA)',
+                'nationality_max' => 3,
+                'nationality_min' => 3,
+                'nationality_placeholder' => 'USA',
                 'country_code_pattern' => '\\+[0-9]{1,4}',
                 'country_code_title' => 'Dialing code like +1',
                 'country_code_max' => 5,
@@ -560,9 +606,9 @@ class FlightProvider
         $passengerRowRules = [];
 
         if ($provider === self::DOWNTOWN_TRAVEL) {
-            $iso = self::isoAlpha2Nationalities();
-            $rules['passengers.*.nationality'] = ['nullable', 'string', 'size:2', 'in:'.implode(',', $iso)];
-            $rules['passengers.0.nationality'] = ['required', 'string', 'size:2', 'in:'.implode(',', $iso)];
+            $iso = self::isoAlpha3Nationalities();
+            $rules['passengers.*.nationality'] = ['nullable', 'string', 'size:3', 'in:'.implode(',', $iso)];
+            $rules['passengers.0.nationality'] = ['required', 'string', 'size:3', 'in:'.implode(',', $iso)];
             $combinedMax = (int) ($spec['name_combined_max'] ?? 50);
             $passengerRowRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($combinedMax): void {
                 if (! is_array($value)) {

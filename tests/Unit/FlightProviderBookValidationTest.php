@@ -108,14 +108,14 @@ class FlightProviderBookValidationTest extends TestCase
         $this->assertTrue(FlightProvider::usesPassengerArray(FlightProvider::DOWNTOWN_TRAVEL));
         $this->assertTrue($spec['docs_required']);
         $this->assertFalse($spec['passport_optional']);
-        $this->assertSame(2, $spec['nationality_max']);
+        $this->assertSame(3, $spec['nationality_max']);
         $this->assertSame(30, $spec['name_max']);
         $this->assertSame(50, $spec['name_combined_max']);
         $this->assertArrayHasKey('passengers', $rules);
         $this->assertArrayHasKey('passengers.*', $rules);
         $this->assertContains('required', $rules['passengers.0.phone']);
         $this->assertContains('required', $rules['passengers.*.passport_number']);
-        $this->assertSame('US', FlightProvider::defaultNationality(FlightProvider::DOWNTOWN_TRAVEL));
+        $this->assertSame('USA', FlightProvider::defaultNationality(FlightProvider::DOWNTOWN_TRAVEL));
         $this->assertSame('+1', FlightProvider::defaultCountryCode(FlightProvider::DOWNTOWN_TRAVEL));
 
         $tooLong = \Illuminate\Support\Facades\Validator::make([
@@ -128,7 +128,7 @@ class FlightProviderBookValidationTest extends TestCase
                 'gender' => 'M',
                 'email' => 'a@example.com',
                 'phone' => '+14057787503',
-                'nationality' => 'US',
+                'nationality' => 'USA',
                 'passport_number' => 'A12345678',
                 'passport_expire' => '2030-12-31',
             ]],

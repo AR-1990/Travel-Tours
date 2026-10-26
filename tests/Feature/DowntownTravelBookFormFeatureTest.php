@@ -176,7 +176,7 @@ class DowntownTravelBookFormFeatureTest extends TestCase
                 'phone' => '2236826712',
                 'dob' => '1990-11-24',
                 'gender' => 'M',
-                'nationality' => 'US',
+                'nationality' => 'USA',
                 'passport_number' => 'P1234567',
                 'passport_expire' => '2030-12-31',
             ]],
@@ -188,6 +188,7 @@ class DowntownTravelBookFormFeatureTest extends TestCase
         $this->assertSame('+12236826712', data_get($captured, 'passengers.0.phone'));
         $this->assertSame('Credit', $captured['form_of_payment'] ?? null);
         $this->assertSame('P1234567', data_get($captured, 'passengers.0.passport_number'));
+        $this->assertSame('USA', data_get($captured, 'passengers.0.nationality'));
     }
 
     public function test_passenger_partial_renders_travelport_flat_fields(): void

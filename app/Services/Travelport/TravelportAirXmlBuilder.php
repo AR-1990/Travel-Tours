@@ -741,9 +741,50 @@ XML;
      */
     private function formOfPaymentXml(array $params, array $x): string
     {
-        $type = self::normalizeFormOfPaymentType((string) ($params['form_of_payment'] ?? 'Cash'));
+        $type = self::resolveGdsFormOfPayment($params);
 
         return "\n      <com:FormOfPayment Type=\"{$this->esc($type)}\"/>";
+    }
+
+    /**
+     * Map UI payment preference to a Travelport FormOfPayment that can succeed
+     * without collecting card PAN. Customer FOP stays on the reservation for finance.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    public static function resolveGdsFormOfPayment(array $params): string
+    {
+        $raw = trim((string) ($params['form_of_payment'] ?? 'Cash'));
+        $hasCard = self::paramsHaveCardNumber($params);
+
+        // UI-only methods are never valid GDS FOPs on their own.
+        foreach (['BankTransfer', 'Wallet', 'Reserve'] as $uiOnly) {
+            if (strcasecmp($raw, $uiOnly) === 0) {
+                return 'Cash';
+            }
+        }
+
+        // Credit/Debit without a card number → Cash (agency collects payment offline).
+        if (! $hasCard && (strcasecmp($raw, 'Credit') === 0 || strcasecmp($raw, 'Debit') === 0)) {
+            return 'Cash';
+        }
+
+        return self::normalizeFormOfPaymentType($raw);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private static function paramsHaveCardNumber(array $params): bool
+    {
+        foreach (['card_number', 'credit_card_number', 'creditCardNumber', 'CardNumber'] as $key) {
+            $value = preg_replace('/\D+/', '', (string) ($params[$key] ?? ''));
+            if ($value !== null && strlen($value) >= 12) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function normalizeFormOfPaymentType(string $value): string

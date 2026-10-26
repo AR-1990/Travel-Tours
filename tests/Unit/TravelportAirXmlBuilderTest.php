@@ -218,6 +218,21 @@ XML;
         $this->assertSame('Check', TravelportAirXmlBuilder::normalizeFormOfPaymentType('check'));
     }
 
+    public function test_resolve_gds_form_of_payment_maps_ui_methods_to_cash_without_card(): void
+    {
+        $this->assertSame('Cash', TravelportAirXmlBuilder::resolveGdsFormOfPayment(['form_of_payment' => 'BankTransfer']));
+        $this->assertSame('Cash', TravelportAirXmlBuilder::resolveGdsFormOfPayment(['form_of_payment' => 'Wallet']));
+        $this->assertSame('Cash', TravelportAirXmlBuilder::resolveGdsFormOfPayment(['form_of_payment' => 'Reserve']));
+        $this->assertSame('Cash', TravelportAirXmlBuilder::resolveGdsFormOfPayment(['form_of_payment' => 'Credit']));
+        $this->assertSame('Cash', TravelportAirXmlBuilder::resolveGdsFormOfPayment(['form_of_payment' => 'Debit']));
+        $this->assertSame('Cash', TravelportAirXmlBuilder::resolveGdsFormOfPayment(['form_of_payment' => 'Cash']));
+        $this->assertSame('Check', TravelportAirXmlBuilder::resolveGdsFormOfPayment(['form_of_payment' => 'Check']));
+        $this->assertSame('Credit', TravelportAirXmlBuilder::resolveGdsFormOfPayment([
+            'form_of_payment' => 'Credit',
+            'card_number' => '4111111111111111',
+        ]));
+    }
+
     public function test_air_create_reservation_places_form_of_payment_before_pricing_solution(): void
     {
         $builder = new TravelportAirXmlBuilder;
@@ -236,15 +251,18 @@ XML;
             strpos($xml, 'FormOfPayment'),
             'FormOfPayment should appear before AirPricingSolution'
         );
-        $this->assertStringContainsString('FormOfPayment Type="Credit"', $builder->build('air_create_reservation', [
-            '_air_pricing_solution_xml' => '      <air:AirPricingSolution Key="s1" TotalPrice="GBP100"/>',
-            'passengers' => [[
-                'prefix' => 'Mr', 'first' => 'John', 'last' => 'Smith',
-                'email' => 'john@example.com', 'phone' => '5551234567',
-                'dob' => '1990-05-01', 'gender' => 'M', 'type' => 'ADT',
-            ]],
-            'form_of_payment' => 'Credit',
-        ], 52));
+        // UI Credit/Debit/BankTransfer without PAN must go to GDS as Cash.
+        foreach (['Credit', 'Debit', 'BankTransfer'] as $uiFop) {
+            $this->assertStringContainsString('FormOfPayment Type="Cash"', $builder->build('air_create_reservation', [
+                '_air_pricing_solution_xml' => '      <air:AirPricingSolution Key="s1" TotalPrice="GBP100"/>',
+                'passengers' => [[
+                    'prefix' => 'Mr', 'first' => 'John', 'last' => 'Smith',
+                    'email' => 'john@example.com', 'phone' => '5551234567',
+                    'dob' => '1990-05-01', 'gender' => 'M', 'type' => 'ADT',
+                ]],
+                'form_of_payment' => $uiFop,
+            ], 52), "UI FOP {$uiFop} should map to Cash for Travelport");
+        }
     }
 
     public function test_air_create_reservation_includes_traveler_and_pricing(): void

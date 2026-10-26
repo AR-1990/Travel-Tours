@@ -113,6 +113,8 @@ trait RunsFlightWorkflow
                     'segments' => $j['segments'] ?? [],
                 ], $journeys),
                 'segments' => is_array($solution) ? ($solution['segments'] ?? []) : [],
+                // Keep every booked traveler for Downtown issue / ticket reprint.
+                'passengers' => $this->storedBookingPassengers($input, $passenger),
             ],
             'price_snapshot' => is_array($priceResult) ? $priceResult : null,
             'raw_result' => $result,
@@ -589,24 +591,20 @@ trait RunsFlightWorkflow
             return $resolved;
         }
 
-        $result = $dt->issueTickets([
+        $issueParams = [
             'booking_record_id' => $resolved['booking_record_id'],
             'order_id' => (string) ($reservation->universal_locator ?? ''),
             'email' => (string) ($reservation->passenger_email ?? ''),
             'phone' => (string) ($reservation->passenger_phone ?? ''),
             'payment_option' => 'agent_cash',
-            'passengers' => [[
-                'type' => 'ADT',
-                'prefix' => (string) ($reservation->passenger_prefix ?? 'Mr'),
-                'first' => (string) ($reservation->passenger_first ?? ''),
-                'last' => (string) ($reservation->passenger_last ?? ''),
-                'dob' => optional($reservation->passenger_dob)?->format('Y-m-d') ?: '1990-01-01',
-                'gender' => (string) ($reservation->passenger_gender ?? 'M'),
-                'nationality' => 'US',
-                'email' => (string) ($reservation->passenger_email ?? ''),
-                'phone' => (string) ($reservation->passenger_phone ?? ''),
-            ]],
-        ]);
+            'passengers' => $this->downtownPassengersForIssue($reservation),
+        ];
+        $expectedNet = $this->downtownExpectedAgentNet($reservation);
+        if ($expectedNet !== null) {
+            $issueParams['expected_agent_net_price'] = $expectedNet;
+        }
+
+        $result = $dt->issueTickets($issueParams);
 
         session([
             'travelport.flight_ticket' => $result,
@@ -773,6 +771,130 @@ trait RunsFlightWorkflow
             'refunded' => true,
             'offer_id' => $offerId,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @param  array{prefix: string, first: string, last: string, email: string, phone: string, dob: string, gender: string}  $lead
+     * @return list<array<string, mixed>>
+     */
+    protected function storedBookingPassengers(array $input, array $lead): array
+    {
+        $rows = is_array($input['passengers'] ?? null) ? array_values($input['passengers']) : [];
+        $out = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $first = trim((string) ($row['first'] ?? ''));
+            $last = trim((string) ($row['last'] ?? ''));
+            if ($first === '' || $last === '') {
+                continue;
+            }
+            $out[] = [
+                'type' => strtoupper((string) ($row['type'] ?? 'ADT')),
+                'prefix' => (string) ($row['prefix'] ?? 'Mr'),
+                'first' => $first,
+                'last' => $last,
+                'email' => (string) ($row['email'] ?? $lead['email'] ?? ''),
+                'phone' => (string) ($row['phone'] ?? $lead['phone'] ?? ''),
+                'dob' => (string) ($row['dob'] ?? ''),
+                'gender' => (string) ($row['gender'] ?? 'M'),
+                'nationality' => strtoupper((string) ($row['nationality'] ?? '')),
+                'passport_number' => (string) ($row['passport_number'] ?? ''),
+                'passport_expire' => (string) ($row['passport_expire'] ?? ''),
+                'passport_country' => (string) ($row['passport_country'] ?? $row['nationality'] ?? ''),
+            ];
+        }
+
+        if ($out !== []) {
+            return $out;
+        }
+
+        return [[
+            'type' => 'ADT',
+            'prefix' => $lead['prefix'],
+            'first' => $lead['first'],
+            'last' => $lead['last'],
+            'email' => $lead['email'],
+            'phone' => $lead['phone'],
+            'dob' => $lead['dob'],
+            'gender' => $lead['gender'],
+            'nationality' => FlightProvider::defaultNationality(FlightProvider::DOWNTOWN_TRAVEL),
+        ]];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function downtownPassengersForIssue(FlightReservation $reservation): array
+    {
+        $stored = data_get($reservation->itinerary, 'passengers');
+        if (is_array($stored) && $stored !== []) {
+            $out = [];
+            foreach ($stored as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $out[] = [
+                    'type' => strtoupper((string) ($row['type'] ?? 'ADT')),
+                    'prefix' => (string) ($row['prefix'] ?? 'Mr'),
+                    'first' => (string) ($row['first'] ?? ''),
+                    'last' => (string) ($row['last'] ?? ''),
+                    'dob' => (string) ($row['dob'] ?? optional($reservation->passenger_dob)?->format('Y-m-d') ?: '1990-01-01'),
+                    'gender' => (string) ($row['gender'] ?? $reservation->passenger_gender ?? 'M'),
+                    'nationality' => (string) ($row['nationality'] ?? FlightProvider::defaultNationality(FlightProvider::DOWNTOWN_TRAVEL)),
+                    'email' => (string) ($row['email'] ?? $reservation->passenger_email ?? ''),
+                    'phone' => (string) ($row['phone'] ?? $reservation->passenger_phone ?? ''),
+                    'passport_number' => (string) ($row['passport_number'] ?? ''),
+                    'passport_expire' => (string) ($row['passport_expire'] ?? ''),
+                    'passport_country' => (string) ($row['passport_country'] ?? $row['nationality'] ?? ''),
+                ];
+            }
+            if ($out !== []) {
+                return $out;
+            }
+        }
+
+        return [[
+            'type' => 'ADT',
+            'prefix' => (string) ($reservation->passenger_prefix ?? 'Mr'),
+            'first' => (string) ($reservation->passenger_first ?? ''),
+            'last' => (string) ($reservation->passenger_last ?? ''),
+            'dob' => optional($reservation->passenger_dob)?->format('Y-m-d') ?: '1990-01-01',
+            'gender' => (string) ($reservation->passenger_gender ?? 'M'),
+            'nationality' => FlightProvider::defaultNationality(FlightProvider::DOWNTOWN_TRAVEL),
+            'email' => (string) ($reservation->passenger_email ?? ''),
+            'phone' => (string) ($reservation->passenger_phone ?? ''),
+        ]];
+    }
+
+    /**
+     * Prefer stored agent net so Downtown issue can skip / auto-handle price_changed.
+     */
+    protected function downtownExpectedAgentNet(FlightReservation $reservation): ?float
+    {
+        $snapshot = is_array($reservation->price_snapshot) ? $reservation->price_snapshot : [];
+        $raw = is_array($reservation->raw_result) ? $reservation->raw_result : [];
+        $gds = is_array($reservation->gds_snapshot) ? $reservation->gds_snapshot : [];
+
+        $candidates = [
+            data_get($snapshot, 'agent_net_total'),
+            data_get($snapshot, 'solution.agent_net_total'),
+            data_get($raw, 'solution.agent_net_total'),
+            data_get($raw, 'book.solution.agent_net_total'),
+            data_get($gds, 'agent_net_total'),
+            data_get($gds, 'order.sell_invoices.0.components.tickets.0.items.0.agent_net_total'),
+            $reservation->total_price,
+        ];
+
+        foreach ($candidates as $value) {
+            if (is_numeric($value) && (float) $value > 0) {
+                return round((float) $value, 2);
+            }
+        }
+
+        return null;
     }
 
     /**

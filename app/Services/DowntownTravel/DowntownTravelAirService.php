@@ -354,19 +354,20 @@ class DowntownTravelAirService
         if ($email !== '') {
             $body['email'] = $email;
         }
+        $orderId = trim((string) ($params['order_id'] ?? $params['order'] ?? ''));
+        if ($orderId !== '') {
+            $body['order'] = $orderId;
+        }
 
         $response = $this->client->postAir('/api/public/v2/booking_records/'.$recordId.'/issue', $body);
         $priceChangedRetried = false;
         // Ticketing price_changed returns the real order id (not temporary) — retry issue with the new net.
         if (! ($response['ok'] ?? false)) {
-            $payload = is_array($response['data'] ?? null) ? $response['data'] : null;
-            if (is_array($payload) && ($payload['reason'] ?? '') === 'price_changed') {
-                $newNet = data_get($payload, 'pricing.pricing_options.agent_cash.agent_net_total');
-                if ($newNet === null) {
-                    $newNet = data_get($payload, 'pricing.pricing_options.passenger_cc.agent_net_total');
-                }
+            $payload = $this->priceChangedPayload($response);
+            if ($payload !== null) {
+                $newNet = $this->agentNetFromPricingPayload($payload);
                 if ($newNet !== null) {
-                    $body['expected_agent_net_price'] = round((float) $newNet, 2);
+                    $body['expected_agent_net_price'] = $newNet;
                     $retry = $this->client->postAir('/api/public/v2/booking_records/'.$recordId.'/issue', $body);
                     if ($retry['ok'] ?? false) {
                         $response = $retry;
@@ -374,13 +375,22 @@ class DowntownTravelAirService
                     } else {
                         return $this->issueResultWithOrderDetails([
                             'ok' => false,
-                            'message' => 'Price changed on issue; retry with new agent net failed: '.($retry['message'] ?? 'unknown'),
+                            'message' => 'The airline updated this fare at ticketing. Please search and book again, then issue soon after reserving.',
                             'provider' => 'downtown_travel',
                             'http_status' => $retry['http_status'] ?? null,
                             'raw' => ['price_changed' => $payload, 'retry' => $retry],
                             'price_changed' => true,
                         ], $params, is_array($retry['data'] ?? null) ? $retry['data'] : $payload);
                     }
+                } else {
+                    return $this->issueResultWithOrderDetails([
+                        'ok' => false,
+                        'message' => 'The airline updated this fare at ticketing, but the new price was missing. Search and book again.',
+                        'provider' => 'downtown_travel',
+                        'http_status' => $response['http_status'] ?? 400,
+                        'raw' => $response,
+                        'price_changed' => true,
+                    ], $params, $payload);
                 }
             }
         }
@@ -774,49 +784,129 @@ class DowntownTravelAirService
      */
     protected function confirmPriceChangeIfNeeded(array $book): ?array
     {
-        $payload = is_array($book['data'] ?? null) ? $book['data'] : null;
-        if ($payload === null || ($payload['reason'] ?? '') !== 'price_changed') {
+        $payload = $this->priceChangedPayload($book);
+        if ($payload === null) {
             return null;
         }
 
-        $tmpOrderId = trim((string) ($payload['order_id'] ?? ''));
+        $tmpOrderId = trim((string) ($payload['order_id'] ?? $payload['id'] ?? ''));
         if ($tmpOrderId === '') {
-            return null;
+            return [
+                'ok' => false,
+                'message' => 'The airline updated this fare, but no temporary order id was returned. Search and book again.',
+                'http_status' => $book['http_status'] ?? 400,
+                'data' => $payload,
+            ];
         }
 
-        $newNet = data_get($payload, 'pricing.pricing_options.agent_cash.agent_net_total');
-        if ($newNet === null) {
-            $newNet = data_get($payload, 'pricing.pricing_options.passenger_cc.agent_net_total');
-        }
-        if ($newNet === null) {
-            $newNet = data_get($payload, 'pricing.pricing_options.agent_cash.passenger_total');
-        }
+        $newNet = $this->agentNetFromPricingPayload($payload);
         if ($newNet === null) {
             return [
                 'ok' => false,
-                'message' => 'Fare price changed, but Downtown Travel did not return the new agent net. Search and price again.',
+                'message' => 'The airline updated this fare, but Downtown Travel did not return the new agent net. Search and price again.',
                 'http_status' => $book['http_status'] ?? 400,
                 'data' => $payload,
             ];
         }
 
         $confirm = $this->client->postAir('/api/public/v2/orders/confirm_price_change/'.$tmpOrderId, [
-            'expected_agent_net_price' => round((float) $newNet, 2),
+            'expected_agent_net_price' => $newNet,
         ]);
 
         if (! ($confirm['ok'] ?? false)) {
-            $oldMsg = (string) ($payload['display_message'] ?? $payload['message'] ?? 'Price changed');
-            $confirmMsg = (string) ($confirm['message'] ?? 'Could not confirm the new fare.');
-
             return [
                 'ok' => false,
-                'message' => $oldMsg.': '.$confirmMsg,
+                'message' => 'The airline updated this fare and the new price could not be confirmed automatically. Search and book again within a few minutes.',
                 'http_status' => $confirm['http_status'] ?? null,
                 'data' => ['price_changed' => $payload, 'confirm' => $confirm],
             ];
         }
 
         return $confirm;
+    }
+
+    /**
+     * Live/sandbox sometimes omit reason or nest the payload; treat as price_changed when
+     * order + pricing are present and the message/reason mentions a fare change.
+     *
+     * @param  array<string, mixed>  $response
+     * @return array<string, mixed>|null
+     */
+    protected function priceChangedPayload(array $response): ?array
+    {
+        $candidates = [];
+        if (is_array($response['data'] ?? null)) {
+            $candidates[] = $response['data'];
+            if (is_array($response['data']['data'] ?? null)) {
+                $candidates[] = $response['data']['data'];
+            }
+            if (is_array($response['data']['error'] ?? null)) {
+                $candidates[] = $response['data']['error'];
+            }
+        }
+        if (is_array($response['raw'] ?? null)) {
+            $candidates[] = $response['raw'];
+        }
+
+        foreach ($candidates as $payload) {
+            if (! is_array($payload)) {
+                continue;
+            }
+            $reason = strtolower(trim((string) ($payload['reason'] ?? '')));
+            $message = strtolower(trim((string) ($payload['message'] ?? $payload['display_message'] ?? $response['message'] ?? '')));
+            $hasPricing = is_array($payload['pricing'] ?? null) || is_array($payload['price'] ?? null);
+            $hasOrder = trim((string) ($payload['order_id'] ?? $payload['id'] ?? '')) !== '';
+
+            if ($reason === 'price_changed') {
+                return $payload;
+            }
+            if ($hasPricing && $hasOrder && (str_contains($message, 'price changed') || str_contains($message, 'price_changed'))) {
+                return $payload;
+            }
+        }
+
+        $haystack = strtolower((string) ($response['message'] ?? ''));
+        if (str_contains($haystack, 'price_changed') || str_contains($haystack, 'price changed')) {
+            foreach ($candidates as $payload) {
+                if (is_array($payload) && (is_array($payload['pricing'] ?? null) || is_array($payload['price'] ?? null))) {
+                    return $payload;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function agentNetFromPricingPayload(array $payload): ?float
+    {
+        $pricing = is_array($payload['pricing'] ?? null)
+            ? $payload['pricing']
+            : (is_array($payload['price'] ?? null) ? $payload['price'] : null);
+        if (! is_array($pricing)) {
+            return null;
+        }
+
+        $options = is_array($pricing['pricing_options'] ?? null) ? $pricing['pricing_options'] : [];
+        foreach (['agent_cash', 'passenger_cc', 'passenger_cc_single_payment', 'custom'] as $option) {
+            foreach (['agent_net_total', 'agency_cash_payment', 'passenger_total'] as $field) {
+                $value = data_get($options, $option.'.'.$field);
+                if (is_numeric($value) && (float) $value > 0) {
+                    return round((float) $value, 2);
+                }
+            }
+        }
+
+        foreach (['agent_net_total', 'airline_total', 'passenger_total'] as $field) {
+            $value = $pricing[$field] ?? null;
+            if (is_numeric($value) && (float) $value > 0) {
+                return round((float) $value, 2);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1108,45 +1198,28 @@ class DowntownTravelAirService
     }
 
     /**
-     * Downtown Person.nationality accepts ISO country codes; map common alpha-3 → alpha-2.
+     * Downtown Person.nationality is ISO 3166-1 alpha-3 (docs: USA, NZL, …).
+     * Accept alpha-2 or alpha-3 from the form and always send alpha-3.
      */
     protected function normalizeNationality(string $value): string
     {
         $value = strtoupper(trim($value));
         $value = preg_replace('/[^A-Z]/', '', $value) ?? '';
         if ($value === '') {
-            return 'US';
+            return 'USA';
         }
 
-        static $map = [
-            'USA' => 'US',
-            'ARE' => 'AE',
-            'GBR' => 'GB',
-            'IRN' => 'IR',
-            'PAK' => 'PK',
-            'IND' => 'IN',
-            'CAN' => 'CA',
-            'AUS' => 'AU',
-            'SAU' => 'SA',
-            'QAT' => 'QA',
-            'BHR' => 'BH',
-            'KWT' => 'KW',
-            'OMN' => 'OM',
-            'EGY' => 'EG',
-            'TUR' => 'TR',
-            'FRA' => 'FR',
-            'DEU' => 'DE',
-        ];
-
-        if (isset($map[$value])) {
-            return $map[$value];
-        }
-
-        if (strlen($value) === 2 && in_array($value, \App\Support\FlightProvider::isoAlpha2Nationalities(), true)) {
+        $alpha3 = \App\Support\FlightProvider::isoAlpha3Nationalities();
+        if (strlen($value) === 3 && in_array($value, $alpha3, true)) {
             return $value;
         }
 
-        // Unknown / invalid codes → default US (form validation should block these first).
-        return 'US';
+        $map = \App\Support\FlightProvider::alpha2ToAlpha3Map();
+        if (strlen($value) === 2 && isset($map[$value])) {
+            return $map[$value];
+        }
+
+        // Unknown / invalid codes → default USA (form validation should block these first).
+        return 'USA';
     }
 }

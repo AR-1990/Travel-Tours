@@ -139,6 +139,8 @@ class TravelportUserMessage
             'connection error' => 'Could not reach the flight system. Please try again in a moment.',
             'record locator not found' => 'Your booking reference was not found. Please search, price, and book again in the same session.',
             'invalid fop type' => 'There was a payment setup problem. Please select Cash and try again.',
+            'invalid creditcard' => 'Card payment could not be processed for this fare. Choose Bank transfer or Cash, then confirm again.',
+            'cardnumber invalid' => 'Card payment could not be processed for this fare. Choose Bank transfer or Cash, then confirm again.',
             'filed fare has been invalidated' => 'The fare expired before ticketing. Please search and book again, then issue the ticket immediately.',
             'has no tickets yet' => 'The ticket is not ready yet. Wait a moment and try again, or search and book a new fare.',
             'unsuccessful primary host transaction' => 'The airline could not confirm this booking. Please try a different flight or contact support.',
