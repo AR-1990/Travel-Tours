@@ -12,6 +12,14 @@ class CurrencyRateService
      */
     public function rate(string $base, string $quote): float
     {
+        return $this->configuredRate($base, $quote) ?? 1.0;
+    }
+
+    /**
+     * Null when no active rate row exists (do not relabel currency without a rate).
+     */
+    public function configuredRate(string $base, string $quote): ?float
+    {
         $base = strtoupper(trim($base));
         $quote = strtoupper(trim($quote));
         if ($base === '' || $quote === '' || $base === $quote) {
@@ -36,7 +44,7 @@ class CurrencyRateService
             return round(1 / (float) $inverse, 8);
         }
 
-        return 1.0;
+        return null;
     }
 
     public function convert(float $amount, string $from, string $to): float

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Finance\WalletTransaction;
 use App\Models\FlightReservation;
 use App\Models\System\Tenant;
+use App\Support\AccountStatementReport;
+use App\Support\FlightSalesReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -35,7 +37,7 @@ class FinanceReportController extends Controller
         $tenantId = $request->filled('tenant_id') ? (int) $request->tenant_id : null;
 
         $query = WalletTransaction::query()
-            ->with(['tenant', 'creator'])
+            ->with(['tenant', 'creator', 'reservation'])
             ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
             ->whereDate('created_at', '>=', $from)
             ->whereDate('created_at', '<=', $to)
@@ -72,7 +74,7 @@ class FinanceReportController extends Controller
         $airline = strtoupper(trim((string) $request->input('airline', '')));
 
         $query = FlightReservation::query()
-            ->with('tenant')
+            ->with(['tenant', 'user'])
             ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
             ->when($status, fn ($q) => $q->where('status', $status))
             ->when($airline !== '', fn ($q) => $q->where('carrier', $airline))
@@ -93,12 +95,44 @@ class FinanceReportController extends Controller
             ->when($airline !== '', fn ($q) => $q->where('carrier', $airline))
             ->whereDate('booked_at', '>=', $from)
             ->whereDate('booked_at', '<=', $to)
-            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(sell_total),0) as sell_sum, COALESCE(SUM(markup_amount),0) as markup_sum, COALESCE(SUM(agent_profit),0) as profit_sum')
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(sell_total),0) as sell_sum, COALESCE(SUM(markup_amount),0) as markup_sum, COALESCE(SUM(agent_profit),0) as profit_sum, COALESCE(SUM(service_fee),0) as svc_sum, COALESCE(SUM(commission_amount),0) as comm_sum')
             ->first();
 
+        $pageTotals = $this->salesPageTotals($sales);
+
         return view('admin.finance.reports.sales', compact(
-            'sales', 'tenants', 'from', 'to', 'tenantId', 'status', 'airline', 'totals'
+            'sales', 'tenants', 'from', 'to', 'tenantId', 'status', 'airline', 'totals', 'pageTotals'
         ));
+    }
+
+    /**
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, FlightReservation>|\Illuminate\Support\Collection<int, FlightReservation>  $sales
+     * @return array{total: float, price: float, tax: float, fuel: float, svc: float, comm: float, markup: float, profit: float}
+     */
+    protected function salesPageTotals($sales): array
+    {
+        $acc = [
+            'total' => 0.0,
+            'price' => 0.0,
+            'tax' => 0.0,
+            'fuel' => 0.0,
+            'svc' => 0.0,
+            'comm' => 0.0,
+            'markup' => 0.0,
+            'profit' => 0.0,
+        ];
+        foreach ($sales as $r) {
+            $acc['total'] += (float) ($r->salesTotalAmount() ?? 0);
+            $acc['price'] += (float) ($r->salesBaseAmount() ?? 0);
+            $acc['tax'] += (float) ($r->salesTaxAmount() ?? 0);
+            $acc['fuel'] += (float) ($r->salesFuelOtherAmount() ?? 0);
+            $acc['svc'] += (float) ($r->salesServiceFeeAmount() ?? 0);
+            $acc['comm'] += (float) ($r->salesCommissionAmount() ?? 0);
+            $acc['markup'] += (float) ($r->salesMarkupAmount() ?? 0);
+            $acc['profit'] += (float) ($r->salesProfitAmount() ?? 0);
+        }
+
+        return $acc;
     }
 
     /**
@@ -110,23 +144,9 @@ class FinanceReportController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['id', 'date', 'agency', 'type', 'direction', 'debit', 'credit', 'balance', 'pnr', 'order', 'vendor', 'description', 'authority']);
+            fputcsv($out, AccountStatementReport::csvHeaders(true));
             foreach ($rows as $tx) {
-                fputcsv($out, [
-                    $tx->id,
-                    optional($tx->created_at)?->toDateTimeString(),
-                    $tx->tenant?->name,
-                    $tx->type,
-                    $tx->direction,
-                    $tx->direction === 'debit' ? $tx->amount : 0,
-                    $tx->direction === 'credit' ? $tx->amount : 0,
-                    $tx->balance_after,
-                    $tx->pnr,
-                    $tx->order_ref,
-                    $tx->vendor,
-                    $tx->description,
-                    $tx->creator?->email,
-                ]);
+                fputcsv($out, AccountStatementReport::csvRow($tx, true));
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv']);
@@ -141,24 +161,9 @@ class FinanceReportController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['id', 'booked_at', 'status', 'agency', 'pnr', 'route', 'airline', 'provider', 'fare', 'sell_total', 'markup', 'profit', 'payment', 'pax']);
+            fputcsv($out, FlightSalesReport::csvHeaders(true));
             foreach ($rows as $r) {
-                fputcsv($out, [
-                    $r->id,
-                    optional($r->booked_at)?->toDateTimeString(),
-                    $r->status,
-                    $r->tenant?->name,
-                    $r->air_reservation_locator ?: $r->provider_locator,
-                    $r->origin.'-'.$r->destination,
-                    $r->carrier,
-                    $r->provider(),
-                    $r->base_price,
-                    $r->sell_total,
-                    $r->markup_amount,
-                    $r->agent_profit,
-                    $r->form_of_payment,
-                    trim($r->passenger_first.' '.$r->passenger_last),
-                ]);
+                fputcsv($out, FlightSalesReport::csvRow($r, true));
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv']);

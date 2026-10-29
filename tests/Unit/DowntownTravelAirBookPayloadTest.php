@@ -25,8 +25,8 @@ class DowntownTravelAirBookPayloadTest extends TestCase
                     'agent_cash' => [
                         'passenger_total' => 459.20,
                         'agent_net_total' => 410.55,
-                        'agent_net_per_pax' => ['adult' => 410.55],
-                        'passenger_per_pax' => ['adult' => 459.20],
+                        'agent_net_per_pax' => ['adult' => 410.55, 'child' => 310.00, 'infant' => 55.00],
+                        'passenger_per_pax' => ['adult' => 459.20, 'child' => 340.10, 'infant' => 70.50],
                         'agency_cash_payment' => 410.55,
                         'agent_service_fee' => 0,
                     ],
@@ -40,12 +40,18 @@ class DowntownTravelAirBookPayloadTest extends TestCase
             'arrival_point' => ['iata' => 'DOH', 'city' => 'Doha', 'timestamp' => '2026-10-01T20:00:00Z'],
             'marketing_carrier' => ['iata' => 'QR', 'name' => 'Qatar Airways'],
             'flight_code' => 'QR701',
+            'cabin' => 'economy',
+            'booking_class' => 'E',
         ]], [['name' => 'Economy']]);
 
         $this->assertNotNull($parsed);
         $this->assertSame(459.20, $parsed['passenger_total']);
         $this->assertSame(410.55, $parsed['agent_net_total']);
         $this->assertSame(459.20, $parsed['total_amount']);
+        $this->assertSame(['adult' => 459.20, 'child' => 340.10, 'infant' => 70.50], $parsed['passenger_per_pax']);
+        $this->assertSame('economy', $parsed['segments'][0]['cabin']);
+        $this->assertSame('E', $parsed['segments'][0]['booking_class']);
+        $this->assertSame('E', $parsed['segments'][0]['class_of_service']);
     }
 
     public function test_book_uses_preliminary_digest_and_agent_net_total(): void

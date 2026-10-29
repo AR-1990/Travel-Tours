@@ -84,6 +84,15 @@ trait HandlesFlightWorkflow
     }
 
     /**
+     * Provider status pills + Search via (incl. All) are super-admin only.
+     * Agency / sub-agent always search all configured APIs without the toggle.
+     */
+    protected function userCanChooseFlightProvider(): bool
+    {
+        return Auth::user()?->user_type === 'super_admin';
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     protected function workflowSearchStore(): ?array
@@ -246,9 +255,19 @@ trait HandlesFlightWorkflow
         }
 
         $search = $this->workflowSearchStore() ?? [];
+        $searchInput = is_array($search['input'] ?? null) ? $search['input'] : [];
+        // AirPrice used these counts — keep book form in sync even if search summary was stale.
+        $priceInput = is_array($price['input'] ?? null) ? $price['input'] : [];
+        foreach (['adults', 'children', 'infants'] as $paxKey) {
+            if (array_key_exists($paxKey, $priceInput)) {
+                $searchInput[$paxKey] = (int) $priceInput[$paxKey];
+            }
+        }
+        $searchForDefaults = $search;
+        $searchForDefaults['input'] = $searchInput;
         $defaults = $this->defaultFlightOperationInput(
             'air_create_reservation',
-            $search,
+            $searchForDefaults,
             is_array($price) ? $price : []
         );
 
@@ -257,7 +276,8 @@ trait HandlesFlightWorkflow
             'flightProvider' => $bookProvider,
             'providerReady' => FlightProvider::isReady(),
             'bookInput' => $defaults,
-            'passengerSlots' => $this->passengerSlotsFromSearch(is_array($search['input'] ?? null) ? $search['input'] : []),
+            'searchInput' => $searchInput,
+            'passengerSlots' => $this->passengerSlotsFromSearch($searchInput),
             'workflowStep' => 'book',
         ]));
     }
@@ -306,123 +326,116 @@ trait HandlesFlightWorkflow
             return $walletGate;
         }
 
-        if (FlightProvider::usesPassengerArray($bookProvider)) {
-            $defaultNationality = FlightProvider::defaultNationality($bookProvider);
-            $countryCode = (string) $request->input('country_code', FlightProvider::defaultCountryCode($bookProvider));
-            $mergePhone = $bookProvider !== FlightProvider::SUNSPRING;
-            $passengers = [];
-            foreach (array_values($request->input('passengers', [])) as $i => $row) {
-                if (! is_array($row)) {
-                    continue;
-                }
-                $expectedType = (string) ($slots[$i]['type'] ?? 'ADT');
-                $rawPhone = (string) ($row['phone'] ?? $request->input('passengers.0.phone', ''));
-                $passengers[] = [
-                    'type' => $expectedType,
-                    'prefix' => (string) ($row['prefix'] ?? ($expectedType === 'CHD' ? 'Miss' : ($expectedType === 'INF' ? 'Mstr' : 'Mr'))),
-                    'first' => (string) ($row['first'] ?? ''),
-                    'last' => (string) ($row['last'] ?? ''),
-                    'email' => (string) ($row['email'] ?? $request->input('passengers.0.email', '')),
-                    'phone' => $mergePhone
-                        ? FlightProvider::mergeDialingCodeAndPhone($countryCode, $rawPhone)
-                        : $rawPhone,
-                    'dob' => (string) ($row['dob'] ?? ''),
-                    'gender' => (string) ($row['gender'] ?? 'M'),
-                    'national_id' => (string) ($row['national_id'] ?? ''),
-                    'nationality' => (string) ($row['nationality'] ?? $defaultNationality),
-                    'passport_number' => (string) ($row['passport_number'] ?? ''),
-                    'passport_expire' => (string) ($row['passport_expire'] ?? ''),
-                    'accompanied' => '',
-                ];
+        $defaultNationality = FlightProvider::defaultNationality($bookProvider);
+        $countryCode = (string) $request->input('country_code', FlightProvider::defaultCountryCode($bookProvider));
+        $mergePhone = $bookProvider !== FlightProvider::SUNSPRING;
+        $passengers = [];
+        foreach (array_values($request->input('passengers', [])) as $i => $row) {
+            if (! is_array($row)) {
+                continue;
             }
-
-            if ($passengers === []) {
-                return redirect()
-                    ->route($this->flightsRoutePrefix().'.flights.book')
-                    ->withInput()
-                    ->with('error', 'At least one passenger is required.');
-            }
-
-            $lead = $passengers[0];
-            $params = [
-                'country_code' => $countryCode,
-                'form_of_payment' => (string) $request->input('form_of_payment', 'Cash'),
-                'service_fee' => (float) $request->input('service_fee', 0),
-                'print_with_price' => $request->boolean('print_with_price', true),
-                'booking_currency' => strtoupper((string) $request->input('booking_currency', '')),
-                'passengers' => $passengers,
-                'passenger_prefix' => (string) ($lead['prefix'] ?? 'Mr'),
-                'passenger_first' => (string) ($lead['first'] ?? ''),
-                'passenger_last' => (string) ($lead['last'] ?? ''),
-                'passenger_email' => (string) ($lead['email'] ?? ''),
-                'passenger_phone' => (string) ($lead['phone'] ?? ''),
-                'passenger_dob' => (string) ($lead['dob'] ?? ''),
-                'passenger_gender' => (string) ($lead['gender'] ?? 'M'),
-                'email' => (string) ($lead['email'] ?? ''),
-                'phone' => (string) ($lead['phone'] ?? ''),
+            $expectedType = (string) ($slots[$i]['type'] ?? 'ADT');
+            $rawPhone = (string) ($row['phone'] ?? $request->input('passengers.0.phone', ''));
+            $rawPrefix = (string) ($row['prefix'] ?? ($expectedType === 'CHD' ? 'Miss' : ($expectedType === 'INF' ? 'Mstr' : 'Mr')));
+            $rawGender = (string) ($row['gender'] ?? 'M');
+            $gender = FlightProvider::genderForPrefix($rawPrefix, $rawGender);
+            $prefix = FlightProvider::prefixForGender($rawPrefix, $gender, $expectedType);
+            $passengers[] = [
+                'type' => $expectedType,
+                'prefix' => $prefix,
+                'first' => (string) ($row['first'] ?? ''),
+                'last' => (string) ($row['last'] ?? ''),
+                'email' => (string) ($row['email'] ?? $request->input('passengers.0.email', '')),
+                'phone' => $mergePhone
+                    ? FlightProvider::mergeDialingCodeAndPhone($countryCode, $rawPhone)
+                    : $rawPhone,
+                'dob' => (string) ($row['dob'] ?? ''),
+                'gender' => $gender,
+                'national_id' => (string) ($row['national_id'] ?? ''),
+                'nationality' => (string) ($row['nationality'] ?? $defaultNationality),
+                'passport_number' => (string) ($row['passport_number'] ?? ''),
+                'passport_expire' => (string) ($row['passport_expire'] ?? ''),
+                'accompanied' => '',
             ];
-
-            $result = $bookProvider === FlightProvider::DOWNTOWN_TRAVEL
-                ? app(DowntownTravelAirService::class)->book($params)
-                : ($sunspring ??= app(SunSpringAirService::class))->book($params);
-
-            if (! ($result['ok'] ?? false)) {
-                return redirect()
-                    ->route($this->flightsRoutePrefix().'.flights.book')
-                    ->withInput()
-                    ->with('error', $result['message'] ?? 'Booking failed.');
-            }
-
-            try {
-                $reservation = $this->persistFlightBooking($result, $params);
-            } catch (\Throwable $e) {
-                report($e);
-                $locator = (string) ($result['provider_locator']
-                    ?? $result['air_reservation_locator']
-                    ?? $result['universal_locator']
-                    ?? '');
-
-                return redirect()
-                    ->route($this->flightsRoutePrefix().'.flights.book')
-                    ->withInput()
-                    ->with(
-                        'error',
-                        'The fare was booked with the airline'
-                        .($locator !== '' ? ' (ref '.$locator.')' : '')
-                        .', but saving the reservation locally failed. Contact support with this reference.'
-                    );
-            }
-
-            return redirect()
-                ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
-                ->with('success', $result['message'] ?? 'Booking created. Your reservation details are below.');
         }
 
-        $mergedTravelportPhone = FlightProvider::mergeDialingCodeAndPhone(
-            (string) $request->input('country_code', FlightProvider::defaultCountryCode(FlightProvider::TRAVELPORT)),
-            (string) $request->input('passenger_phone', '')
-        );
-        if ($mergedTravelportPhone !== '') {
-            $request->merge(['passenger_phone' => $mergedTravelportPhone]);
-        }
-
-        $params = $this->flightOperationParams($request, 'air_create_reservation');
-        $params['form_of_payment'] = (string) $request->input('form_of_payment', $params['form_of_payment'] ?? 'Cash');
-        $params['service_fee'] = (float) $request->input('service_fee', 0);
-        $params['print_with_price'] = $request->boolean('print_with_price', true);
-        $params['booking_currency'] = strtoupper((string) $request->input('booking_currency', ''));
-        $result = $air->execute('air_create_reservation', $params);
-
-        if (! ($result['ok'] ?? false)) {
+        if ($passengers === []) {
             return redirect()
                 ->route($this->flightsRoutePrefix().'.flights.book')
                 ->withInput()
-                ->with('error', $result['message'] ?? 'Booking failed.')
-                ->with('travelport_last_error_reason', $result['technical_message'] ?? null)
-                ->with('travelport_last_error_excerpt', $result['response_excerpt'] ?? null);
+                ->with('error', 'At least one passenger is required.');
         }
 
-        $reservation = $this->persistFlightBooking($result, $params);
+        if (count($passengers) !== $expected) {
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.book')
+                ->withInput()
+                ->with('error', 'Enter details for all '.$expected.' passenger(s) from your search before booking.');
+        }
+
+        $lead = $passengers[0];
+        $params = [
+            'country_code' => $countryCode,
+            'form_of_payment' => (string) $request->input('form_of_payment', 'Cash'),
+            'service_fee' => (float) $request->input('service_fee', 0),
+            'print_with_price' => $request->boolean('print_with_price', true),
+            'booking_currency' => strtoupper((string) $request->input('booking_currency', '')),
+            'passengers' => $passengers,
+            'passenger_prefix' => (string) ($lead['prefix'] ?? 'Mr'),
+            'passenger_first' => (string) ($lead['first'] ?? ''),
+            'passenger_last' => (string) ($lead['last'] ?? ''),
+            'passenger_email' => (string) ($lead['email'] ?? ''),
+            'passenger_phone' => (string) ($lead['phone'] ?? ''),
+            'passenger_dob' => (string) ($lead['dob'] ?? ''),
+            'passenger_gender' => (string) ($lead['gender'] ?? 'M'),
+            'email' => (string) ($lead['email'] ?? ''),
+            'phone' => (string) ($lead['phone'] ?? ''),
+            'adults' => (int) ($searchInput['adults'] ?? 1),
+            'children' => (int) ($searchInput['children'] ?? 0),
+            'infants' => (int) ($searchInput['infants'] ?? 0),
+        ];
+
+        if ($bookProvider === FlightProvider::DOWNTOWN_TRAVEL) {
+            $result = app(DowntownTravelAirService::class)->book($params);
+        } elseif ($bookProvider === FlightProvider::SUNSPRING) {
+            $result = ($sunspring ??= app(SunSpringAirService::class))->book($params);
+        } else {
+            $result = $air->execute('air_create_reservation', $params);
+        }
+
+        if (! ($result['ok'] ?? false)) {
+            $redirect = redirect()
+                ->route($this->flightsRoutePrefix().'.flights.book')
+                ->withInput()
+                ->with('error', $result['message'] ?? 'Booking failed.');
+            if ($bookProvider === FlightProvider::TRAVELPORT) {
+                $redirect
+                    ->with('travelport_last_error_reason', $result['technical_message'] ?? null)
+                    ->with('travelport_last_error_excerpt', $result['response_excerpt'] ?? null);
+            }
+
+            return $redirect;
+        }
+
+        try {
+            $reservation = $this->persistFlightBooking($result, $params);
+        } catch (\Throwable $e) {
+            report($e);
+            $locator = (string) ($result['provider_locator']
+                ?? $result['air_reservation_locator']
+                ?? $result['universal_locator']
+                ?? '');
+
+            return redirect()
+                ->route($this->flightsRoutePrefix().'.flights.book')
+                ->withInput()
+                ->with(
+                    'error',
+                    'The fare was booked with the airline'
+                    .($locator !== '' ? ' (ref '.$locator.')' : '')
+                    .', but saving the reservation locally failed. Contact support with this reference.'
+                );
+        }
 
         return redirect()
             ->route($this->flightsRoutePrefix().'.flights.reservations.show', $reservation)
@@ -643,9 +656,14 @@ trait HandlesFlightWorkflow
      */
     protected function passengerSlotsFromSearch(array $searchInput): array
     {
-        $adults = max(1, min(9, (int) ($searchInput['adults'] ?? 1)));
-        $children = max(0, min(8, (int) ($searchInput['children'] ?? 0)));
-        $infants = max(0, min(8, (int) ($searchInput['infants'] ?? 0)));
+        $clamped = \App\Support\FlightPassengerLimits::clampCounts(
+            (int) ($searchInput['adults'] ?? 1),
+            (int) ($searchInput['children'] ?? 0),
+            (int) ($searchInput['infants'] ?? $searchInput['infant'] ?? 0),
+        );
+        $adults = $clamped['adults'];
+        $children = $clamped['children'];
+        $infants = $clamped['infants'];
 
         $slots = [];
         for ($i = 1; $i <= $adults; $i++) {
@@ -698,12 +716,22 @@ trait HandlesFlightWorkflow
         }
 
         $solution = is_array($price['result']['solutions'][0] ?? null) ? $price['result']['solutions'][0] : null;
+        $search = session('travelport.flight_search.input', session('public.flight_search.input', []));
+        $passengers = $request->has('passengers') && is_array($request->input('passengers'))
+            ? max(1, count($request->input('passengers')))
+            : max(1, (int) ($search['adults'] ?? 1) + (int) ($search['children'] ?? 0) + (int) ($search['infants'] ?? 0));
+        $serviceFee = (float) $request->input('service_fee', 0);
+        $displayCurrency = strtoupper(trim((string) $request->input('booking_currency', '')))
+            ?: \App\Support\DisplayCurrency::resolve($user);
         $breakdown = app(\App\Services\Finance\MarkupService::class)->breakdown(
             $solution,
             (int) $user->tenant_id,
             $bookProvider,
-            (float) $request->input('service_fee', 0),
-            $fop
+            $serviceFee,
+            $fop,
+            $displayCurrency,
+            $passengers,
+            $request->has('service_fee') ? $serviceFee : null
         );
         $needed = (float) $breakdown['sell_total'];
         $balance = app(\App\Services\Finance\WalletService::class)->balance((int) $user->tenant_id);

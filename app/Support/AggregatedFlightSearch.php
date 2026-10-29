@@ -120,6 +120,20 @@ class AggregatedFlightSearch
             ];
         }
 
+        // Drop identical fare cards (same API + itinerary + price). Keep real variants
+        // (different arrival, stops, or amount) and keep the same flight from two APIs.
+        $solutions = self::dedupeIdenticalFares($solutions);
+
+        foreach ($sources as $provider => &$meta) {
+            $meta['count'] = 0;
+            foreach ($solutions as $row) {
+                if (($row['provider'] ?? '') === $provider) {
+                    $meta['count']++;
+                }
+            }
+        }
+        unset($meta);
+
         $anyOk = false;
         foreach ($sources as $meta) {
             if (! empty($meta['ok'])) {
@@ -147,6 +161,116 @@ class AggregatedFlightSearch
             'provider' => count($sources) > 1 ? 'mixed' : (string) array_key_first($sources),
             'sources' => $sources,
         ];
+    }
+
+    /**
+     * Remove duplicate fare cards that share provider, price, and full segment schedule.
+     * Different arrivals / prices / providers are kept.
+     *
+     * @param  list<array<string, mixed>>  $solutions
+     * @return list<array<string, mixed>>
+     */
+    public static function dedupeIdenticalFares(array $solutions): array
+    {
+        $seen = [];
+        $seenKeys = [];
+        $seenDigests = [];
+        $out = [];
+
+        foreach ($solutions as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $provider = strtolower((string) ($row['provider'] ?? ''));
+            $key = trim((string) ($row['key'] ?? ''));
+            if ($key !== '') {
+                $keyId = $provider.'|key:'.$key;
+                if (isset($seenKeys[$keyId])) {
+                    continue;
+                }
+                $seenKeys[$keyId] = true;
+            }
+
+            $digest = trim((string) ($row['digest'] ?? ''));
+            if ($digest !== '') {
+                $digestId = $provider.'|digest:'.$digest;
+                if (isset($seenDigests[$digestId])) {
+                    continue;
+                }
+                $seenDigests[$digestId] = true;
+            }
+
+            $fingerprint = self::fareFingerprint($row);
+            if (isset($seen[$fingerprint])) {
+                continue;
+            }
+            $seen[$fingerprint] = true;
+            $out[] = $row;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $solution
+     */
+    public static function fareFingerprint(array $solution): string
+    {
+        $parts = [
+            strtolower((string) ($solution['provider'] ?? '')),
+            number_format(FlightDisplay::priceSortKey($solution['total_price'] ?? null), 2, '.', ''),
+            FlightDisplay::airlineCode((string) ($solution['plating_carrier'] ?? $solution['airline_name'] ?? '')),
+            strtolower(trim((string) data_get($solution, 'journeys.0.cabin', $solution['cabin'] ?? ''))),
+            strtoupper(trim((string) ($solution['fare_basis'] ?? ''))),
+        ];
+
+        $segments = [];
+        if (is_array($solution['journeys'] ?? null) && $solution['journeys'] !== []) {
+            foreach ($solution['journeys'] as $journey) {
+                if (! is_array($journey['segments'] ?? null)) {
+                    continue;
+                }
+                foreach ($journey['segments'] as $segment) {
+                    if (is_array($segment)) {
+                        $segments[] = $segment;
+                    }
+                }
+            }
+        }
+        if ($segments === [] && is_array($solution['segments'] ?? null)) {
+            $segments = $solution['segments'];
+        }
+
+        foreach ($segments as $segment) {
+            if (! is_array($segment)) {
+                continue;
+            }
+            $parts[] = implode('~', [
+                FlightDisplay::airlineCode((string) ($segment['carrier'] ?? '')),
+                strtoupper(trim((string) ($segment['flight_number'] ?? ''))),
+                strtoupper(trim((string) ($segment['origin'] ?? ''))),
+                strtoupper(trim((string) ($segment['destination'] ?? ''))),
+                self::normalizeScheduleStamp($segment['departure'] ?? null),
+                self::normalizeScheduleStamp($segment['arrival'] ?? null),
+            ]);
+        }
+
+        return hash('sha256', implode('|', $parts));
+    }
+
+    protected static function normalizeScheduleStamp(mixed $value): string
+    {
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return '';
+        }
+
+        try {
+            return (new \DateTimeImmutable($raw))->format('Y-m-d\TH:i');
+        } catch (\Throwable) {
+            return $raw;
+        }
     }
 
     /**

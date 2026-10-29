@@ -687,17 +687,21 @@ XML;
                 continue;
             }
             $key = (string) ($i + 1);
-            $prefix = $this->esc((string) ($pax['prefix'] ?? 'Mr'));
+            $rawType = strtoupper((string) ($pax['type'] ?? 'ADT'));
+            $rawPrefix = (string) ($pax['prefix'] ?? 'Mr');
+            $rawGender = (string) ($pax['gender'] ?? 'M');
+            $genderCode = \App\Support\FlightProvider::genderForPrefix($rawPrefix, $rawGender);
+            $prefixCode = \App\Support\FlightProvider::prefixForGender($rawPrefix, $genderCode, $rawType);
+            $prefix = $this->esc($prefixCode);
             $first = $this->esc((string) ($pax['first'] ?? ''));
             $last = $this->esc((string) ($pax['last'] ?? ''));
             $email = $this->esc((string) ($pax['email'] ?? ''));
-            $phone = $this->esc((string) ($pax['phone'] ?? ''));
+            // Hosts prefer digits-only phone (cert payloads omit "+").
+            $phoneDigits = preg_replace('/\D+/', '', (string) ($pax['phone'] ?? '')) ?? '';
+            $phone = $this->esc($phoneDigits !== '' ? $phoneDigits : (string) ($pax['phone'] ?? ''));
             $dob = $this->esc((string) ($pax['dob'] ?? ''));
-            $gender = $this->esc((string) ($pax['gender'] ?? 'M'));
-            $type = strtoupper((string) ($pax['type'] ?? 'ADT'));
-            if ($type === 'CHD') {
-                $type = 'CNN';
-            }
+            $gender = $this->esc($genderCode);
+            $type = $rawType === 'CHD' ? 'CNN' : $rawType;
             $type = $this->esc($type);
             $age = $this->travelerAge($dob);
             // Hosts often reject INF with Age="0"; use 1 for under-2 infants.

@@ -68,6 +68,8 @@
     }
 
     window.initFlightUi = function initFlightUi() {
+        window.initAirportPickers?.();
+
         document.getElementById('swapAirports')?.addEventListener('click', swapPickers);
         document.getElementById('swapAirportsMobile')?.addEventListener('click', swapPickers);
 
@@ -82,7 +84,8 @@
                 if (o) o.setSelection(this.dataset.origin, this.dataset.oLabel || this.dataset.origin);
                 if (d) d.setSelection(this.dataset.destination, this.dataset.dLabel || this.dataset.destination);
                 if (this.dataset.date) {
-                    const dep = document.getElementById('departure_date') || form.querySelector('input[name="departure_date"]');
+                    const formEl = document.getElementById('flightSearchForm');
+                    const dep = document.getElementById('departure_date') || formEl?.querySelector('input[name="departure_date"]');
                     if (dep) dep.value = this.dataset.date;
                 }
             });
@@ -90,6 +93,10 @@
 
         const form = document.getElementById('flightSearchForm');
         if (!form) return;
+        if (form.dataset.flightUiBound === '1') {
+            return;
+        }
+        form.dataset.flightUiBound = '1';
 
         const tripRadios = form.querySelectorAll('input[name="trip_type"]');
         const returnWrap = document.getElementById('returnDateWrap');
@@ -155,6 +162,40 @@
             row.remove();
             renumberLegs(legsContainer);
         });
+
+        const paxWrap = form.querySelector('[data-flight-pax-selects="1"]');
+        if (paxWrap) {
+            const maxPax = parseInt(paxWrap.getAttribute('data-max-passengers') || '9', 10) || 9;
+            const adultSel = paxWrap.querySelector('select[name="adults"]');
+            const childSel = paxWrap.querySelector('select[name="children"]');
+            const infantSel = paxWrap.querySelector('select[name="infants"]');
+            const readPax = () => ({
+                adults: parseInt(adultSel?.value || '1', 10) || 1,
+                children: parseInt(childSel?.value || '0', 10) || 0,
+                infants: parseInt(infantSel?.value || '0', 10) || 0,
+            });
+            const enforcePaxCap = (changed) => {
+                let { adults, children, infants } = readPax();
+                let total = adults + children + infants;
+                while (total > maxPax) {
+                    if (changed === 'infants' && infants > 0) infants -= 1;
+                    else if (changed === 'children' && children > 0) children -= 1;
+                    else if (changed === 'adults' && adults > 1) adults -= 1;
+                    else if (infants > 0) infants -= 1;
+                    else if (children > 0) children -= 1;
+                    else if (adults > 1) adults -= 1;
+                    else break;
+                    total = adults + children + infants;
+                }
+                if (adultSel) adultSel.value = String(adults);
+                if (childSel) childSel.value = String(children);
+                if (infantSel) infantSel.value = String(infants);
+            };
+            adultSel?.addEventListener('change', () => enforcePaxCap('adults'));
+            childSel?.addEventListener('change', () => enforcePaxCap('children'));
+            infantSel?.addEventListener('change', () => enforcePaxCap('infants'));
+            enforcePaxCap('adults');
+        }
 
         form.addEventListener('submit', function (e) {
             const trip = form.querySelector('input[name="trip_type"]:checked')?.value || 'oneway';

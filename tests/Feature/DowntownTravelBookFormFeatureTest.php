@@ -191,16 +191,20 @@ class DowntownTravelBookFormFeatureTest extends TestCase
         $this->assertSame('USA', data_get($captured, 'passengers.0.nationality'));
     }
 
-    public function test_passenger_partial_renders_travelport_flat_fields(): void
+    public function test_passenger_partial_renders_travelport_passenger_array(): void
     {
         $html = View::make('flights.partials.passenger-book-fields', [
             'flightProvider' => FlightProvider::TRAVELPORT,
             'flightPriceResult' => ['ok' => true, 'provider' => FlightProvider::TRAVELPORT],
-            'passengerSlots' => [],
+            'passengerSlots' => [
+                ['type' => 'ADT', 'label' => 'Adult 1', 'prefix' => 'Mr', 'gender' => 'M'],
+                ['type' => 'ADT', 'label' => 'Adult 2', 'prefix' => 'Mr', 'gender' => 'M'],
+            ],
             'bookInput' => [],
         ])->render();
 
-        $this->assertStringContainsString('name="passenger_first"', $html);
-        $this->assertStringNotContainsString('passengers[0][first]', $html);
+        $this->assertStringContainsString('name="passengers[0][first]"', $html);
+        $this->assertStringContainsString('name="passengers[1][first]"', $html);
+        $this->assertStringNotContainsString('name="passenger_first"', $html);
     }
 }

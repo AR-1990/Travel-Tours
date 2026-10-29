@@ -120,6 +120,7 @@ class MarkupService
 
     /**
      * @param  array<string, mixed>|null  $solution
+     * @param  float|null  $ticketFeePerPerson  null = use markup rules; float = per-person ticket fee (× passengers)
      * @return array<string, mixed>
      */
     public function breakdown(
@@ -128,12 +129,28 @@ class MarkupService
         ?string $provider,
         float $serviceFee = 0.0,
         ?string $formOfPayment = null,
-        ?string $agentCurrency = null
+        ?string $agentCurrency = null,
+        int $passengers = 1,
+        ?float $ticketFeePerPerson = null
     ): array {
         $fare = $this->money($solution['base_price'] ?? null);
         $taxes = $this->money($solution['taxes'] ?? null);
-        $total = $this->money($solution['total_price'] ?? null);
-        $currency = $this->currency($solution['total_price'] ?? $solution['base_price'] ?? null) ?: 'USD';
+        $total = $this->money(
+            $solution['total_price']
+            ?? $solution['passenger_total']
+            ?? $solution['total_amount']
+            ?? null
+        );
+        // Downtown agent-net only offers still need a passenger-facing total when present.
+        if ($total <= 0) {
+            $total = $this->money($solution['agent_net_total'] ?? null);
+        }
+        $sourceCurrency = $this->currency(
+            $solution['total_price']
+            ?? $solution['base_price']
+            ?? $solution['currency']
+            ?? null
+        ) ?: 'USD';
 
         if ($total <= 0 && ($fare > 0 || $taxes > 0)) {
             $total = round($fare + $taxes, 2);
@@ -141,12 +158,22 @@ class MarkupService
         if ($fare <= 0 && $total > 0 && $taxes >= 0) {
             $fare = round(max(0, $total - $taxes), 2);
         }
+        // Downtown often omits taxes — derive from total − base when both are known.
+        if ($taxes <= 0 && $total > 0 && $fare > 0 && $total >= $fare) {
+            $taxes = round($total - $fare, 2);
+        }
 
         $airline = strtoupper((string) ($solution['plating_carrier'] ?? data_get($solution, 'segments.0.carrier', '')));
         // Markup ONLY on base fare (0 if base unknown — never on taxes/total).
         $markup = $this->resolve($tenantId, $provider, $airline, $fare);
         $airlineFees = $this->airlineFees($airline, $fare, $tenantId);
-        $serviceFee = round($serviceFee, 2);
+        $pax = max(1, $passengers);
+
+        // Fixed rules are per person; percent stays on total base (already covers the party).
+        $ruleTicketFeeSource = $markup['mode'] === TenantMarkup::MODE_FIXED
+            ? round((float) $markup['value'] * $pax, 2)
+            : round((float) $markup['amount'], 2);
+
         $ticketingFee = 0.0;
         foreach ($airlineFees['items'] as $item) {
             if (($item['fee_type'] ?? '') === 'ticketing') {
@@ -155,16 +182,47 @@ class MarkupService
         }
         $otherAirlineFees = round($airlineFees['total'] - $ticketingFee, 2);
 
-        $sellTotal = round($total + $markup['amount'] + $serviceFee + $airlineFees['total'], 2);
-        $agentProfit = round($markup['amount'] + $serviceFee, 2);
-
-        $agentCurrency = strtoupper(trim((string) ($agentCurrency ?: '')));
+        $displayCurrency = strtoupper(trim((string) ($agentCurrency ?: '')));
         $currencyRate = 1.0;
-        $commissionAmount = $agentProfit;
-        if ($agentCurrency !== '' && $agentCurrency !== $currency) {
-            $currencyRate = app(CurrencyRateService::class)->rate($currency, $agentCurrency);
-            $commissionAmount = round($agentProfit * $currencyRate, 2);
+        $currency = $sourceCurrency;
+        if ($displayCurrency !== '' && $displayCurrency !== $sourceCurrency) {
+            $configured = app(CurrencyRateService::class)->configuredRate($sourceCurrency, $displayCurrency);
+            if ($configured !== null) {
+                $currencyRate = $configured;
+                $fare = round($fare * $currencyRate, 2);
+                $taxes = round($taxes * $currencyRate, 2);
+                $total = round($total * $currencyRate, 2);
+                $ticketingFee = round($ticketingFee * $currencyRate, 2);
+                $otherAirlineFees = round($otherAirlineFees * $currencyRate, 2);
+                $airlineFees['total'] = round($airlineFees['total'] * $currencyRate, 2);
+                $airlineFees['items'] = array_map(static function (array $item) use ($currencyRate, $displayCurrency): array {
+                    $item['amount'] = round((float) ($item['amount'] ?? 0) * $currencyRate, 2);
+                    $item['currency'] = $displayCurrency;
+
+                    return $item;
+                }, $airlineFees['items']);
+                $currency = $displayCurrency;
+            }
         }
+
+        // Form "Your profit" / service_fee is per-person ticket fee in display currency (do not re-convert).
+        if ($ticketFeePerPerson !== null) {
+            $perPerson = round($ticketFeePerPerson, 2);
+            $ticketFeeTotal = round($perPerson * $pax, 2);
+        } elseif (round($serviceFee, 2) != 0.0) {
+            $perPerson = round($serviceFee, 2);
+            $ticketFeeTotal = round($perPerson * $pax, 2);
+        } else {
+            $ticketFeeTotal = round($ruleTicketFeeSource * $currencyRate, 2);
+            $perPerson = round($ticketFeeTotal / $pax, 2);
+        }
+
+        $sellTotal = round($total + $ticketFeeTotal + $airlineFees['total'], 2);
+        $agentProfit = round($ticketFeeTotal, 2);
+
+        // booking_currency must match the currency amounts are actually stored in (only switches when a rate exists).
+        $bookingCurrency = $currency;
+        $commissionAmount = $agentProfit;
 
         return [
             'fare' => $fare,
@@ -174,15 +232,17 @@ class MarkupService
             'airline_fees_total' => $airlineFees['total'],
             'airline_fees' => $airlineFees['items'],
             'other_airline_fees' => $otherAirlineFees,
-            'service_fee' => $serviceFee,
-            'markup_amount' => $markup['amount'],
+            'service_fee' => $perPerson,
+            'ticket_fee_per_person' => $perPerson,
+            'passengers' => $pax,
+            'markup_amount' => $ticketFeeTotal,
             'sell_total' => $sellTotal,
             'agent_profit' => $agentProfit,
             'commission_amount' => $commissionAmount,
             'currency' => $currency,
-            'booking_currency' => $agentCurrency !== '' ? $agentCurrency : $currency,
+            'booking_currency' => $bookingCurrency,
             'currency_rate' => $currencyRate,
-            'currency_rate_base' => $currency,
+            'currency_rate_base' => $sourceCurrency,
             'form_of_payment' => $formOfPayment,
             'markup_mode' => $markup['mode'],
             'markup_value' => $markup['value'],
@@ -191,17 +251,23 @@ class MarkupService
 
     public function money(mixed $price): float
     {
-        $parsed = FlightDisplay::parsePrice($price);
-        if (is_array($parsed) && isset($parsed['amount'])) {
-            return round((float) str_replace(',', '', (string) $parsed['amount']), 2);
+        if (is_int($price) || is_float($price)) {
+            return round((float) $price, 2);
         }
 
         if (is_numeric($price)) {
             return round((float) $price, 2);
         }
 
-        if (is_string($price) && preg_match('/([0-9]+(?:\.[0-9]+)?)/', $price, $m)) {
-            return round((float) $m[1], 2);
+        $parsed = is_string($price) || $price === null
+            ? FlightDisplay::parsePrice(is_string($price) ? $price : null)
+            : null;
+        if (is_array($parsed) && isset($parsed['amount']) && $parsed['currency'] !== '') {
+            return round((float) str_replace(',', '', (string) $parsed['amount']), 2);
+        }
+
+        if (is_string($price) && preg_match('/([0-9]+(?:[.,][0-9]+)?)/', $price, $m)) {
+            return round((float) str_replace(',', '', $m[1]), 2);
         }
 
         return 0.0;

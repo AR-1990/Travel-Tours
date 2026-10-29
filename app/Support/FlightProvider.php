@@ -14,6 +14,9 @@ class FlightProvider
 
     public const DOWNTOWN_TRAVEL = 'downtown_travel';
 
+    /** Super-admin “search all configured APIs” mode (aggregated). */
+    public const ALL = 'all';
+
     /**
      * @return list<string>
      */
@@ -22,10 +25,18 @@ class FlightProvider
         return [self::TRAVELPORT, self::SUNSPRING, self::DOWNTOWN_TRAVEL];
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function selectableIncludingAll(): array
+    {
+        return array_merge([self::ALL], self::all());
+    }
+
     public static function current(): string
     {
         $fromSession = (string) session('flight.provider', '');
-        if (in_array($fromSession, self::all(), true)) {
+        if ($fromSession === self::ALL || in_array($fromSession, self::all(), true)) {
             return $fromSession;
         }
 
@@ -45,10 +56,17 @@ class FlightProvider
     public static function set(string $provider): void
     {
         $provider = strtolower(trim($provider));
-        if (! in_array($provider, self::all(), true)) {
+        if ($provider !== self::ALL && ! in_array($provider, self::all(), true)) {
             $provider = self::TRAVELPORT;
         }
         session(['flight.provider' => $provider]);
+    }
+
+    public static function isAggregated(?string $provider = null): bool
+    {
+        $provider = strtolower((string) ($provider ?? self::current()));
+
+        return $provider === self::ALL || $provider === 'mixed';
     }
 
     public static function isSunSpring(): bool
@@ -62,13 +80,68 @@ class FlightProvider
     }
 
     /**
-     * SunSpring + Downtown book APIs expect passengers[] rows (not Travelport flat fields).
+     * Book forms collect passengers[] rows so search/price pax counts match the GDS sell.
+     * (Previously Travelport used a single flat lead traveler and failed multi-pax host sells.)
      */
     public static function usesPassengerArray(?string $provider = null): bool
     {
         $provider = strtolower((string) ($provider ?? self::current()));
 
-        return in_array($provider, [self::SUNSPRING, self::DOWNTOWN_TRAVEL], true);
+        return in_array($provider, [self::TRAVELPORT, self::SUNSPRING, self::DOWNTOWN_TRAVEL], true);
+    }
+
+    /**
+     * Resolve traveler gender. Explicit M/F from the form wins; otherwise infer from title.
+     */
+    public static function genderForPrefix(?string $prefix, ?string $gender = null): string
+    {
+        $explicit = strtoupper(substr(trim((string) $gender), 0, 1));
+        if ($explicit === 'F' || $explicit === 'M') {
+            return $explicit;
+        }
+
+        $prefix = strtolower(trim((string) $prefix));
+        if (in_array($prefix, ['mrs', 'ms', 'miss'], true)) {
+            return 'F';
+        }
+
+        return 'M';
+    }
+
+    /**
+     * Prefer a title that matches gender (hosts reject Mr+Female / Mrs+Male).
+     */
+    public static function prefixForGender(?string $prefix, ?string $gender, string $type = 'ADT'): string
+    {
+        $prefix = trim((string) $prefix);
+        $gender = self::genderForPrefix(null, $gender);
+        $type = strtoupper($type);
+
+        if ($type === 'INF') {
+            return 'Mstr';
+        }
+        if ($type === 'CHD') {
+            return $gender === 'F' ? 'Miss' : 'Mstr';
+        }
+
+        $normalized = match (strtolower($prefix)) {
+            'mr', 'mrs', 'ms', 'miss', 'mstr' => ucfirst(strtolower($prefix)),
+            default => '',
+        };
+
+        if ($gender === 'F') {
+            if (in_array($normalized, ['Mrs', 'Ms', 'Miss'], true)) {
+                return $normalized;
+            }
+
+            return 'Ms';
+        }
+
+        if (in_array($normalized, ['Mr', 'Mstr'], true)) {
+            return $normalized;
+        }
+
+        return 'Mr';
     }
 
     /**
@@ -514,7 +587,7 @@ class FlightProvider
                 'show_nationality' => true,
             ],
             default => [
-                'hint' => 'Enter the lead traveler details for this Travelport booking.',
+                'hint' => 'Enter traveler details for every passenger on this Travelport fare (must match search adults/children/infants).',
                 'name_pattern' => $namePattern,
                 'name_title' => $nameTitle,
                 'name_min' => 2,
@@ -568,21 +641,6 @@ class FlightProvider
         $countryRegex = '/^\\+[0-9]{1,4}$/';
         $nationalityRegex = '/^[A-Za-z]{'.$spec['nationality_min'].','.$spec['nationality_max'].'}$/';
 
-        if (! self::usesPassengerArray($provider)) {
-            return [
-                'provider' => ['nullable', 'in:'.implode(',', self::all())],
-                'passenger_first' => ['required', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex],
-                'passenger_last' => ['required', 'string', 'min:'.$spec['name_min'], 'max:'.$spec['name_max'], 'regex:'.$nameRegex],
-                'passenger_email' => ['required', 'email', 'max:120'],
-                'passenger_phone' => ['required', 'string', 'min:'.$spec['phone_min'], 'max:'.$spec['phone_max'], 'regex:'.$phoneRegex],
-                'passenger_dob' => ['required', 'date', 'before:today'],
-                'passenger_gender' => ['required', 'in:M,F'],
-                'passenger_prefix' => ['nullable', 'string', 'max:10'],
-                'country_code' => ['nullable', 'string', 'max:'.$spec['country_code_max'], 'regex:'.$countryRegex],
-                'form_of_payment' => ['nullable', 'in:Cash,Credit,Check,Debit,BankTransfer,Wallet,Reserve'],
-            ];
-        }
-
         $rules = [
             'provider' => ['nullable', 'in:'.implode(',', self::all())],
             'passengers' => ['required', 'array', 'min:'.$expected, 'max:'.$expected],
@@ -597,13 +655,32 @@ class FlightProvider
             'passengers.*.nationality' => ['nullable', 'string', 'min:'.$spec['nationality_min'], 'max:'.$spec['nationality_max'], 'regex:'.$nationalityRegex],
             'passengers.0.email' => ['required', 'email', 'max:120'],
             'passengers.0.phone' => ['required', 'string', 'min:'.$spec['phone_min'], 'max:'.$spec['phone_max'], 'regex:'.$phoneRegex],
-            'passengers.0.nationality' => ['required', 'string', 'min:'.$spec['nationality_min'], 'max:'.$spec['nationality_max'], 'regex:'.$nationalityRegex],
+            'passengers.0.nationality' => ['nullable', 'string', 'min:'.$spec['nationality_min'], 'max:'.$spec['nationality_max'], 'regex:'.$nationalityRegex],
             'country_code' => ['nullable', 'string', 'max:'.$spec['country_code_max'], 'regex:'.$countryRegex],
             'form_of_payment' => ['nullable', 'in:Cash,Credit,Check,Debit,BankTransfer,Wallet,Reserve'],
         ];
 
+        if ($provider !== self::TRAVELPORT) {
+            $rules['passengers.0.nationality'] = ['required', 'string', 'min:'.$spec['nationality_min'], 'max:'.$spec['nationality_max'], 'regex:'.$nationalityRegex];
+        }
+
         /** @var list<\Closure> $passengerRowRules */
         $passengerRowRules = [];
+
+        // DOB / passport age must match ADT (12+), CHD (2–12), INF (under 2).
+        $passengerRowRules[] = function (string $attribute, mixed $value, \Closure $fail): void {
+            if (! is_array($value)) {
+                return;
+            }
+            $type = strtoupper(trim((string) ($value['type'] ?? 'ADT')));
+            $dob = trim((string) ($value['dob'] ?? ''));
+            if ($dob === '') {
+                return;
+            }
+            if (! \App\Support\FlightPassengerLimits::dobMatchesType($type, $dob)) {
+                $fail(\App\Support\FlightPassengerLimits::ageMismatchMessage($type));
+            }
+        };
 
         if ($provider === self::DOWNTOWN_TRAVEL) {
             $iso = self::isoAlpha3Nationalities();
@@ -683,6 +760,9 @@ class FlightProvider
     public static function isReady(): bool
     {
         return match (self::current()) {
+            self::ALL => TravelportIntegrationConfig::isReadyForAir()
+                || SunSpringIntegrationConfig::isReadyForAir()
+                || DowntownTravelIntegrationConfig::isReadyForAir(),
             self::SUNSPRING => SunSpringIntegrationConfig::isReadyForAir(),
             self::DOWNTOWN_TRAVEL => DowntownTravelIntegrationConfig::isReadyForAir(),
             default => TravelportIntegrationConfig::isReadyForAir(),
@@ -692,6 +772,7 @@ class FlightProvider
     public static function label(?string $provider = null): string
     {
         return match (strtolower((string) ($provider ?? self::current()))) {
+            self::ALL, 'mixed' => 'All providers',
             self::SUNSPRING => 'SunSpring',
             self::DOWNTOWN_TRAVEL => 'Downtown Travel',
             default => 'Travelport',
@@ -814,5 +895,25 @@ class FlightProvider
                 'ready' => DowntownTravelIntegrationConfig::isReadyForAir(),
             ],
         ];
+    }
+
+    /**
+     * Super-admin Search via list, including aggregated “All”.
+     *
+     * @return list<array{id: string, label: string, ready: bool}>
+     */
+    public static function optionsWithAll(): array
+    {
+        $anyReady = TravelportIntegrationConfig::isReadyForAir()
+            || SunSpringIntegrationConfig::isReadyForAir()
+            || DowntownTravelIntegrationConfig::isReadyForAir();
+
+        return array_merge([
+            [
+                'id' => self::ALL,
+                'label' => 'All',
+                'ready' => $anyReady,
+            ],
+        ], self::options());
     }
 }

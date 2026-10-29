@@ -73,6 +73,8 @@ trait BuildsFlightOperationParams
             'departure_date' => $input['departure_date'] ?? '',
             'return_date' => $input['return_date'] ?? '',
             'adults' => (int) ($input['adults'] ?? 1),
+            'children' => (int) ($input['children'] ?? 0),
+            'infants' => (int) ($input['infants'] ?? $input['infant'] ?? 0),
             'fare_basis' => $priced['fare_basis'] ?? '',
             'carrier' => $firstSeg['carrier'] ?? '',
             'flight_number' => $firstSeg['flight_number'] ?? '',

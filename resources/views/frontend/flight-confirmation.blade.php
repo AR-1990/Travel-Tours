@@ -32,6 +32,7 @@
                 'flightTicket' => $flightTicket ?? null,
                 'flightProvider' => $flightPriceResult['provider'] ?? ($flightProvider ?? null),
                 'canBookFlights' => true,
+                'isPublicBookingUi' => true,
                 'travelportReady' => $travelportReady ?? false,
                 'providerReady' => $providerReady ?? $travelportReady ?? false,
                 'ticketActionRoute' => \App\Support\FlightProvider::supportsSeparateTicketing($flightPriceResult['provider'] ?? null)

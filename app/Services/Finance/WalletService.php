@@ -142,12 +142,19 @@ class WalletService
         }
 
         return $this->debitSale((int) $reservation->tenant_id, $amount, $actor, [
-            'description' => 'Ticket sale '.$reservation->origin.'-'.$reservation->destination,
+            'description' => 'TICKET PRICE '.$reservation->origin.'-'.$reservation->destination,
             'pnr' => (string) ($reservation->air_reservation_locator ?: $reservation->provider_locator ?: $reservation->universal_locator),
-            'order_ref' => (string) ($reservation->universal_locator ?: $reservation->id),
+            'order_ref' => (string) $reservation->id,
             'vendor' => $reservation->provider(),
             'flight_reservation_id' => $reservation->id,
-            'meta' => ['form_of_payment' => $reservation->form_of_payment],
+            'meta' => [
+                'form_of_payment' => $reservation->form_of_payment,
+                'carrier' => $reservation->carrier,
+                'provider' => $reservation->provider(),
+                'currency' => $reservation->currency ?: $reservation->booking_currency,
+                'maturity' => optional($reservation->departure_date)?->format('Y-m-d'),
+                'route' => $reservation->salesRouteLabel(),
+            ],
         ]);
     }
 

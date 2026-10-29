@@ -73,6 +73,20 @@
     $canDtCancel = array_key_exists('can_cancel', $dtCaps) ? (bool) $dtCaps['can_cancel'] : true;
     $canDtVoid = array_key_exists('can_void', $dtCaps) ? (bool) $dtCaps['can_void'] : $isTicketed;
     $canDtRefund = array_key_exists('can_refund', $dtCaps) ? (bool) $dtCaps['can_refund'] : $isTicketed;
+    // B2C must not see Downtown agent flow / issue / void / refund controls.
+    $isPublicBookingUi = (bool) ($isPublicBookingUi ?? false);
+    if (! $isPublicBookingUi && is_object($reservationModel) && method_exists($reservationModel, 'isPublicChannel')) {
+        $isPublicBookingUi = $reservationModel->isPublicChannel();
+    }
+    $showDowntownAgentOps = $isDowntown && ! $isPublicBookingUi && ($canBookFlights ?? false);
+    if ($isDowntown && $isPublicBookingUi) {
+        $canDtTicket = false;
+        $canDtVoid = false;
+        $canDtRefund = false;
+        $ticketRoute = null;
+        $voidRoute = null;
+        $refundRoute = null;
+    }
     $primaryRefLabel = match ($providerId) {
         'downtown_travel' => 'Order ID',
         'sunspring' => 'Booking reference',
@@ -129,7 +143,9 @@
                         $search['departure_date'] ?? null,
                         $search['return_date'] ?? null,
                         (int) ($search['adults'] ?? 1),
-                        $search['legs'] ?? null
+                        $search['legs'] ?? null,
+                        (int) ($search['children'] ?? 0),
+                        (int) ($search['infants'] ?? 0)
                     ) }}
                 </p>
             @endif
@@ -164,15 +180,18 @@
         @endphp
         @include('flights.partials.payment-information', ['paymentInfo' => $afterPayment, 'readonly' => true])
         @if($ticketPdfRoute || $ticketPrintRoute)
-            <div class="mb-4 d-flex flex-wrap gap-2">
-                @if($ticketPdfRoute)
-                    <a href="{{ $ticketPdfRoute }}?with_price=1" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pdf me-1"></i> Ticket PDF (with price)</a>
-                    <a href="{{ $ticketPdfRoute }}?with_price=0" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pdf me-1"></i> Ticket PDF (no price)</a>
-                @endif
-                @if($ticketPrintRoute)
-                    <a href="{{ $ticketPrintRoute }}?with_price=1" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i> Print with price</a>
-                    <a href="{{ $ticketPrintRoute }}?with_price=0" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i> Print without price</a>
-                @endif
+            <div class="mb-4">
+                <div class="small fw-semibold mb-2">Ticket print</div>
+                <div class="d-flex flex-wrap gap-2">
+                    @if($ticketPdfRoute)
+                        <a href="{{ $ticketPdfRoute }}?with_price=1" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pdf me-1"></i> Ticket PDF (with price)</a>
+                        <a href="{{ $ticketPdfRoute }}?with_price=0" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pdf me-1"></i> Ticket PDF (without price)</a>
+                    @endif
+                    @if($ticketPrintRoute)
+                        <a href="{{ $ticketPrintRoute }}?with_price=1" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i> Print with price</a>
+                        <a href="{{ $ticketPrintRoute }}?with_price=0" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i> Print without price</a>
+                    @endif
+                </div>
             </div>
         @endif
 
@@ -291,7 +310,7 @@
         </div>
     @endif
 
-    @if($isDowntown && ! $isCancelled)
+    @if($showDowntownAgentOps && ! $isCancelled)
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
                 <h3 class="h6 mb-2"><i class="fas fa-route me-2"></i>Downtown Travel flow</h3>
@@ -302,6 +321,15 @@
                     <li>Refresh order details anytime</li>
                     <li>Cancel (pre-ticket), Void, or Refund when Downtown allows it</li>
                 </ol>
+            </div>
+        </div>
+    @elseif($isDowntown && $isPublicBookingUi && ! $isCancelled && ! $isTicketed)
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
+                <h3 class="h6 mb-2">Booking status</h3>
+                <p class="text-muted small mb-0">
+                    Your Downtown Travel booking is reserved. E-tickets are issued by the agency after payment is confirmed — not from this customer page.
+                </p>
             </div>
         </div>
     @endif
@@ -358,14 +386,17 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body {{ !empty($compact) ? '' : 'p-4' }}">
                 <h3 class="h6 mb-2">
-                    @if($isDowntown) Manage Downtown order
+                    @if($isDowntown && $showDowntownAgentOps) Manage Downtown order
+                    @elseif($isDowntown) Your Downtown booking
                     @elseif($isSunSpring) Manage SunSpring booking
                     @else Manage reservation
                     @endif
                 </h3>
                 <p class="text-muted small mb-3">
-                    @if($isDowntown)
+                    @if($isDowntown && $showDowntownAgentOps)
                         Refresh pulls the latest order from Downtown Travel. Cancel works before ticketing; Void / Refund apply when Downtown flags allow them.
+                    @elseif($isDowntown)
+                        Contact the agency for ticketing, changes, or refunds after payment.
                     @elseif($isSunSpring)
                         Refresh pulls the latest status from SunSpring (TicketInfo). Cancel voids the SunSpring booking when still allowed. After cancel, track the refund request with CancelTracking.
                     @else

@@ -289,6 +289,44 @@ XML;
         $this->assertStringContainsString('AirPricingSolution', $xml);
     }
 
+    public function test_air_create_reservation_fixes_title_gender_and_multi_pax_phones(): void
+    {
+        $builder = new TravelportAirXmlBuilder;
+        $xml = $builder->build('air_create_reservation', [
+            '_air_pricing_solution_xml' => '      <air:AirPricingSolution Key="s1" TotalPrice="USD200"/>',
+            'passengers' => [
+                [
+                    'prefix' => 'Mr', // mismatched with Female — must become Ms/F
+                    'first' => 'Ada',
+                    'last' => 'Lovelace',
+                    'email' => 'ada@example.com',
+                    'phone' => '+905397766610',
+                    'dob' => '1985-11-20',
+                    'gender' => 'F',
+                    'type' => 'ADT',
+                ],
+                [
+                    'prefix' => 'Mr',
+                    'first' => 'Alan',
+                    'last' => 'Turing',
+                    'email' => 'alan@example.com',
+                    'phone' => '+905397766611',
+                    'dob' => '1988-01-01',
+                    'gender' => 'M',
+                    'type' => 'ADT',
+                ],
+            ],
+            'form_of_payment' => 'Reserve',
+        ], 52);
+
+        $this->assertStringContainsString('Prefix="Ms"', $xml);
+        $this->assertStringContainsString('Gender="F"', $xml);
+        $this->assertStringContainsString('Number="905397766610"', $xml);
+        $this->assertStringContainsString('Key="2"', $xml);
+        $this->assertStringContainsString('Alan', $xml);
+        $this->assertStringContainsString('FormOfPayment Type="Cash"', $xml);
+    }
+
     /**
      * @return array<string, mixed>
      */

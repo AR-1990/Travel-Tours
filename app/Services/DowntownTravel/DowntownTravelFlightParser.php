@@ -28,6 +28,15 @@ class DowntownTravelFlightParser
             }
         }
 
+        // Downtown sometimes returns the same itinerary/price more than once (different digests).
+        $solutions = \App\Support\AggregatedFlightSearch::dedupeIdenticalFares(
+            array_map(static function (array $row): array {
+                $row['provider'] = 'downtown_travel';
+
+                return $row;
+            }, $solutions)
+        );
+
         return [
             'ok' => true,
             'message' => $solutions === []
@@ -65,6 +74,14 @@ class DowntownTravelFlightParser
             ?? $passengerTotal
         );
         $base = (float) (data_get($offer, 'price.airline_base_fare') ?? 0);
+        $passengerPerPax = data_get($offer, 'price.pricing_options.agent_cash.passenger_per_pax')
+            ?? data_get($offer, 'price.pricing_options.passenger_cc.passenger_per_pax')
+            ?? data_get($offer, 'price.passenger_per_pax')
+            ?? null;
+        $agentNetPerPax = data_get($offer, 'price.pricing_options.agent_cash.agent_net_per_pax')
+            ?? data_get($offer, 'price.pricing_options.passenger_cc.agent_net_per_pax')
+            ?? null;
+        $perPax = is_array($passengerPerPax) ? $this->normalizePerPax($passengerPerPax) : [];
         $carrierIata = strtoupper((string) data_get($offer, 'validating_carrier.iata', ''));
         $carrierName = trim((string) data_get($offer, 'validating_carrier.name', $carrierIata));
 
@@ -81,18 +98,28 @@ class DowntownTravelFlightParser
                 if (! is_array($raw)) {
                     continue;
                 }
-                $mapped = $this->mapSegment($raw);
-                $legSegments[] = $mapped;
-                $flatSegments[] = $mapped;
+                $legSegments[] = $this->mapSegment($raw);
             }
             if ($legSegments !== []) {
                 $priceClassIdx = $leg['price_class'] ?? null;
-                $cabinLabel = is_int($priceClassIdx) && isset($priceClasses[$priceClassIdx]['name'])
-                    ? (string) $priceClasses[$priceClassIdx]['name']
+                $priceClassName = is_int($priceClassIdx) && isset($priceClasses[$priceClassIdx]['name'])
+                    ? trim((string) $priceClasses[$priceClassIdx]['name'])
                     : '';
+                $cabinLabel = $this->cabinFromPriceClass($priceClassName);
+                if ($cabinLabel !== '') {
+                    foreach ($legSegments as $i => $seg) {
+                        if (trim((string) ($seg['cabin'] ?? '')) === '') {
+                            $legSegments[$i]['cabin'] = $cabinLabel;
+                        }
+                    }
+                }
+                foreach ($legSegments as $seg) {
+                    $flatSegments[] = $seg;
+                }
                 $journeys[] = [
                     'travel_time' => '',
-                    'cabin' => $cabinLabel,
+                    'cabin' => $cabinLabel !== '' ? $cabinLabel : $priceClassName,
+                    'fare_brand' => $priceClassName,
                     'segments' => $legSegments,
                 ];
             }
@@ -113,6 +140,8 @@ class DowntownTravelFlightParser
             'total_amount' => $passengerTotal,
             'agent_net_total' => $agentNetTotal,
             'passenger_total' => $passengerTotal,
+            'passenger_per_pax' => $perPax,
+            'agent_net_per_pax' => is_array($agentNetPerPax) ? $this->normalizePerPax($agentNetPerPax) : [],
             'travel_document_required' => (bool) ($offer['travel_document_required'] ?? false),
             'date_of_birth_required' => (bool) ($offer['date_of_birth_required'] ?? true),
             'plating_carrier' => $carrierIata,
@@ -151,11 +180,46 @@ class DowntownTravelFlightParser
             'departure' => $depTs,
             'arrival' => $arrTs,
             'cabin' => (string) ($raw['cabin'] ?? ''),
-            'booking_class' => (string) ($raw['booking_class'] ?? ''),
+            'booking_class' => (string) ($raw['booking_class'] ?? $raw['class_of_service'] ?? ''),
+            'class_of_service' => (string) ($raw['class_of_service'] ?? $raw['booking_class'] ?? ''),
             'equipment' => (string) data_get($raw, 'vehicle.name', data_get($raw, 'vehicle.code', '')),
             'terminal_dep' => data_get($raw, 'departure_point.terminal'),
             'terminal_arr' => data_get($raw, 'arrival_point.terminal'),
         ];
+    }
+
+    protected function cabinFromPriceClass(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return '';
+        }
+
+        if (preg_match('/^(premium\s*economy|economy|business|first(?:\s*class)?)$/i', $name)) {
+            return $name;
+        }
+
+        return '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     * @return array{adult?: float, child?: float, infant?: float}
+     */
+    protected function normalizePerPax(array $raw): array
+    {
+        $out = [];
+        foreach (['adult' => ['adult', 'adt', 'ADT'], 'child' => ['child', 'chd', 'cnn', 'CHD', 'CNN'], 'infant' => ['infant', 'inf', 'INF']] as $key => $aliases) {
+            foreach ($aliases as $alias) {
+                if (! array_key_exists($alias, $raw) || $raw[$alias] === null || $raw[$alias] === '') {
+                    continue;
+                }
+                $out[$key] = round((float) $raw[$alias], 2);
+                break;
+            }
+        }
+
+        return $out;
     }
 
     protected function money(float $amount, string $currency): string

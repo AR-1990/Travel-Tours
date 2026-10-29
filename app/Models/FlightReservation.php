@@ -150,6 +150,34 @@ class FlightReservation extends Model
         return $this->provider() === 'downtown_travel';
     }
 
+    public function isPublicChannel(): bool
+    {
+        return strtolower(trim((string) $this->channel)) === 'public';
+    }
+
+    /**
+     * B2C customers must not run Downtown agent ticketing (agent_cash / void / refund).
+     * Tickets are issued by agency staff only after payment is confirmed.
+     */
+    public function allowsCustomerDowntownTicketing(): bool
+    {
+        if (! $this->isDowntownTravel()) {
+            return true;
+        }
+
+        return ! $this->isPublicChannel();
+    }
+
+    /**
+     * Card / bank FOPs on B2C cannot issue without collected payment details.
+     */
+    public function requiresCollectedPaymentBeforeIssue(): bool
+    {
+        $fop = strtolower(trim((string) $this->form_of_payment));
+
+        return in_array($fop, ['credit', 'debit', 'banktransfer'], true);
+    }
+
     public function providerLabel(): string
     {
         return \App\Support\FlightProvider::label($this->provider());
@@ -158,6 +186,228 @@ class FlightReservation extends Model
     public function passengerName(): string
     {
         return trim(($this->passenger_prefix ? $this->passenger_prefix.' ' : '').($this->passenger_first ?? '').' '.($this->passenger_last ?? ''));
+    }
+
+    public function pnrLabel(): string
+    {
+        foreach ([$this->air_reservation_locator, $this->provider_locator, $this->universal_locator] as $code) {
+            $code = trim((string) $code);
+            if ($code !== '') {
+                return $code;
+            }
+        }
+
+        return '—';
+    }
+
+    public function ticketNumbersLabel(): string
+    {
+        $tickets = is_array($this->ticket_numbers) ? $this->ticket_numbers : [];
+        $flat = [];
+        foreach ($tickets as $ticket) {
+            if (is_array($ticket)) {
+                $n = trim((string) ($ticket['number'] ?? $ticket['ticket_number'] ?? ''));
+                if ($n !== '') {
+                    $flat[] = $n;
+                }
+            } else {
+                $n = trim((string) $ticket);
+                if ($n !== '') {
+                    $flat[] = $n;
+                }
+            }
+        }
+
+        return $flat === [] ? '—' : implode(', ', $flat);
+    }
+
+    public function airlineSalesLabel(): string
+    {
+        $code = strtoupper(trim((string) $this->carrier));
+        if ($code === '') {
+            return '—';
+        }
+        $name = FlightDisplay::airlineName($code);
+
+        return $name !== '' && strtoupper($name) !== $code ? $code.' · '.$name : $code;
+    }
+
+    public function salesAgencyLabel(): string
+    {
+        if ($this->tenant?->name) {
+            return (string) $this->tenant->name;
+        }
+        if ($this->isPublicChannel()) {
+            return 'B2C / Public';
+        }
+
+        return '—';
+    }
+
+    public function salesAgentLabel(): string
+    {
+        $user = $this->user;
+        if (! $user) {
+            return '—';
+        }
+
+        $name = trim((string) (($user->first_name ?? '').' '.($user->last_name ?? '')));
+        if ($name !== '') {
+            return $name;
+        }
+
+        return trim((string) ($user->username ?: $user->email)) ?: '—';
+    }
+
+    public function salesRouteLabel(): string
+    {
+        $codes = [];
+        $segments = data_get($this->itinerary, 'segments');
+        if (! is_array($segments) || $segments === []) {
+            $segments = [];
+            foreach (data_get($this->itinerary, 'journeys', []) as $journey) {
+                foreach (($journey['segments'] ?? []) as $seg) {
+                    $segments[] = $seg;
+                }
+            }
+        }
+        foreach ($segments as $seg) {
+            if (! is_array($seg)) {
+                continue;
+            }
+            $o = strtoupper(trim((string) ($seg['origin'] ?? '')));
+            $d = strtoupper(trim((string) ($seg['destination'] ?? '')));
+            if ($o !== '' && ($codes === [] || end($codes) !== $o)) {
+                $codes[] = $o;
+            }
+            if ($d !== '') {
+                $codes[] = $d;
+            }
+        }
+        if ($codes !== []) {
+            return implode('-', $codes);
+        }
+
+        $o = strtoupper(trim((string) $this->origin));
+        $d = strtoupper(trim((string) $this->destination));
+
+        return ($o !== '' && $d !== '') ? $o.'-'.$d : '—';
+    }
+
+    public function salesArrivalLabel(): string
+    {
+        if ($this->return_date) {
+            return $this->return_date->format('Y-m-d');
+        }
+
+        $segments = data_get($this->itinerary, 'segments');
+        if (is_array($segments) && $segments !== []) {
+            $last = end($segments);
+            $arrival = is_array($last) ? ($last['arrival'] ?? null) : null;
+            if ($arrival) {
+                try {
+                    return \Illuminate\Support\Carbon::parse((string) $arrival)->format('Y-m-d');
+                } catch (\Throwable) {
+                }
+            }
+        }
+
+        return optional($this->departure_date)?->format('Y-m-d') ?: '—';
+    }
+
+    public function salesCurrency(): string
+    {
+        $cur = strtoupper(trim((string) ($this->currency ?: $this->booking_currency)));
+        if ($cur !== '') {
+            return $cur;
+        }
+        foreach ([$this->total_price, $this->base_price, $this->taxes] as $raw) {
+            $parsed = FlightDisplay::parsePrice(is_scalar($raw) ? (string) $raw : null);
+            if ($parsed && ($parsed['currency'] ?? '') !== '') {
+                return $parsed['currency'];
+            }
+        }
+
+        return '—';
+    }
+
+    public function moneyAmount(mixed $raw): ?float
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        if (is_int($raw) || is_float($raw)) {
+            return round((float) $raw, 2);
+        }
+
+        $value = trim((string) $raw);
+        if ($value === '') {
+            return null;
+        }
+
+        $parsed = FlightDisplay::parsePrice($value);
+        if ($parsed && isset($parsed['amount']) && is_numeric(str_replace(',', '', $parsed['amount']))) {
+            return round((float) str_replace(',', '', $parsed['amount']), 2);
+        }
+
+        if (is_numeric($value)) {
+            return round((float) $value, 2);
+        }
+
+        $cleaned = preg_replace('/[^\d.]/', '', $value) ?? '';
+        if ($cleaned === '' || $cleaned === '.') {
+            return null;
+        }
+
+        return round((float) $cleaned, 2);
+    }
+
+    public function salesTotalAmount(): ?float
+    {
+        return $this->moneyAmount($this->sell_total)
+            ?? $this->moneyAmount($this->total_price);
+    }
+
+    public function salesBaseAmount(): ?float
+    {
+        return $this->moneyAmount($this->base_price);
+    }
+
+    public function salesTaxAmount(): ?float
+    {
+        return $this->moneyAmount($this->taxes);
+    }
+
+    public function salesFuelOtherAmount(): ?float
+    {
+        return $this->moneyAmount($this->airline_fees_total) ?? 0.0;
+    }
+
+    public function salesServiceFeeAmount(): ?float
+    {
+        // Per-person ticket fee stored on service_fee; fall back to markup total.
+        if ($this->service_fee !== null && $this->service_fee !== '') {
+            return $this->moneyAmount($this->service_fee);
+        }
+
+        return $this->moneyAmount($this->markup_amount) ?? 0.0;
+    }
+
+    public function salesMarkupAmount(): ?float
+    {
+        return $this->moneyAmount($this->markup_amount) ?? 0.0;
+    }
+
+    public function salesCommissionAmount(): ?float
+    {
+        return $this->moneyAmount($this->commission_amount) ?? 0.0;
+    }
+
+    public function salesProfitAmount(): ?float
+    {
+        return $this->moneyAmount($this->agent_profit)
+            ?? $this->moneyAmount($this->commission_amount)
+            ?? 0.0;
     }
 
     public function routeLabel(): string

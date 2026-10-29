@@ -82,6 +82,84 @@ class FinanceWalletMarkupTest extends TestCase
         $this->assertSame(160.0, $breakdown['sell_total']);
     }
 
+    public function test_breakdown_parses_downtown_spaced_prices_and_derives_taxes(): void
+    {
+        $svc = app(MarkupService::class);
+        $breakdown = $svc->breakdown([
+            'base_price' => 'USD 199.00',
+            'total_price' => 'USD 770.10',
+            'passenger_total' => 770.10,
+            'plating_carrier' => 'TK',
+            'currency' => 'USD',
+        ], null, 'downtown_travel', 0);
+
+        $this->assertSame(199.0, $breakdown['fare']);
+        $this->assertSame(571.1, $breakdown['taxes']);
+        $this->assertSame(770.1, $breakdown['airline_total']);
+        $this->assertSame('USD', $breakdown['currency']);
+        $this->assertSame(770.1, $breakdown['sell_total']);
+    }
+
+    public function test_fixed_ticket_fee_multiplies_by_passengers_and_apply_amount(): void
+    {
+        TenantMarkup::query()->create([
+            'tenant_id' => null,
+            'scope' => TenantMarkup::SCOPE_GLOBAL,
+            'scope_key' => null,
+            'mode' => TenantMarkup::MODE_FIXED,
+            'value' => 100,
+            'is_active' => true,
+            'priority' => 10,
+        ]);
+
+        $svc = app(MarkupService::class);
+        $rule = $svc->breakdown([
+            'base_price' => 'USD659.00',
+            'taxes' => 'USD585.89',
+            'total_price' => 'USD1244.89',
+            'plating_carrier' => 'PK',
+        ], null, 'travelport', 0, null, null, 2);
+
+        $this->assertSame(200.0, $rule['markup_amount']);
+        $this->assertSame(100.0, $rule['ticket_fee_per_person']);
+        $this->assertSame(1444.89, $rule['sell_total']);
+        $this->assertSame(2, $rule['passengers']);
+
+        $manual = $svc->breakdown([
+            'base_price' => 'USD659.00',
+            'taxes' => 'USD585.89',
+            'total_price' => 'USD1244.89',
+            'plating_carrier' => 'PK',
+        ], null, 'travelport', 50, null, null, 2, 50.0);
+
+        $this->assertSame(100.0, $manual['markup_amount']);
+        $this->assertSame(50.0, $manual['ticket_fee_per_person']);
+        $this->assertSame(1344.89, $manual['sell_total']);
+    }
+
+    public function test_breakdown_converts_amounts_to_display_currency_when_rate_exists(): void
+    {
+        \App\Models\Finance\CurrencyRate::query()->create([
+            'base_currency' => 'USD',
+            'quote_currency' => 'PKR',
+            'rate' => 280,
+            'is_active' => true,
+        ]);
+
+        $breakdown = app(MarkupService::class)->breakdown([
+            'base_price' => 'USD100.00',
+            'taxes' => 'USD20.00',
+            'total_price' => 'USD120.00',
+            'plating_carrier' => 'EK',
+        ], null, 'travelport', 0, null, 'PKR', 1);
+
+        $this->assertSame('PKR', $breakdown['currency']);
+        $this->assertSame(28000.0, $breakdown['fare']);
+        $this->assertSame(5600.0, $breakdown['taxes']);
+        $this->assertSame(33600.0, $breakdown['airline_total']);
+        $this->assertSame(280.0, $breakdown['currency_rate']);
+    }
+
     public function test_ticket_pdf_binary_is_valid_pdf(): void
     {
         $reservation = new FlightReservation([

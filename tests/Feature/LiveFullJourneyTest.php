@@ -79,13 +79,17 @@ class LiveFullJourneyTest extends TestCase
 
             $unique = Str::upper(Str::random(5));
             $book = $this->actingAs($user)->post(route('admin.flights.book.store'), [
-                'passenger_prefix' => 'Mr',
-                'passenger_first' => 'Journey',
-                'passenger_last' => 'Test'.$unique,
-                'passenger_gender' => 'M',
-                'passenger_dob' => '1990-05-15',
-                'passenger_email' => 'journey.test@example.com',
-                'passenger_phone' => '447700900123',
+                'country_code' => '+44',
+                'passengers' => [[
+                    'type' => 'ADT',
+                    'prefix' => 'Mr',
+                    'first' => 'Journey',
+                    'last' => 'Test'.$unique,
+                    'gender' => 'M',
+                    'dob' => '1990-05-15',
+                    'email' => 'journey.test@example.com',
+                    'phone' => '7700900123',
+                ]],
                 'form_of_payment' => 'Cash',
             ]);
 

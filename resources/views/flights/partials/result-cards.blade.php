@@ -30,7 +30,9 @@
                         $searchInput['departure_date'] ?? null,
                         $searchInput['return_date'] ?? null,
                         (int) ($searchInput['adults'] ?? 1),
-                        $searchInput['legs'] ?? null
+                        $searchInput['legs'] ?? null,
+                        (int) ($searchInput['children'] ?? 0),
+                        (int) ($searchInput['infants'] ?? 0)
                     ) }}
                 </p>
             @endif
@@ -40,9 +42,17 @@
         </a>
     </div>
 
+    @include('flights.partials.result-filters', [
+        'filterSolutions' => $searchResult['solutions'] ?? [],
+        'resultsListId' => 'agency-flight-results-list',
+    ])
+
+    <div id="agency-flight-results-list">
     @foreach($searchResult['solutions'] as $sol)
         @php
-            $price = \App\Support\FlightDisplay::parsePrice($sol['total_price'] ?? null);
+            $displayCurrency = $displayCurrency ?? \App\Support\DisplayCurrency::resolve(auth()->user());
+            $price = \App\Support\FlightDisplay::forDisplayCurrency($sol['total_price'] ?? null, $displayCurrency);
+            $basePriceLabel = \App\Support\FlightDisplay::forDisplayCurrency($sol['base_price'] ?? null, $displayCurrency);
             $journeys = $sol['journeys'] ?? [];
             if ($journeys === [] && !empty($sol['segments'])) {
                 $journeys = [['travel_time' => null, 'segments' => $sol['segments']]];
@@ -58,8 +68,20 @@
                 'downtown_travel' => (bool) ($downtownTravelReady ?? false),
                 default => (bool) ($providerReady ?? $travelportReady ?? false),
             };
+            $stopBucket = \App\Support\FlightDisplay::stopBucket($sol);
+            $airlineCodes = \App\Support\FlightDisplay::airlineCodes($sol);
+            $airlineCode = \App\Support\FlightDisplay::primaryAirlineCode($sol);
+            $perPaxLines = \App\Support\FlightDisplay::perPaxPriceLines(
+                is_array($sol['passenger_per_pax'] ?? null) ? $sol['passenger_per_pax'] : null,
+                (string) ($price['currency'] ?? ($sol['currency'] ?? 'USD'))
+            );
         @endphp
-        <article class="flight-result-card">
+        <article
+            class="flight-result-card js-flight-result"
+            data-stops="{{ $stopBucket }}"
+            data-airline="{{ $airlineCode }}"
+            data-airlines="{{ implode(',', $airlineCodes) }}"
+        >
             <div class="row align-items-start g-3">
                 <div class="col-auto">
                     <div class="carrier-badge" title="{{ $carrierName }}">{{ $carrier }}</div>
@@ -97,21 +119,35 @@
                                     $fn = trim((string) ($seg['flight_number'] ?? ''));
                                     $segFlight = $fn !== '' ? $segFlight.' '.$fn : $segFlight;
                                 }
+                                $segCabin = \App\Support\FlightDisplay::cabinLabel(
+                                    $seg['cabin'] ?? ($journey['cabin'] ?? ($sol['cabin'] ?? null))
+                                );
+                                $segClass = \App\Support\FlightDisplay::bookingClass(is_array($seg) ? $seg : []);
                             @endphp
                             <div class="d-flex flex-wrap align-items-center gap-3 mb-2 pb-2 {{ !$loop->last ? 'border-bottom border-light' : '' }}">
                                 <div>
                                     <div class="flight-time">{{ $dep['time'] ?? '—' }}</div>
                                     <div class="flight-airport-code">{{ $segOrigin }}</div>
-                                    <div class="small text-muted">{{ $dep['date'] ?? '' }}</div>
+                                    <div class="small text-muted">{{ $dep['date'] ?? '' }}@if(!empty($dep['weekday'])), {{ $dep['weekday'] }}@endif</div>
                                 </div>
                                 <div class="text-muted small text-center px-2">
                                     <i class="fas fa-plane text-primary"></i>
                                     <div>{{ $segFlight }}</div>
+                                    @if($segCabin !== '' || $segClass !== '')
+                                        <div class="mt-1">
+                                            @if($segCabin !== '')
+                                                <span class="badge bg-light text-dark">Cabin {{ $segCabin }}</span>
+                                            @endif
+                                            @if($segClass !== '')
+                                                <span class="badge bg-light text-dark">Class {{ $segClass }}</span>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                                 <div>
                                     <div class="flight-time">{{ $arr['time'] ?? '—' }}</div>
                                     <div class="flight-airport-code">{{ $segDest }}</div>
-                                    <div class="small text-muted">{{ $arr['date'] ?? '' }}</div>
+                                    <div class="small text-muted">{{ $arr['date'] ?? '' }}@if(!empty($arr['weekday']) && ($arr['date'] ?? '') !== ($dep['date'] ?? '')), {{ $arr['weekday'] }}@endif</div>
                                 </div>
                             </div>
                         @endforeach
@@ -125,9 +161,14 @@
                         @else
                             <div class="price-amount small">{{ $sol['total_price'] ?? '—' }}</div>
                         @endif
-                        @if($sol['base_price'])
+                        @if($basePriceLabel)
+                            <div class="small text-muted">Base {{ $basePriceLabel['currency'] }} {{ $basePriceLabel['amount'] }}</div>
+                        @elseif(!empty($sol['base_price']))
                             <div class="small text-muted">Base {{ $sol['base_price'] }}</div>
                         @endif
+                        @foreach($perPaxLines as $paxLine)
+                            <div class="small text-muted">{{ $paxLine }}</div>
+                        @endforeach
                         <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.price') }}" class="mt-2">
                             @csrf
                             <input type="hidden" name="solution_key" value="{{ $sol['key'] ?? '' }}">
@@ -141,6 +182,7 @@
             </div>
         </article>
     @endforeach
+    </div>
 
     @include('flights.partials.results-pagination')
 @elseif(!empty($searchResult) && ($searchResult['ok'] ?? false))

@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 class FlightProviderUiTest extends TestCase
 {
-    public function test_admin_search_shows_provider_selector(): void
+    public function test_admin_search_shows_provider_selector_with_all(): void
     {
         $user = User::where('email', 'superadmin@traveltours.com')->first();
         if (! $user) {
@@ -21,11 +21,14 @@ class FlightProviderUiTest extends TestCase
             ->assertOk()
             ->assertSee('Search via', false)
             ->assertSee('name="provider"', false)
+            ->assertSee('value="all"', false)
             ->assertSee('Travelport', false)
-            ->assertSee('SunSpring', false);
+            ->assertSee('SunSpring', false)
+            ->assertSee('Travelport ready', false)
+            ->assertDontSee('Popular routes:', false);
     }
 
-    public function test_agent_and_subagent_search_show_provider_selector(): void
+    public function test_agent_and_subagent_search_hide_provider_selector_and_status(): void
     {
         $tenantAdmin = User::where('email', 'tenantadmin@traveltours.com')->first();
         $salesAgent = User::where('email', 'sales.agent@traveltours.com')->first();
@@ -36,14 +39,18 @@ class FlightProviderUiTest extends TestCase
         $this->actingAs($tenantAdmin)
             ->get(route('agent.flights.search'))
             ->assertOk()
-            ->assertSee('Search via', false)
-            ->assertSee('SunSpring', false);
+            ->assertDontSee('Search via', false)
+            ->assertDontSee('Travelport ready', false)
+            ->assertDontSee('Popular routes:', false)
+            ->assertSee('name="provider"', false)
+            ->assertSee('value="all"', false);
 
         $this->actingAs($salesAgent)
             ->get(route('subagent.flights.search'))
             ->assertOk()
-            ->assertSee('Search via', false)
-            ->assertSee('SunSpring', false);
+            ->assertDontSee('Search via', false)
+            ->assertDontSee('Travelport ready', false)
+            ->assertDontSee('Popular routes:', false);
     }
 
     public function test_public_home_and_flights_page_search_without_provider_toggle(): void

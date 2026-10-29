@@ -529,32 +529,94 @@ Version         : 1.0
         $(e.target).closest(".passenger-box").find(".passenger-class-name").html(pcn);
     });
 
-    $(".plus-btn").on("click", function (e) {
-        var i = $(this).closest(".passenger-qty").children(".qty-amount").get(0).value++,
-            c = $(this).closest(".passenger-qty").children(".minus-btn");
+    function flightPaxBox($el) {
+        return $el.closest(".passenger-box[data-flight-pax-box='1']");
+    }
 
+    function syncFlightPaxButtons($box) {
+        if (!$box.length) return;
+        var max = parseInt($box.attr("data-max-passengers") || "9", 10) || 9;
+        var pa = parseInt($box.find(".passenger-adult").val(), 10) || 0;
+        var pc = parseInt($box.find(".passenger-children").val(), 10) || 0;
+        var pi = parseInt($box.find(".passenger-infant").val(), 10) || 0;
+        var tp = pa + pc + pi;
+        $box.find(".passenger-total-amount").html(tp);
+        $box.find(".passenger-qty[data-pax-role='adult'] .minus-btn").prop("disabled", pa <= 1);
+        $box.find(".passenger-qty[data-pax-role='child'] .minus-btn").prop("disabled", pc <= 0);
+        $box.find(".passenger-qty[data-pax-role='infant'] .minus-btn").prop("disabled", pi <= 0);
+        $box.find(".plus-btn").prop("disabled", tp >= max);
+    }
+
+    $(".plus-btn").on("click", function (e) {
+        var $qty = $(this).closest(".passenger-qty");
+        var $box = flightPaxBox($(this));
+        var input = $qty.children(".qty-amount").get(0);
+        if (!input) return;
+
+        if ($box.length) {
+            var max = parseInt($box.attr("data-max-passengers") || "9", 10) || 9;
+            var pa = parseInt($box.find(".passenger-adult").val(), 10) || 0;
+            var pc = parseInt($box.find(".passenger-children").val(), 10) || 0;
+            var pi = parseInt($box.find(".passenger-infant").val(), 10) || 0;
+            if (pa + pc + pi >= max) {
+                syncFlightPaxButtons($box);
+                return;
+            }
+            input.value = (parseInt(input.value, 10) || 0) + 1;
+            syncFlightPaxButtons($box);
+            return;
+        }
+
+        var i = input.value++;
+        var c = $qty.children(".minus-btn");
         i >= 0 && c.removeAttr("disabled");
         totalPessenger(e);
         totalRoom(e);
-    }),
-        $(".minus-btn").on("click", function (e) {
-            var i = $(this).closest(".passenger-qty").children(".qty-amount").get(0).value;
+    });
 
-            if (i <= 1) {
-                $(this).attr("disabled", "disabled");
-            } else {
-                $(this).closest(".passenger-qty").children(".qty-amount").get(0).value--;
-                totalPessenger(e);
-                totalRoom(e);
+    $(".minus-btn").on("click", function (e) {
+        var $qty = $(this).closest(".passenger-qty");
+        var $box = flightPaxBox($(this));
+        var input = $qty.children(".qty-amount").get(0);
+        if (!input) return;
+        var current = parseInt(input.value, 10) || 0;
+        var role = $qty.attr("data-pax-role") || "";
+        var min = role === "adult" ? 1 : 0;
+
+        if ($box.length) {
+            if (current <= min) {
+                syncFlightPaxButtons($box);
+                return;
             }
-        })
+            input.value = current - 1;
+            syncFlightPaxButtons($box);
+            return;
+        }
+
+        if (current <= 1) {
+            $(this).attr("disabled", "disabled");
+        } else {
+            input.value = current - 1;
+            totalPessenger(e);
+            totalRoom(e);
+        }
+    });
+
+    $(".passenger-box[data-flight-pax-box='1']").each(function () {
+        syncFlightPaxButtons($(this));
+    });
 
     function totalPessenger(e) {
-        var pa = parseInt($(e.target).closest(".passenger-box").find(".passenger-adult").val());
-        var pc = parseInt($(e.target).closest(".passenger-box").find(".passenger-children").val());
-        var pi = parseInt($(e.target).closest(".passenger-box").find(".passenger-infant").val());
+        var $box = $(e.target).closest(".passenger-box");
+        if ($box.is("[data-flight-pax-box='1']")) {
+            syncFlightPaxButtons($box);
+            return;
+        }
+        var pa = parseInt($box.find(".passenger-adult").val(), 10) || 0;
+        var pc = parseInt($box.find(".passenger-children").val(), 10) || 0;
+        var pi = parseInt($box.find(".passenger-infant").val(), 10) || 0;
         var tp = pa + pc + pi;
-        $(e.target).closest(".passenger-box").find(".passenger-total-amount").html(tp);
+        $box.find(".passenger-total-amount").html(tp);
     }
 
     function totalRoom(e) {

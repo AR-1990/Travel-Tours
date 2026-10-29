@@ -82,4 +82,100 @@ class AggregatedFlightSearchTest extends TestCase
         $this->assertCount(1, $merged['solutions']);
         $this->assertSame('sunspring', $merged['solutions'][0]['provider']);
     }
+
+    public function test_dedupe_drops_identical_downtown_cards_keeps_real_variants(): void
+    {
+        $segmentA = [
+            'carrier' => 'ET',
+            'flight_number' => '377',
+            'origin' => 'MGQ',
+            'destination' => 'ADD',
+            'departure' => '2026-11-03T11:50:00+03:00',
+            'arrival' => '2026-11-03T14:00:00+03:00',
+        ];
+        $segmentB = [
+            'carrier' => 'ET',
+            'flight_number' => '700',
+            'origin' => 'ADD',
+            'destination' => 'IST',
+            'departure' => '2026-11-03T16:00:00+03:00',
+            'arrival' => '2026-11-04T08:55:00+03:00',
+        ];
+        $segmentBLater = [
+            'carrier' => 'ET',
+            'flight_number' => '700',
+            'origin' => 'ADD',
+            'destination' => 'IST',
+            'departure' => '2026-11-03T16:00:00+03:00',
+            'arrival' => '2026-11-04T13:50:00+03:00',
+        ];
+
+        $merged = AggregatedFlightSearch::merge([
+            'downtown_travel' => [
+                'ok' => true,
+                'message' => 'dt',
+                'solutions' => [
+                    [
+                        'key' => 'dup-1',
+                        'total_price' => 'USD 1888.00',
+                        'plating_carrier' => 'ET',
+                        'segments' => [$segmentA, $segmentB],
+                        'digest' => 'aaa',
+                    ],
+                    [
+                        'key' => 'dup-2',
+                        'total_price' => 'USD 1888.00',
+                        'plating_carrier' => 'ET',
+                        'segments' => [$segmentA, $segmentB],
+                        'digest' => 'bbb',
+                    ],
+                    [
+                        'key' => 'variant-arrival',
+                        'total_price' => 'USD 1985.10',
+                        'plating_carrier' => 'ET',
+                        'segments' => [$segmentA, $segmentBLater],
+                        'digest' => 'ccc',
+                    ],
+                ],
+            ],
+            'travelport' => [
+                'ok' => true,
+                'message' => 'tp',
+                'solutions' => [[
+                    'key' => 'tp-same-itin',
+                    'total_price' => 'USD 1888.00',
+                    'plating_carrier' => 'ET',
+                    'segments' => [$segmentA, $segmentB],
+                ]],
+            ],
+        ]);
+
+        $keys = array_column($merged['solutions'], 'key');
+        $this->assertContains('dup-1', $keys);
+        $this->assertNotContains('dup-2', $keys);
+        $this->assertContains('variant-arrival', $keys);
+        // Same schedule from another API must remain selectable.
+        $this->assertContains('tp-same-itin', $keys);
+        $this->assertSame(2, $merged['sources']['downtown_travel']['count']);
+        $this->assertSame(1, $merged['sources']['travelport']['count']);
+    }
+
+    public function test_dedupe_drops_same_provider_key_and_digest(): void
+    {
+        $merged = AggregatedFlightSearch::merge([
+            'downtown_travel' => [
+                'ok' => true,
+                'message' => 'dt',
+                'solutions' => [
+                    ['key' => 'same-key', 'digest' => 'd1', 'total_price' => 'USD 10.00', 'plating_carrier' => 'FZ'],
+                    ['key' => 'same-key', 'digest' => 'd2', 'total_price' => 'USD 99.00', 'plating_carrier' => 'FZ'],
+                    ['key' => 'other-key', 'digest' => 'd1', 'total_price' => 'USD 11.00', 'plating_carrier' => 'F9'],
+                    ['key' => 'kept', 'digest' => 'd3', 'total_price' => 'USD 12.00', 'plating_carrier' => 'EK'],
+                ],
+            ],
+        ]);
+
+        $keys = array_column($merged['solutions'], 'key');
+        $this->assertSame(['same-key', 'kept'], $keys);
+    }
 }

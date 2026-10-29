@@ -9,6 +9,7 @@ use App\Services\SunSpring\SunSpringAirService;
 use App\Services\SunSpring\SunSpringIntegrationConfig;
 use App\Services\DowntownTravel\DowntownTravelAirService;
 use App\Services\DowntownTravel\DowntownTravelIntegrationConfig;
+use App\Support\AggregatedFlightSearch;
 use App\Support\FlightProvider;
 use App\Support\FlightResultsPaginator;
 use Illuminate\Http\Request;
@@ -41,9 +42,13 @@ trait HandlesTravelportAir
             'operationGroups' => TravelportAirCatalog::groupedForUi(),
             'airportSearchUrl' => route('api.airports.search'),
             'canBookFlights' => $this->userCanBookFlights(),
+            'canChooseFlightProvider' => $this->userCanChooseFlightProvider(),
+            'showFlightProviderDiagnostics' => $this->userCanChooseFlightProvider(),
             'showDevPanel' => auth()->user()?->user_type === 'super_admin',
             'flightProvider' => FlightProvider::current(),
-            'flightProviders' => FlightProvider::options(),
+            'flightProviders' => $this->userCanChooseFlightProvider()
+                ? FlightProvider::optionsWithAll()
+                : FlightProvider::options(),
             'sunspringReady' => SunSpringIntegrationConfig::isReadyForAir(),
             'downtownTravelReady' => DowntownTravelIntegrationConfig::isReadyForAir(),
             'anyProviderReady' => TravelportIntegrationConfig::isReadyForAir()
@@ -96,22 +101,32 @@ trait HandlesTravelportAir
         $this->ensureFlightAccess();
         $this->ensureFlightSearchPermission();
 
-        if ($request->filled('provider')) {
+        if ($this->userCanChooseFlightProvider() && $request->filled('provider')) {
             FlightProvider::set((string) $request->input('provider'));
+        } elseif (! $this->userCanChooseFlightProvider()) {
+            FlightProvider::set(FlightProvider::ALL);
         }
 
         $data = array_merge($this->travelportViewBase(), $this->flightSearchViewExtras(), [
             'currentOperation' => TravelportAirCatalog::get('low_fare_search'),
             'operationKey' => 'low_fare_search',
-            'searchInput' => $request->only(['origin', 'destination', 'departure_date', 'return_date', 'adults', 'trip_type', 'provider', 'legs']),
+            'searchInput' => $request->only([
+                'origin', 'destination', 'departure_date', 'return_date',
+                'adults', 'children', 'infants', 'trip_type', 'provider', 'legs',
+            ]),
             'searchResult' => null,
         ]);
 
         if ($request->isMethod('post')) {
             $result = $this->runRouteSearch($request, $air, $sunspring);
             $input = $this->validatedFlightSearchInput($request)
-                ?? $request->only(['origin', 'destination', 'departure_date', 'return_date', 'adults', 'trip_type', 'legs']);
-            $input['provider'] = FlightProvider::current();
+                ?? $request->only([
+                    'origin', 'destination', 'departure_date', 'return_date',
+                    'adults', 'children', 'infants', 'trip_type', 'legs',
+                ]);
+            $input['provider'] = FlightProvider::isAggregated()
+                ? (string) ($result['provider'] ?? FlightProvider::ALL)
+                : FlightProvider::current();
 
             session([
                 'travelport.flight_search' => [
@@ -132,6 +147,9 @@ trait HandlesTravelportAir
             $data['hasPricingContext'] = match (FlightProvider::current()) {
                 FlightProvider::SUNSPRING => $sunspring->hasStoredPricingContext(),
                 FlightProvider::DOWNTOWN_TRAVEL => app(DowntownTravelAirService::class)->hasStoredPricingContext(),
+                FlightProvider::ALL => $air->hasStoredPricingContext()
+                    || $sunspring->hasStoredPricingContext()
+                    || app(DowntownTravelAirService::class)->hasStoredPricingContext(),
                 default => $air->hasStoredPricingContext(),
             };
             $data['canBookFlights'] = $this->userCanBookFlights();
@@ -253,12 +271,15 @@ trait HandlesTravelportAir
      */
     protected function runRouteSearch(Request $request, TravelportAirService $air, ?SunSpringAirService $sunspring = null): array
     {
-        if ($request->filled('provider')) {
+        if ($this->userCanChooseFlightProvider() && $request->filled('provider')) {
             FlightProvider::set((string) $request->input('provider'));
+        } elseif (! $this->userCanChooseFlightProvider()) {
+            FlightProvider::set(FlightProvider::ALL);
         }
 
         $tripType = $this->normalizeTripType((string) $request->input('trip_type', 'oneway'));
         $searchParams = null;
+        $providerRule = 'nullable|in:'.implode(',', FlightProvider::selectableIncludingAll());
 
         if ($tripType === 'multicity') {
             $validated = $request->validate([
@@ -267,8 +288,10 @@ trait HandlesTravelportAir
                 'legs.*.destination' => ['required', 'string', 'size:3'],
                 'legs.*.departure_date' => ['required', 'date', 'after_or_equal:today'],
                 'adults' => ['nullable', 'integer', 'min:1', 'max:9'],
+                'children' => ['nullable', 'integer', 'min:0', 'max:8'],
+                'infants' => ['nullable', 'integer', 'min:0', 'max:8'],
                 'trip_type' => ['nullable', 'in:oneway,roundtrip,multicity'],
-                'provider' => ['nullable', 'in:travelport,sunspring,downtown_travel'],
+                'provider' => [$providerRule],
             ]);
 
             $legs = [];
@@ -296,12 +319,19 @@ trait HandlesTravelportAir
             $first = $legs[0];
             $last = $legs[array_key_last($legs)];
 
+            $pax = \App\Support\FlightPassengerLimits::clampCounts(
+                (int) ($validated['adults'] ?? 1),
+                (int) ($validated['children'] ?? 0),
+                (int) ($validated['infants'] ?? 0),
+            );
             $searchParams = [
                 'origin' => $first['origin'],
                 'destination' => $last['destination'],
                 'departure_date' => $first['departure_date'],
                 'return_date' => null,
-                'adults' => (int) ($validated['adults'] ?? 1),
+                'adults' => $pax['adults'],
+                'children' => $pax['children'],
+                'infants' => $pax['infants'],
                 'trip_type' => 'multicity',
                 'legs' => $legs,
             ];
@@ -312,18 +342,33 @@ trait HandlesTravelportAir
                 'departure_date' => ['required', 'date', 'after_or_equal:today'],
                 'return_date' => [$tripType === 'roundtrip' ? 'required' : 'nullable', 'date', 'after:departure_date'],
                 'adults' => ['nullable', 'integer', 'min:1', 'max:9'],
+                'children' => ['nullable', 'integer', 'min:0', 'max:8'],
+                'infants' => ['nullable', 'integer', 'min:0', 'max:8'],
                 'trip_type' => ['nullable', 'in:oneway,roundtrip,multicity'],
-                'provider' => ['nullable', 'in:travelport,sunspring,downtown_travel'],
+                'provider' => [$providerRule],
             ]);
 
+            $pax = \App\Support\FlightPassengerLimits::clampCounts(
+                (int) ($validated['adults'] ?? 1),
+                (int) ($validated['children'] ?? 0),
+                (int) ($validated['infants'] ?? 0),
+            );
             $searchParams = [
                 'origin' => $validated['origin'],
                 'destination' => $validated['destination'],
                 'departure_date' => $validated['departure_date'],
                 'return_date' => ($tripType === 'roundtrip') ? ($validated['return_date'] ?? null) : null,
-                'adults' => (int) ($validated['adults'] ?? 1),
+                'adults' => $pax['adults'],
+                'children' => $pax['children'],
+                'infants' => $pax['infants'],
                 'trip_type' => $tripType,
             ];
+        }
+
+        if (FlightProvider::isAggregated()) {
+            $sunspring ??= app(SunSpringAirService::class);
+
+            return AggregatedFlightSearch::search($searchParams, $air, $sunspring);
         }
 
         if (FlightProvider::isDowntownTravel()) {

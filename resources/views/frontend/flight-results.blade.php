@@ -20,6 +20,7 @@
         </div>
     </div>
 
+    <div id="b2c-flights-shell">
     @include('frontend.partials.flight-search-box', [
         'searchSubmitLabel' => 'Update Search',
     ])
@@ -71,7 +72,9 @@
                                         $flightSearchInput['departure_date'] ?? null,
                                         $flightSearchInput['return_date'] ?? null,
                                         (int) ($flightSearchInput['adults'] ?? 1),
-                                        $flightSearchInput['legs'] ?? null
+                                        $flightSearchInput['legs'] ?? null,
+                                        (int) ($flightSearchInput['children'] ?? 0),
+                                        (int) ($flightSearchInput['infants'] ?? 0)
                                     ) }}
                                 </p>
                             @endif
@@ -95,68 +98,12 @@
                                 ->values()
                                 ->all();
                             $flightSearchResult['solutions'] = $sortedSolutions;
-                            $airlineFilters = [];
-                            foreach ($flightSearchResult['solutions'] as $filterSol) {
-                                $segs = $filterSol['segments'] ?? (($filterSol['journeys'][0]['segments'] ?? []) ?: []);
-                                $code = strtoupper((string) ($filterSol['plating_carrier'] ?? ($segs[0]['carrier'] ?? 'XX')));
-                                $code = preg_replace('/[^A-Za-z0-9]/', '', $code) ?: 'XX';
-                                $name = trim((string) ($filterSol['airline_name'] ?? $segs[0]['airline_name'] ?? \App\Support\FlightDisplay::airlineName($code)));
-                                $priceKey = \App\Support\FlightDisplay::priceSortKey($filterSol['total_price'] ?? null);
-                                if (! isset($airlineFilters[$code])) {
-                                    $airlineFilters[$code] = [
-                                        'code' => $code,
-                                        'name' => $name !== '' ? $name : $code,
-                                        'count' => 0,
-                                        'min_price' => $priceKey,
-                                        'price_label' => $filterSol['total_price'] ?? null,
-                                    ];
-                                }
-                                $airlineFilters[$code]['count']++;
-                                if (is_finite($priceKey) && $priceKey < ($airlineFilters[$code]['min_price'] ?? INF)) {
-                                    $airlineFilters[$code]['min_price'] = $priceKey;
-                                    $airlineFilters[$code]['price_label'] = $filterSol['total_price'] ?? null;
-                                }
-                            }
-                            uasort($airlineFilters, static fn ($a, $b) => ($a['min_price'] <=> $b['min_price']));
                         @endphp
 
-                        <div class="flight-result-filters mb-4" id="flight-result-filters">
-                            <div class="flight-stop-filters mb-3">
-                                <span class="small text-muted me-2">Stops:</span>
-                                <div class="btn-group flex-wrap" role="group" aria-label="Filter by stops">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary js-stop-filter active" data-stops="all">All</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary js-stop-filter" data-stops="0">Non-stop</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary js-stop-filter" data-stops="1">1 stop</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary js-stop-filter" data-stops="2">2+ stops</button>
-                                </div>
-                            </div>
-                            @if(count($airlineFilters) > 1)
-                                <div class="flight-airline-filters">
-                                    <div class="small text-muted mb-2">Airlines:</div>
-                                    <div class="d-flex flex-wrap gap-2" id="flight-airline-filter-row">
-                                        @foreach($airlineFilters as $airline)
-                                            @php
-                                                $parsedAirlinePrice = \App\Support\FlightDisplay::parsePrice($airline['price_label'] ?? null);
-                                            @endphp
-                                            <button
-                                                type="button"
-                                                class="btn btn-sm btn-light border js-airline-filter"
-                                                data-airline="{{ $airline['code'] }}"
-                                                aria-pressed="false"
-                                            >
-                                                <strong>{{ $airline['code'] }}</strong>
-                                                <span class="d-none d-md-inline"> {{ $airline['name'] }}</span>
-                                                @if($parsedAirlinePrice)
-                                                    <span class="text-muted"> · {{ $parsedAirlinePrice['currency'] }} {{ $parsedAirlinePrice['amount'] }}</span>
-                                                @endif
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                    <button type="button" class="btn btn-link btn-sm px-0 mt-1 js-airline-filter-clear">Clear airline filter</button>
-                                </div>
-                            @endif
-                            <p class="small text-muted mt-2 mb-0" id="flight-filter-empty" hidden>No flights match these filters. Clear filters to see all results.</p>
-                        </div>
+                        @include('flights.partials.result-filters', [
+                            'filterSolutions' => $flightSearchResult['solutions'],
+                            'resultsListId' => 'flight-results-list',
+                        ])
 
                         <div class="row" id="flight-results-list">
                             @foreach($flightSearchResult['solutions'] as $sol)
@@ -178,6 +125,7 @@
             </div>
         </div>
     </div>
+    </div>{{-- /#b2c-flights-shell --}}
 @endsection
 
 @push('styles')
@@ -198,6 +146,15 @@
 .flight-price-sort:focus {
     outline: none;
     border-color: var(--theme-color);
+}
+#flight-results-list .js-flight-result[hidden] {
+    display: none !important;
+}
+.js-airline-filter.is-unavailable {
+    opacity: 0.45;
+}
+.js-airline-filter.is-unavailable:not(.active) {
+    pointer-events: none;
 }
 </style>
 @endpush
@@ -291,70 +248,7 @@
     window.setTimeout(bindPriceSort, 50);
     window.setTimeout(function () { applyFlightPriceSort('asc'); }, 80);
 
-    (function bindResultFilters() {
-        let activeStops = 'all';
-        const activeAirlines = new Set();
-
-        function applyFilters() {
-            const cards = document.querySelectorAll('#flight-results-list .js-flight-result');
-            let visible = 0;
-            cards.forEach(function (card) {
-                const stops = card.getAttribute('data-stops') || '0';
-                const airline = (card.getAttribute('data-airline') || '').toUpperCase();
-                const stopOk = activeStops === 'all' || stops === activeStops;
-                const airlineOk = activeAirlines.size === 0 || activeAirlines.has(airline);
-                const show = stopOk && airlineOk;
-                card.classList.toggle('d-none', !show);
-                if (show) visible++;
-            });
-            const empty = document.getElementById('flight-filter-empty');
-            if (empty) empty.hidden = visible > 0;
-            const heading = document.querySelector('#flight-results-heading h5');
-            if (heading && cards.length) {
-                heading.textContent = visible + ' Results Found';
-            }
-        }
-
-        document.querySelectorAll('.js-stop-filter').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                document.querySelectorAll('.js-stop-filter').forEach(function (b) {
-                    b.classList.remove('active');
-                });
-                btn.classList.add('active');
-                activeStops = btn.getAttribute('data-stops') || 'all';
-                applyFilters();
-            });
-        });
-
-        document.querySelectorAll('.js-airline-filter').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                const code = (btn.getAttribute('data-airline') || '').toUpperCase();
-                if (!code) return;
-                if (activeAirlines.has(code)) {
-                    activeAirlines.delete(code);
-                    btn.classList.remove('active', 'btn-primary');
-                    btn.classList.add('btn-light');
-                    btn.setAttribute('aria-pressed', 'false');
-                } else {
-                    activeAirlines.add(code);
-                    btn.classList.add('active', 'btn-primary');
-                    btn.classList.remove('btn-light');
-                    btn.setAttribute('aria-pressed', 'true');
-                }
-                applyFilters();
-            });
-        });
-
-        document.querySelector('.js-airline-filter-clear')?.addEventListener('click', function () {
-            activeAirlines.clear();
-            document.querySelectorAll('.js-airline-filter').forEach(function (btn) {
-                btn.classList.remove('active', 'btn-primary');
-                btn.classList.add('btn-light');
-                btn.setAttribute('aria-pressed', 'false');
-            });
-            applyFilters();
-        });
-    })();
+    window.initFlightResultFilters?.();
 
     function stickyHeaderOffset() {
         const nav = document.querySelector('.navbar.fixed-top')
@@ -399,6 +293,49 @@
         scheduleScrollToResults();
     } else {
         window.addEventListener('load', scheduleScrollToResults);
+    }
+
+    // Re-search without full browser refresh: swap #b2c-flights-shell from redirected results HTML.
+    if (!window.__b2cFlightSearchAjax) {
+        window.__b2cFlightSearchAjax = true;
+        document.addEventListener('submit', async function (e) {
+            const form = e.target;
+            if (!(form instanceof HTMLFormElement) || form.id !== 'homeFlightSearchForm') return;
+            if (!document.getElementById('b2c-flights-shell')) return;
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action || window.location.href, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                    redirect: 'follow',
+                });
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const nextShell = doc.querySelector('#b2c-flights-shell');
+                const currentShell = document.getElementById('b2c-flights-shell');
+                if (!nextShell || !currentShell) {
+                    window.location.href = res.url || window.location.href;
+                    return;
+                }
+                currentShell.replaceWith(nextShell);
+                window.initAirportPickers?.();
+                window.initFlightUi?.();
+                window.initFlightProviderAirportScopes?.();
+                window.initFlightResultFilters?.();
+                if (res.url) {
+                    history.pushState({}, '', res.url);
+                }
+                window.setTimeout(scrollToFlightResults, 50);
+                window.setTimeout(function () {
+                    bindPriceSort();
+                    applyFlightPriceSort('asc');
+                }, 80);
+            } catch (_err) {
+                form.submit();
+            }
+        });
     }
 })();
 </script>

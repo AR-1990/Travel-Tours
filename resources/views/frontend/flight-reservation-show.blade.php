@@ -33,6 +33,7 @@
                 'flightTicket' => $flightTicket ?? null,
                 'gdsSnapshot' => $gdsSnapshot ?? null,
                 'canBookFlights' => true,
+                'isPublicBookingUi' => true,
                 'travelportReady' => $travelportReady ?? false,
                 'providerReady' => $providerReady ?? $travelportReady ?? false,
                 'ticketActionRoute' => $ticketActionRoute ?? null,

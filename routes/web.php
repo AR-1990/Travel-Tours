@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AirlineFeeController;
 use App\Http\Controllers\Admin\CurrencyRateController;
 use App\Http\Controllers\Admin\DebtorTypeController;
 use App\Http\Controllers\Admin\FinanceReportController;
+use App\Http\Controllers\Agent\FinanceController as AgentFinanceController;
 use App\Http\Controllers\Admin\FlightController as AdminFlightController;
 use App\Http\Controllers\Admin\HotelController as AdminHotelController;
 use App\Http\Controllers\Admin\IntegrationsController;
@@ -382,6 +383,10 @@ Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('agent')->na
     Route::get('/hotels/reservations', [AgentHotelController::class, 'reservationsIndex'])->name('hotels.reservations.index');
     Route::get('/hotels/reservations/{id}', [AgentHotelController::class, 'reservationsShow'])->name('hotels.reservations.show')->whereNumber('id');
     Route::post('/hotels/reservations/{id}/cancel', [AgentHotelController::class, 'reservationsCancel'])->name('hotels.reservations.cancel')->whereNumber('id');
+
+    Route::get('/finance/wallet', [AgentFinanceController::class, 'wallet'])->name('finance.wallet');
+    Route::get('/finance/statement', [AgentFinanceController::class, 'statement'])->name('finance.statement');
+    Route::get('/finance/sales', [AgentFinanceController::class, 'sales'])->name('finance.sales');
 });
 
 Route::middleware(['auth', RoleMiddleware::class.':1|2|3'])->prefix('sub-agent')->name('subagent.')->group(function () {

@@ -52,19 +52,21 @@ trait RunsFlightWorkflow
         $providerId = FlightProvider::fromResult(is_array($priceResult) ? $priceResult : $result);
         $serviceFee = (float) ($input['service_fee'] ?? 0);
         $agentCurrency = strtoupper(trim((string) ($input['booking_currency'] ?? '')));
-        if ($agentCurrency === '' && $user?->tenant_id) {
-            $agentCurrency = strtoupper((string) (\App\Models\System\Tenant::query()->whereKey($user->tenant_id)->value('currency') ?: ''));
-        }
         if ($agentCurrency === '') {
-            $agentCurrency = null;
+            $agentCurrency = \App\Support\DisplayCurrency::resolve($user);
         }
+        $passengers = is_array($input['passengers'] ?? null) && count($input['passengers']) > 0
+            ? count($input['passengers'])
+            : max(1, (int) ($search['adults'] ?? 1) + (int) ($search['children'] ?? 0) + (int) ($search['infants'] ?? 0));
         $breakdown = app(MarkupService::class)->breakdown(
             is_array($solution) ? $solution : null,
             $user?->tenant_id ? (int) $user->tenant_id : null,
             $providerId,
             $serviceFee,
             (string) ($input['form_of_payment'] ?? ''),
-            $agentCurrency
+            $agentCurrency,
+            $passengers,
+            array_key_exists('service_fee', $input) ? $serviceFee : null
         );
 
         $reservation = FlightReservation::query()->create([
@@ -585,6 +587,14 @@ trait RunsFlightWorkflow
 
     protected function runDowntownTicketFlow(FlightReservation $reservation): array
     {
+        if (! $reservation->allowsCustomerDowntownTicketing()) {
+            return [
+                'ok' => false,
+                'message' => 'Downtown tickets are issued by the agency after payment is confirmed. Card/bank bookings cannot be ticketed from the customer page without payment details.',
+                'provider' => 'downtown_travel',
+            ];
+        }
+
         $dt = app(DowntownTravelAirService::class);
         $resolved = $this->resolveDowntownBookingContext($reservation, $dt);
         if (! ($resolved['ok'] ?? false)) {

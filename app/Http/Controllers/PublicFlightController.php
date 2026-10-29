@@ -218,6 +218,12 @@ class PublicFlightController extends Controller
                 ->with('error', 'Cannot ticket a cancelled reservation.');
         }
 
+        if ($reservation->isDowntownTravel()) {
+            return redirect()
+                ->route('frontend.flights.reservations.show', $reservation)
+                ->with('error', 'Downtown tickets are issued after payment is confirmed. This step is not available on the customer booking page.');
+        }
+
         $locators = array_filter([
             'universal_locator' => $reservation->universal_locator,
             'air_reservation_locator' => $reservation->air_reservation_locator,
@@ -259,33 +265,19 @@ class PublicFlightController extends Controller
     public function reservationsVoid(int $id, TravelportAirService $air)
     {
         $reservation = $this->findPublicAccessibleReservation($id);
-        if (! $reservation->isDowntownTravel()) {
-            return redirect()
-                ->route('frontend.flights.reservations.show', $reservation)
-                ->with('error', 'Void is only available for Downtown Travel bookings.');
-        }
-
-        $result = $this->runDowntownVoidFlow($reservation);
 
         return redirect()
             ->route('frontend.flights.reservations.show', $reservation)
-            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Void complete.');
+            ->with('error', 'Void is only available to agency users after ticketing.');
     }
 
     public function reservationsRefund(int $id, TravelportAirService $air)
     {
         $reservation = $this->findPublicAccessibleReservation($id);
-        if (! $reservation->isDowntownTravel()) {
-            return redirect()
-                ->route('frontend.flights.reservations.show', $reservation)
-                ->with('error', 'Refund is only available for Downtown Travel bookings.');
-        }
-
-        $result = $this->runDowntownRefundFlow($reservation);
 
         return redirect()
             ->route('frontend.flights.reservations.show', $reservation)
-            ->with(($result['ok'] ?? false) ? 'success' : 'error', $result['message'] ?? 'Refund complete.');
+            ->with('error', 'Refund is only available to agency users after ticketing.');
     }
 
     public function reservationsCancelTrack(int $id)

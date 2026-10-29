@@ -7,8 +7,8 @@
         <div class="hero-single" style="background: url({{ asset('assets/img/hero/hero-1.jpg') }})">
             <div class="container">
                 <div class="hero-content text-center">
-                    <h1 class="hero-title">Passenger details</h1>
-                    <p class="mb-0">Complete your booking</p>
+                    <h1 class="hero-title">Complete booking</h1>
+                    <p class="mb-0">Flight details, rules, passengers, then payment</p>
                 </div>
             </div>
         </div>
@@ -39,20 +39,27 @@
                 </div>
             @endif
 
-            @include('frontend.partials.flight-price-summary', ['searchResult' => $flightPriceResult ?? null])
-
             @php
                 $bookProvider = $flightProvider ?? \App\Support\FlightProvider::fromResult($flightPriceResult ?? null);
             @endphp
-            <div class="mb-3 mt-3">
+            <div class="mb-3">
                 @include('flights.partials.provider-badge', [
                     'provider' => $bookProvider,
                 ])
             </div>
             <p class="small text-muted mb-3">{{ \App\Support\FlightProvider::postBookFlowHint($bookProvider) }}</p>
 
-            <div class="card border-0 shadow-sm mt-4">
+            @include('flights.partials.book-itinerary-details', [
+                'searchResult' => $flightPriceResult ?? null,
+            ])
+
+            @include('flights.partials.book-flight-rules', [
+                'flightPriceResult' => $flightPriceResult ?? null,
+            ])
+
+            <div class="card border-0 shadow-sm mb-4 book-section book-section-passengers">
                 <div class="card-body p-4">
+                    <h2 class="h5 mb-3">3. Passenger details</h2>
                     <form method="POST" action="{{ route('frontend.flights.book.store') }}">
                         @csrf
                         @include('flights.partials.passenger-book-fields', [
@@ -62,6 +69,13 @@
                             'bookInput' => $bookInput ?? [],
                             'compact' => false,
                         ])
+
+                        @include('flights.partials.book-payment-fields', [
+                            'flightPriceResult' => $flightPriceResult ?? null,
+                            'flightProvider' => $bookProvider,
+                            'compact' => false,
+                        ])
+
                         <div class="mt-4 d-flex flex-wrap gap-2">
                             <button type="submit" class="theme-btn" @disabled(!($providerReady ?? $travelportReady ?? false))>
                                 @if($bookProvider === \App\Support\FlightProvider::DOWNTOWN_TRAVEL)
@@ -79,7 +93,7 @@
                         </div>
                         <p class="small text-muted mt-2 mb-0">
                             @if($bookProvider === \App\Support\FlightProvider::DOWNTOWN_TRAVEL)
-                                After confirm you can issue Downtown tickets, refresh the order, cancel, void, or refund from the reservation page.
+                                After confirm your booking is reserved. Downtown e-tickets are issued by the agency after payment is confirmed.
                             @elseif($bookProvider === \App\Support\FlightProvider::SUNSPRING)
                                 After confirm you can issue the SunSpring e-ticket from the reservation page.
                             @else

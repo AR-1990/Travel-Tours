@@ -109,9 +109,14 @@ trait NormalizesFlightSearchInput
     protected function validatedFlightSearchInput(\Illuminate\Http\Request $request): ?array
     {
         $tripType = $this->normalizeTripType((string) $request->input('trip_type', 'oneway'));
-        $adults = max(1, min(9, (int) $request->input('adults', (int) $request->input('adult', 1))));
-        $children = max(0, min(8, (int) $request->input('children', (int) $request->input('child', 0))));
-        $infants = max(0, min(8, (int) $request->input('infants', (int) $request->input('infant', (int) $request->input('inf', 0)))));
+        $clamped = \App\Support\FlightPassengerLimits::clampCounts(
+            (int) $request->input('adults', (int) $request->input('adult', 1)),
+            (int) $request->input('children', (int) $request->input('child', 0)),
+            (int) $request->input('infants', (int) $request->input('infant', (int) $request->input('inf', 0))),
+        );
+        $adults = $clamped['adults'];
+        $children = $clamped['children'];
+        $infants = $clamped['infants'];
         $cabinClass = trim((string) $request->input('cabin_class', 'Economy'));
         if (! in_array($cabinClass, ['Economy', 'Business', 'First Class'], true)) {
             $cabinClass = 'Economy';

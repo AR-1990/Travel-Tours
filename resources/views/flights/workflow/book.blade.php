@@ -20,8 +20,8 @@
     </nav>
 
     @include('admin.partials.page-header', [
-        'title' => 'Passenger details',
-        'subtitle' => 'Enter traveler information to create the reservation.',
+        'title' => 'Complete booking',
+        'subtitle' => 'Flight details, rules, passengers, then payment.',
         'icon' => 'fas fa-user',
     ])
 
@@ -72,10 +72,18 @@
     </div>
     <p class="small text-muted mb-3">{{ \App\Support\FlightProvider::postBookFlowHint($bookProvider) }}</p>
 
-    @include('frontend.partials.flight-price-summary', ['searchResult' => $flightPriceResult ?? null])
+    @include('flights.partials.book-itinerary-details', [
+        'searchResult' => $flightPriceResult ?? null,
+    ])
 
-    <div class="card border-0 shadow-sm mt-4">
+    @include('flights.partials.book-flight-rules', [
+        'flightPriceResult' => $flightPriceResult ?? null,
+        'flightsRoutePrefix' => $flightsRoutePrefix ?? null,
+    ])
+
+    <div class="card border-0 shadow-sm mb-4 book-section book-section-passengers">
         <div class="card-body">
+            <h2 class="h5 mb-3">3. Passenger details</h2>
             <form method="POST" action="{{ route($flightsRoutePrefix . '.flights.book.store') }}">
                 @csrf
                 @include('flights.partials.passenger-book-fields', [
@@ -85,6 +93,15 @@
                     'bookInput' => $bookInput ?? [],
                     'compact' => true,
                 ])
+
+                @include('flights.partials.book-payment-fields', [
+                    'flightPriceResult' => $flightPriceResult ?? null,
+                    'flightProvider' => $bookProvider,
+                    'searchInput' => $searchInput ?? [],
+                    'passengerSlots' => $passengerSlots ?? [],
+                    'compact' => true,
+                ])
+
                 <div class="mt-4 d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary btn-sm" @disabled(!($providerReady ?? $travelportReady ?? false))>
                         <i class="fas fa-check me-1"></i>

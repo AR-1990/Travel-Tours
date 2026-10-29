@@ -1,12 +1,12 @@
 @extends('admin.layouts.main')
 
-@section('title', 'Agency markup')
+@section('title', 'Ticket fee rules')
 
 @section('content')
 <div class="container-fluid panel-page">
     @include('admin.partials.page-header', [
-        'title' => 'Agency markup',
-        'subtitle' => 'Rules by airline, provider, or agent — percent or fixed.',
+        'title' => 'Ticket fee rules',
+        'subtitle' => 'Rules by airline, provider, or agent — percent or fixed. Applied as ticket fee on booking.',
         'icon' => 'fas fa-percent',
     ])
     @include('admin.partials.flash')

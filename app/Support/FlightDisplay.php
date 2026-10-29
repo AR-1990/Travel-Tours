@@ -114,6 +114,154 @@ class FlightDisplay
         return self::AIRLINES[$code] ?? $code;
     }
 
+    /**
+     * Normalize an IATA / marketing carrier code for filters (e.g. "fz" → "FZ", "flydubai" → "FZ").
+     */
+    public static function airlineCode(?string $code): string
+    {
+        $normalized = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $code) ?? '');
+        if ($normalized === '') {
+            return '';
+        }
+        if (isset(self::AIRLINES[$normalized])) {
+            return $normalized;
+        }
+
+        static $byName = null;
+        if ($byName === null) {
+            $byName = [];
+            foreach (self::AIRLINES as $iata => $name) {
+                $key = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $name) ?? '');
+                if ($key !== '') {
+                    $byName[$key] = $iata;
+                }
+            }
+            // Common marketing aliases that hosts sometimes send instead of IATA.
+            $byName['FLYDUBAI'] = 'FZ';
+            $byName['FRONTIER'] = 'F9';
+            $byName['FRONTIERAIRLINES'] = 'F9';
+        }
+
+        if (isset($byName[$normalized])) {
+            return $byName[$normalized];
+        }
+
+        // Prefer short IATA-like codes; drop long unknown names so filters stay clean.
+        return strlen($normalized) <= 3 ? $normalized : '';
+    }
+
+    /**
+     * Convert a host price label for on-screen display when a rate exists.
+     * Does not mutate stored API fares — returns host currency when no rate is configured.
+     *
+     * @return array{currency: string, amount: string, raw: ?string}|null
+     */
+    public static function forDisplayCurrency(?string $raw, ?string $displayCurrency = null): ?array
+    {
+        $parsed = self::parsePrice($raw);
+        if ($parsed === null) {
+            return null;
+        }
+
+        $to = strtoupper(trim((string) $displayCurrency));
+        $from = strtoupper(trim((string) ($parsed['currency'] ?? '')));
+        if ($to === '' || $from === '' || $to === $from) {
+            return $parsed;
+        }
+
+        $rate = app(\App\Services\Finance\CurrencyRateService::class)->configuredRate($from, $to);
+        if ($rate === null) {
+            return $parsed;
+        }
+
+        $amount = round((float) str_replace(',', '', (string) $parsed['amount']) * $rate, 2);
+
+        return [
+            'currency' => $to,
+            'amount' => number_format($amount, 2, '.', ''),
+            'raw' => $raw,
+        ];
+    }
+
+    /**
+     * Outbound (first journey) stop count for filters: 0 / 1 / 2+.
+     * Uses journey segments so round-trip return legs do not inflate stops.
+     *
+     * @param  array<string, mixed>  $solution
+     */
+    public static function stopBucket(array $solution): string
+    {
+        $segments = [];
+        if (is_array($solution['journeys'][0]['segments'] ?? null) && $solution['journeys'][0]['segments'] !== []) {
+            $segments = $solution['journeys'][0]['segments'];
+        } elseif (is_array($solution['segments'] ?? null)) {
+            $segments = $solution['segments'];
+        }
+
+        $stops = max(0, count($segments) - 1);
+
+        return $stops === 0 ? '0' : ($stops === 1 ? '1' : '2');
+    }
+
+    /**
+     * Primary display carrier (plating / validating), then marketing carriers on segments.
+     *
+     * @param  array<string, mixed>  $solution
+     * @return list<string>
+     */
+    public static function airlineCodes(array $solution): array
+    {
+        $codes = [];
+        $push = static function (?string $raw) use (&$codes): void {
+            $code = self::airlineCode($raw);
+            if ($code !== '' && $code !== 'XX') {
+                $codes[$code] = true;
+            }
+        };
+
+        $push($solution['plating_carrier'] ?? null);
+        $push($solution['airline_name'] ?? null);
+
+        $segmentLists = [];
+        if (is_array($solution['segments'] ?? null)) {
+            $segmentLists[] = $solution['segments'];
+        }
+        foreach ((array) ($solution['journeys'] ?? []) as $journey) {
+            if (is_array($journey['segments'] ?? null)) {
+                $segmentLists[] = $journey['segments'];
+            }
+        }
+
+        foreach ($segmentLists as $segments) {
+            foreach ($segments as $segment) {
+                if (! is_array($segment)) {
+                    continue;
+                }
+                $push($segment['carrier'] ?? null);
+                $push($segment['marketing_carrier'] ?? null);
+                $push($segment['operating_carrier'] ?? null);
+                $push($segment['airline_name'] ?? null);
+            }
+        }
+
+        return array_keys($codes);
+    }
+
+    /**
+     * Primary airline code for card badge / default filter key.
+     *
+     * @param  array<string, mixed>  $solution
+     */
+    public static function primaryAirlineCode(array $solution): string
+    {
+        $codes = self::airlineCodes($solution);
+        if ($codes !== []) {
+            return $codes[0];
+        }
+
+        return 'XX';
+    }
+
     public static function flightLabel(?string $carrier, ?string $flightNumber): string
     {
         $airline = self::airlineName($carrier);
@@ -140,7 +288,16 @@ class FlightDisplay
             return null;
         }
 
-        if (preg_match('/^([A-Z]{3})([\d,.]+)$/i', trim($raw), $m)) {
+        // Travelport: "USD900.00" · Downtown / display: "USD 900.00"
+        if (preg_match('/^([A-Z]{3})\s*([\d,.]+)$/i', trim($raw), $m)) {
+            return [
+                'currency' => strtoupper($m[1]),
+                'amount' => number_format((float) str_replace(',', '', $m[2]), 2),
+                'raw' => $raw,
+            ];
+        }
+
+        if (preg_match('/([A-Z]{3})\s*([\d,.]+)/i', trim($raw), $m)) {
             return [
                 'currency' => strtoupper($m[1]),
                 'amount' => number_format((float) str_replace(',', '', $m[2]), 2),
@@ -196,10 +353,104 @@ class FlightDisplay
     }
 
     /**
+     * Human label for segment / journey cabin (Economy, Business…).
+     */
+    public static function cabinLabel(?string $cabin): string
+    {
+        $raw = trim((string) $cabin);
+        if ($raw === '') {
+            return '';
+        }
+
+        $key = strtolower(preg_replace('/[\s_]+/', ' ', $raw) ?? $raw);
+        $map = [
+            'y' => 'Economy',
+            'economy' => 'Economy',
+            'coach' => 'Economy',
+            'w' => 'Premium Economy',
+            'premium economy' => 'Premium Economy',
+            'premiumeconomy' => 'Premium Economy',
+            'c' => 'Business',
+            'business' => 'Business',
+            'j' => 'Business',
+            'f' => 'First',
+            'first' => 'First',
+            'first class' => 'First',
+        ];
+
+        return $map[$key] ?? ucwords($key);
+    }
+
+    /**
+     * Booking / RBD class letter (T, L, Y…).
+     *
+     * @param  array<string, mixed>  $segment
+     */
+    public static function bookingClass(array $segment): string
+    {
+        foreach (['booking_class', 'class_of_service', 'rbd'] as $key) {
+            $value = trim((string) ($segment[$key] ?? ''));
+            if ($value !== '') {
+                return strtoupper($value);
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Format Travelport ISO duration or minute counts for the results card.
+     */
+    public static function formatDuration(?string $raw): string
+    {
+        $value = trim((string) $raw);
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/i', $value, $m)) {
+            $hours = ((int) ($m[1] ?? 0)) * 24 + (int) ($m[2] ?? 0);
+            $minutes = (int) ($m[3] ?? 0);
+
+            return self::hoursMinutesLabel($hours, $minutes);
+        }
+
+        if (ctype_digit($value)) {
+            $total = (int) $value;
+            return self::hoursMinutesLabel(intdiv($total, 60), $total % 60);
+        }
+
+        return $value;
+    }
+
+    private static function hoursMinutesLabel(int $hours, int $minutes): string
+    {
+        if ($hours <= 0 && $minutes <= 0) {
+            return '';
+        }
+        if ($hours <= 0) {
+            return $minutes.'m';
+        }
+        if ($minutes <= 0) {
+            return $hours.'h';
+        }
+
+        return $hours.'h '.$minutes.'m';
+    }
+
+    /**
      * @param  list<array{origin?: string, destination?: string, departure_date?: string}>|null  $legs
      */
-    public static function tripSummary(?string $origin, ?string $destination, ?string $departure, ?string $returnDate, int $adults, ?array $legs = null): string
-    {
+    public static function tripSummary(
+        ?string $origin,
+        ?string $destination,
+        ?string $departure,
+        ?string $returnDate,
+        int $adults,
+        ?array $legs = null,
+        int $children = 0,
+        int $infants = 0
+    ): string {
         if (is_array($legs) && count($legs) >= 2) {
             $cities = [];
             foreach ($legs as $index => $leg) {
@@ -233,9 +484,54 @@ class FlightDisplay
             }
         }
 
-        $parts[] = $adults.' adult'.($adults > 1 ? 's' : '');
+        $pax = [max(1, $adults).' adult'.(max(1, $adults) > 1 ? 's' : '')];
+        if ($children > 0) {
+            $pax[] = $children.' child'.($children > 1 ? 'ren' : '');
+        }
+        if ($infants > 0) {
+            $pax[] = $infants.' infant'.($infants > 1 ? 's' : '');
+        }
+        $parts[] = implode(', ', $pax);
 
         return implode(' · ', $parts);
+    }
+
+    /**
+     * Format Downtown (or similar) adult/child/infant fare lines for result cards.
+     *
+     * @param  array<string, mixed>|null  $perPax  e.g. ['adult' => 100, 'child' => 80, 'infant' => 20]
+     * @return list<string>
+     */
+    public static function perPaxPriceLines(?array $perPax, string $currency = 'USD'): array
+    {
+        if (! is_array($perPax) || $perPax === []) {
+            return [];
+        }
+
+        $currency = strtoupper(trim($currency)) ?: 'USD';
+        $labels = [
+            'adult' => 'Adult',
+            'child' => 'Child',
+            'infant' => 'Infant',
+        ];
+        $lines = [];
+        foreach ($labels as $key => $label) {
+            if (! array_key_exists($key, $perPax) || $perPax[$key] === null || $perPax[$key] === '') {
+                continue;
+            }
+            if (is_numeric($perPax[$key])) {
+                $amount = (float) $perPax[$key];
+            } else {
+                $parsed = self::parsePrice((string) $perPax[$key]);
+                if ($parsed === null) {
+                    continue;
+                }
+                $amount = (float) $parsed['amount'];
+            }
+            $lines[] = $label.' '.$currency.' '.number_format($amount, 2, '.', '');
+        }
+
+        return $lines;
     }
 
     /**
@@ -264,6 +560,7 @@ class FlightDisplay
             $out[] = [
                 'label' => $journeyCount > 1 ? $label : 'Itinerary',
                 'travel_time' => $journey['travel_time'] ?? null,
+                'cabin' => $journey['cabin'] ?? ($solution['cabin'] ?? null),
                 'segments' => $journey['segments'] ?? [],
             ];
         }

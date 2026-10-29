@@ -36,13 +36,26 @@
                 <a href="{{ route($dashboardRoute ?? 'admin.dashboard') }}" class="logo">
                     <img src="{{ asset('assets/img/logo/logo.png') }}" alt="Logo">
                 </a>
-                <div class="profile_dropdown">
+                <div class="profile_dropdown d-flex align-items-center gap-3">
+                    @if(!$isSuperAdmin && $user && $user->tenant_id)
+                        @php
+                            $agencyWallet = app(\App\Services\Finance\WalletService::class)->ensureWallet((int) $user->tenant_id);
+                        @endphp
+                        <a href="{{ route('agent.finance.wallet') }}" class="text-light text-decoration-none small d-none d-md-inline-flex align-items-center gap-1" title="Agency wallet">
+                            <i class="fas fa-wallet"></i>
+                            <span>{{ $agencyWallet->currency }} {{ number_format((float) $agencyWallet->balance, 2) }}</span>
+                        </a>
+                    @endif
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center text-light text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
                             <img src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->first_name . ' ' . Auth::user()->last_name) }}&background=053750&color=fff" alt="">
                             <span class="ms-2">{{ Auth::user()->first_name }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
+                            @if(!$isSuperAdmin && $user && $user->tenant_id)
+                                <li><a class="dropdown-item" href="{{ route('agent.finance.wallet') }}"><i class="fas fa-wallet me-2"></i>Wallet balance</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            @endif
                             <li><a class="dropdown-item" href="{{ route('admin.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
                         </ul>
                     </div>
@@ -150,7 +163,7 @@
                 <li>
                     <a href="{{ route('admin.finance.markups.index') }}" class="{{ request()->routeIs('admin.finance.markups*') ? 'active' : '' }}">
                         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5H7z"/></svg>
-                        <span class="menu-text">Markup rules</span>
+                        <span class="menu-text">Ticket fee rules</span>
                     </a>
                 </li>
                 <li>
@@ -178,6 +191,28 @@
                     </a>
                 </li>
 
+                @endif
+
+                @if(!$isSuperAdmin && $user && $user->tenant_id && ($user->user_type === 'tenant_admin' || $user->hasPermission('finance.reports') || $user->hasPermission('finance.accounts')))
+                <li class="sidebar-section-label">Finance</li>
+                <li>
+                    <a href="{{ route('agent.finance.wallet') }}" class="{{ request()->routeIs('agent.finance.wallet') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M21 7H3V5h18v2zm0 2v10H3V9h18zm-6 3h4v2h-4v-2z"/></svg>
+                        <span class="menu-text">Wallet</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('agent.finance.statement') }}" class="{{ request()->routeIs('agent.finance.statement') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm1 7V3.5L18.5 9H15zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>
+                        <span class="menu-text">Account statement</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('agent.finance.sales') }}" class="{{ request()->routeIs('agent.finance.sales') ? 'active' : '' }}">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h2v8H3v-8zm4-6h2v14H7V7zm4 3h2v11h-2V10zm4-5h2v16h-2V5zm4 8h2v8h-2v-8z"/></svg>
+                        <span class="menu-text">Sales report</span>
+                    </a>
+                </li>
                 @endif
 
                 @if(!$isSuperAdmin)

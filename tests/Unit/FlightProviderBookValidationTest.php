@@ -8,16 +8,22 @@ use Tests\TestCase;
 
 class FlightProviderBookValidationTest extends TestCase
 {
-    public function test_travelport_uses_flat_passenger_fields(): void
+    public function test_travelport_uses_passenger_array_without_docs(): void
     {
-        $rules = FlightProvider::bookValidationRules(FlightProvider::TRAVELPORT, 1);
+        $rules = FlightProvider::bookValidationRules(FlightProvider::TRAVELPORT, 2);
         $spec = FlightProvider::bookFieldSpecs(FlightProvider::TRAVELPORT);
 
-        $this->assertArrayHasKey('passenger_first', $rules);
-        $this->assertArrayNotHasKey('passengers', $rules);
-        $this->assertFalse(FlightProvider::usesPassengerArray(FlightProvider::TRAVELPORT));
+        $this->assertTrue(FlightProvider::usesPassengerArray(FlightProvider::TRAVELPORT));
+        $this->assertArrayHasKey('passengers', $rules);
+        $this->assertArrayNotHasKey('passenger_first', $rules);
+        $this->assertSame(['required', 'array', 'min:2', 'max:2'], $rules['passengers']);
+        $this->assertContains('nullable', $rules['passengers.0.nationality']);
         $this->assertFalse($spec['show_docs']);
         $this->assertFalse($spec['docs_required']);
+        $this->assertSame('M', FlightProvider::genderForPrefix('Mrs', 'M')); // explicit gender wins
+        $this->assertSame('F', FlightProvider::genderForPrefix('Mr', 'F'));
+        $this->assertSame('Ms', FlightProvider::prefixForGender('Mr', 'F', 'ADT'));
+        $this->assertSame('Mr', FlightProvider::prefixForGender('Mrs', 'M', 'ADT'));
     }
 
     public function test_sunspring_requires_passengers_and_travel_documents(): void

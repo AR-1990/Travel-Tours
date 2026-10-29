@@ -52,11 +52,19 @@
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const newPage = doc.querySelector('.flights-page');
         const currentPage = document.querySelector('.flights-page');
-        if (!newPage || !currentPage) return;
-        currentPage.replaceWith(newPage);
-        if (typeof window.initFlightUi === 'function') {
-            window.initFlightUi();
+        if (!newPage || !currentPage) {
+            // Layout without .flights-page (redirect HTML) — hard navigate.
+            if (nextUrl) {
+                window.location.href = nextUrl;
+            }
+            return;
         }
+        currentPage.replaceWith(newPage);
+        // DOM swap drops AirportPicker instances — re-bind before the next search.
+        window.initAirportPickers?.();
+        window.initFlightUi?.();
+        window.initFlightProviderAirportScopes?.();
+        window.initFlightResultFilters?.();
         if (nextUrl) {
             history.pushState({}, '', nextUrl);
         }
@@ -98,12 +106,17 @@
 
         // search form validation
         if (form.id === 'flightSearchForm') {
-            const o = window.getAirportPicker?.('origin');
-            const d = window.getAirportPicker?.('destination');
-            if (!o?.getCode() || !d?.getCode()) {
-                e.preventDefault();
-                alert('Please pick both places from the suggestions list.');
-                return;
+            const trip = form.querySelector('input[name="trip_type"]:checked')?.value || 'oneway';
+            if (trip !== 'multicity') {
+                const o = window.getAirportPicker?.('origin');
+                const d = window.getAirportPicker?.('destination');
+                const originCode = o?.getCode?.() || form.querySelector('input[name="origin"]')?.value?.trim();
+                const destCode = d?.getCode?.() || form.querySelector('input[name="destination"]')?.value?.trim();
+                if (!originCode || !destCode) {
+                    e.preventDefault();
+                    alert('Please pick both places from the suggestions list.');
+                    return;
+                }
             }
         }
 
@@ -115,9 +128,11 @@
                 body: new FormData(form),
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
+                redirect: 'follow',
             });
             const html = await res.text();
-            await swapFlightsPageFromHtml(html, window.location.href);
+            // Use final URL after search redirect so pagination / filters stay in sync.
+            await swapFlightsPageFromHtml(html, res.url || window.location.href);
         } catch (_err) {
             form.submit();
         } finally {

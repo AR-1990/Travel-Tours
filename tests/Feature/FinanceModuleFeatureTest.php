@@ -82,8 +82,10 @@ class FinanceModuleFeatureTest extends TestCase
             'plating_carrier' => 'PK',
         ], null, 'travelport', 0, 'Credit', 'PKR');
 
-        $this->assertSame(5.0, $breakdown['airline_fees_total']);
         $this->assertSame(278.5, $breakdown['currency_rate']);
+        $this->assertSame('PKR', $breakdown['currency']);
+        $this->assertSame(27850.0, $breakdown['fare']);
+        $this->assertSame(1392.5, $breakdown['airline_fees_total']); // 5 USD × 278.5
     }
 
     public function test_wallet_topup_refund_reverse_via_http(): void
@@ -154,15 +156,34 @@ class FinanceModuleFeatureTest extends TestCase
             'mode' => 'percent',
         ]);
 
-        $this->actingAs($user)
+        $statementCsv = $this->actingAs($user)
             ->get(route('admin.finance.statement', ['export' => 'csv']))
             ->assertOk()
             ->assertHeader('content-disposition');
+        $this->assertStringContainsString('maturity', $statementCsv->streamedContent());
+        $this->assertStringContainsString('carrier', $statementCsv->streamedContent());
 
         $this->actingAs($user)
+            ->get(route('admin.finance.statement'))
+            ->assertOk()
+            ->assertSee('Tx. date', false)
+            ->assertSee('Maturity', false)
+            ->assertSee('Seller', false)
+            ->assertSee('Transaction type', false);
+
+        $csv = $this->actingAs($user)
             ->get(route('admin.finance.sales', ['export' => 'csv']))
             ->assertOk()
             ->assertHeader('content-disposition');
+        $this->assertStringContainsString('e_ticket', $csv->streamedContent());
+        $this->assertStringContainsString('agency_comm', $csv->streamedContent());
+
+        $this->actingAs($user)
+            ->get(route('admin.finance.sales'))
+            ->assertOk()
+            ->assertSee('E-Ticket', false)
+            ->assertSee('Fuel/Other', false)
+            ->assertSee('Agency user', false);
     }
 
     public function test_ticket_pdf_and_print_routes(): void

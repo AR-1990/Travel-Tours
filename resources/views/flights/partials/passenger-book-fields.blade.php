@@ -36,18 +36,6 @@
 
 <input type="hidden" name="provider" value="{{ $providerId }}">
 
-@php
-    $pricedSolution = data_get($flightPriceResult ?? [], 'solutions.0');
-    $paymentInfo = app(\App\Services\Finance\MarkupService::class)->breakdown(
-        is_array($pricedSolution) ? $pricedSolution : null,
-        auth()->user()?->tenant_id ? (int) auth()->user()->tenant_id : null,
-        $providerId,
-        (float) old('service_fee', 0),
-        (string) old('form_of_payment', '')
-    );
-@endphp
-@include('flights.partials.payment-information', ['paymentInfo' => $paymentInfo])
-
 @if($usesPassengerArray)
     <p class="small text-muted mb-3">{{ $spec['hint'] }}</p>
     @foreach($slots as $index => $slot)
@@ -56,12 +44,14 @@
             $type = (string) ($slot['type'] ?? 'ADT');
             $defaultPrefix = $type === 'CHD' ? 'Miss' : ($type === 'INF' ? 'Mstr' : (($slot['prefix'] ?? 'Mr')));
             $defaultGender = $type === 'CHD' ? 'F' : (string) ($slot['gender'] ?? 'M');
-            $maxDob = $type === 'INF'
-                ? now()->subDay()->format('Y-m-d')
-                : ($type === 'CHD' ? now()->subYears(2)->format('Y-m-d') : now()->subYears(12)->format('Y-m-d'));
-            $minDob = $type === 'INF'
-                ? now()->subYears(2)->format('Y-m-d')
-                : ($type === 'CHD' ? now()->subYears(12)->format('Y-m-d') : now()->subYears(100)->format('Y-m-d'));
+            $dobBounds = \App\Support\FlightPassengerLimits::dobBoundsForType($type) ?? [
+                'min' => now()->subYears(100)->format('Y-m-d'),
+                'max' => now()->subDay()->format('Y-m-d'),
+                'label' => 'valid age',
+            ];
+            $minDob = $dobBounds['min'];
+            $maxDob = $dobBounds['max'];
+            $ageLabel = $dobBounds['label'];
         @endphp
         <div class="border rounded p-3 mb-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -114,7 +104,8 @@
                         required
                         min="{{ $minDob }}"
                         max="{{ $maxDob }}"
-                        title="Date of birth must match {{ $type }} age band">
+                        title="Must match passport / {{ $type }} age band ({{ $ageLabel }})">
+                    <div class="form-text">Passport DOB must be {{ $ageLabel }}.</div>
                 </div>
                 @if($index === 0)
                     @php
@@ -236,46 +227,6 @@
             </div>
         </div>
     @endforeach
-    @php
-        $isAgencyUser = auth()->check() && in_array(auth()->user()->user_type ?? '', ['tenant_admin', 'sub_agent', 'super_admin'], true);
-        $paymentOptions = $isAgencyUser
-            ? [
-                'Wallet' => 'Pay by wallet',
-                'Reserve' => 'Reserve',
-                'Credit' => 'Credit card',
-                'Debit' => 'Debit card',
-                'BankTransfer' => 'Bank transfer',
-            ]
-            : [
-                'Credit' => 'Credit card',
-                'Debit' => 'Debit card',
-                'BankTransfer' => 'Bank transfer',
-            ];
-        $selectedPayment = old('form_of_payment', $isAgencyUser ? 'Wallet' : 'Credit');
-    @endphp
-    <div class="row g-3 mb-2">
-        <div class="col-md-6">
-            <label class="form-label">Payment option {!! $req !!}</label>
-            <select name="form_of_payment" class="{{ $select }}" required>
-                @foreach($paymentOptions as $value => $label)
-                    <option value="{{ $value }}" @selected($selectedPayment === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
-            <div class="form-text">
-                {{ $isAgencyUser ? 'B2B options: wallet, reserve, cards, or bank transfer.' : 'B2C options: credit/debit card or bank transfer.' }}
-            </div>
-        </div>
-        @if($isAgencyUser)
-            <div class="col-md-6">
-                <label class="form-label">Ticket print</label>
-                <select name="print_with_price" class="{{ $select }}">
-                    <option value="1" @selected(old('print_with_price', '1') == '1')>With price</option>
-                    <option value="0" @selected(old('print_with_price') === '0' || old('print_with_price') === 0)>Without price</option>
-                </select>
-                <div class="form-text">Agency can print e-ticket with or without fare amount.</div>
-            </div>
-        @endif
-    </div>
 @else
     <p class="small text-muted mb-3">{{ $spec['hint'] }}</p>
     <div class="row g-3">
@@ -339,21 +290,6 @@
                     $tpPhone = trim($m[2]);
                 }
             }
-            $isAgencyUserFlat = auth()->check() && in_array(auth()->user()->user_type ?? '', ['tenant_admin', 'sub_agent', 'super_admin'], true);
-            $paymentOptionsFlat = $isAgencyUserFlat
-                ? [
-                    'Wallet' => 'Pay by wallet',
-                    'Reserve' => 'Reserve',
-                    'Credit' => 'Credit card',
-                    'Debit' => 'Debit card',
-                    'BankTransfer' => 'Bank transfer',
-                ]
-                : [
-                    'Credit' => 'Credit card',
-                    'Debit' => 'Debit card',
-                    'BankTransfer' => 'Bank transfer',
-                ];
-            $selectedPaymentFlat = old('form_of_payment', $isAgencyUserFlat ? 'Wallet' : 'Credit');
         @endphp
         <div class="col-md-4">
             <label class="form-label">Country code {!! $req !!}</label>
@@ -376,23 +312,6 @@
                 autocomplete="tel"
                 inputmode="tel">
         </div>
-        <div class="col-md-4">
-            <label class="form-label">Payment option {!! $req !!}</label>
-            <select name="form_of_payment" class="{{ $select }}" required>
-                @foreach($paymentOptionsFlat as $value => $label)
-                    <option value="{{ $value }}" @selected($selectedPaymentFlat === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-        @if($isAgencyUserFlat)
-            <div class="col-md-4">
-                <label class="form-label">Ticket print</label>
-                <select name="print_with_price" class="{{ $select }}">
-                    <option value="1" @selected(old('print_with_price', '1') == '1')>With price</option>
-                    <option value="0" @selected(old('print_with_price') === '0' || old('print_with_price') === 0)>Without price</option>
-                </select>
-            </div>
-        @endif
     </div>
 @endif
 

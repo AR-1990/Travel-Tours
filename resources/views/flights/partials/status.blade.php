@@ -17,7 +17,7 @@
             @endif
         </div>
     </div>
-@else
+@elseif($showFlightProviderDiagnostics ?? false)
     <div class="d-flex flex-wrap gap-2 mb-3">
         @if($tpReady)
             <span class="status-pill ok"><i class="fas fa-check-circle"></i> Travelport ready</span>

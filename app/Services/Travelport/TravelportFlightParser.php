@@ -97,10 +97,12 @@ class TravelportFlightParser
             $segmentKeys = $refs[1];
         }
 
+        $enrichedMap = $this->applyBookingInfoToSegments($inner, $segmentMap);
+
         $segments = [];
         foreach ($segmentKeys as $key) {
-            if (isset($segmentMap[$key])) {
-                $segments[] = $segmentMap[$key];
+            if (isset($enrichedMap[$key])) {
+                $segments[] = $enrichedMap[$key];
             }
         }
 
@@ -108,18 +110,93 @@ class TravelportFlightParser
             return null;
         }
 
-        $journeys = $this->parseJourneys($inner, $segmentMap);
+        $journeys = $this->parseJourneys($inner, $enrichedMap);
+        $cabin = null;
+        foreach ($segments as $seg) {
+            $label = trim((string) ($seg['cabin'] ?? ''));
+            if ($label !== '') {
+                $cabin = $label;
+                break;
+            }
+        }
+
+        // Prefer Approximate* (shopper currency / full party) when Travelport provides both.
+        $total = $this->attr($attrs, 'ApproximateTotalPrice') ?: $this->attr($attrs, 'TotalPrice');
+        $base = $this->attr($attrs, 'ApproximateBasePrice') ?: $this->attr($attrs, 'BasePrice');
+        $taxes = $this->attr($attrs, 'ApproximateTaxes') ?: $this->attr($attrs, 'Taxes');
 
         return [
             'index' => $index,
             'key' => $this->attr($attrs, 'Key'),
-            'total_price' => $this->attr($attrs, 'TotalPrice'),
-            'base_price' => $this->attr($attrs, 'BasePrice'),
-            'taxes' => $this->attr($attrs, 'Taxes'),
+            'total_price' => $total,
+            'base_price' => $base,
+            'taxes' => $taxes,
             'segments' => $segments,
             'journeys' => $journeys,
+            'cabin' => $cabin,
             'plating_carrier' => $this->attrFromInner($inner, 'PlatingCarrier'),
         ];
+    }
+
+    /**
+     * LowFareSearch puts cabin / booking class on BookingInfo, not AirSegment.
+     *
+     * @param  array<string, array<string, mixed>>  $segmentMap
+     * @return array<string, array<string, mixed>>
+     */
+    private function applyBookingInfoToSegments(string $inner, array $segmentMap): array
+    {
+        $bookingBySeg = $this->parseBookingInfoMap($inner);
+        if ($bookingBySeg === []) {
+            return $segmentMap;
+        }
+
+        $enriched = [];
+        foreach ($segmentMap as $key => $seg) {
+            $row = $seg;
+            $info = $bookingBySeg[$key] ?? null;
+            if (is_array($info)) {
+                $bookingCode = trim((string) ($info['booking_code'] ?? ''));
+                $cabinClass = trim((string) ($info['cabin_class'] ?? ''));
+                if ($bookingCode !== '') {
+                    $row['booking_class'] = $bookingCode;
+                    if (trim((string) ($row['class_of_service'] ?? '')) === '') {
+                        $row['class_of_service'] = $bookingCode;
+                    }
+                }
+                if ($cabinClass !== '') {
+                    $row['cabin'] = $cabinClass;
+                }
+            }
+            $enriched[$key] = $row;
+        }
+
+        return $enriched;
+    }
+
+    /**
+     * @return array<string, array{booking_code: string, cabin_class: string}>
+     */
+    private function parseBookingInfoMap(string $inner): array
+    {
+        if (! preg_match_all('/<(?:[\w]+:)?BookingInfo\b([^>]*)\/?>/s', $inner, $matches, PREG_SET_ORDER)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($matches as $match) {
+            $attrs = $match[1];
+            $segmentRef = trim((string) ($this->attr($attrs, 'SegmentRef') ?? ''));
+            if ($segmentRef === '') {
+                continue;
+            }
+            $map[$segmentRef] = [
+                'booking_code' => trim((string) ($this->attr($attrs, 'BookingCode') ?? '')),
+                'cabin_class' => trim((string) ($this->attr($attrs, 'CabinClass') ?? '')),
+            ];
+        }
+
+        return $map;
     }
 
     /**
@@ -291,10 +368,11 @@ class TravelportFlightParser
                     $segmentKeys = $refs[1];
                 }
 
+                $enrichedMap = $this->applyBookingInfoToSegments($inner, $segmentMap);
                 $segments = [];
                 foreach ($segmentKeys as $key) {
-                    if (isset($segmentMap[$key])) {
-                        $segments[] = $segmentMap[$key];
+                    if (isset($enrichedMap[$key])) {
+                        $segments[] = $enrichedMap[$key];
                     }
                 }
 
@@ -307,15 +385,24 @@ class TravelportFlightParser
                     $latestTicketing = $lt[1];
                 }
                 $plating = $this->attrFromInner($inner, 'PlatingCarrier');
+                $cabin = null;
+                foreach ($segments as $seg) {
+                    $label = trim((string) ($seg['cabin'] ?? ''));
+                    if ($label !== '') {
+                        $cabin = $label;
+                        break;
+                    }
+                }
 
                 $solutions[] = [
                     'index' => $i + 1,
                     'key' => $this->attr($attrs, 'Key'),
-                    'total_price' => $this->attr($attrs, 'TotalPrice'),
-                    'base_price' => $this->attr($attrs, 'BasePrice'),
-                    'taxes' => $this->attr($attrs, 'Taxes'),
+                    'total_price' => $this->attr($attrs, 'ApproximateTotalPrice') ?: $this->attr($attrs, 'TotalPrice'),
+                    'base_price' => $this->attr($attrs, 'ApproximateBasePrice') ?: $this->attr($attrs, 'BasePrice'),
+                    'taxes' => $this->attr($attrs, 'ApproximateTaxes') ?: $this->attr($attrs, 'Taxes'),
                     'plating_carrier' => $plating,
                     'fare_basis' => $fareBasis,
+                    'cabin' => $cabin,
                     'latest_ticketing_time' => $latestTicketing,
                     'segments' => $segments,
                 ];
