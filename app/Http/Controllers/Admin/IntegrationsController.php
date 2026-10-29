@@ -80,18 +80,20 @@ class IntegrationsController extends Controller
     }
 
     /**
-     * Effective Live / Sandbox label for the integrations index cards.
+     * Configured Live / Sandbox label for the integrations index cards.
+     * Uses admin-form merge so disabled rows still show the saved environment
+     * (runtime merge falls back to .env sandbox defaults when disabled).
      *
      * @return array{key: string, label: string}
      */
     protected function resolvedEnvironmentLabel(string $slug): array
     {
         $raw = match ($slug) {
-            Integration::SLUG_TRAVELPORT => (string) (TravelportIntegrationConfig::merged()['environment'] ?? 'pp'),
-            Integration::SLUG_SUNSPRING => (string) (SunSpringIntegrationConfig::merged()['environment'] ?? 'sandbox'),
-            Integration::SLUG_XCONNECT => (string) (XconnectIntegrationConfig::merged()['environment'] ?? 'sandbox'),
-            Integration::SLUG_DOWNTOWN_TRAVEL => (string) (DowntownTravelIntegrationConfig::merged()['environment'] ?? 'sandbox'),
-            Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS => (string) (DowntownTravelHotelsIntegrationConfig::merged()['environment'] ?? 'sandbox'),
+            Integration::SLUG_TRAVELPORT => (string) (TravelportIntegrationConfig::merged(true)['environment'] ?? 'pp'),
+            Integration::SLUG_SUNSPRING => (string) (SunSpringIntegrationConfig::merged(true)['environment'] ?? 'sandbox'),
+            Integration::SLUG_XCONNECT => (string) (XconnectIntegrationConfig::merged(true)['environment'] ?? 'sandbox'),
+            Integration::SLUG_DOWNTOWN_TRAVEL => (string) (DowntownTravelIntegrationConfig::merged(true)['environment'] ?? 'sandbox'),
+            Integration::SLUG_DOWNTOWN_TRAVEL_HOTELS => (string) (DowntownTravelHotelsIntegrationConfig::merged(true)['environment'] ?? 'sandbox'),
             default => 'sandbox',
         };
 

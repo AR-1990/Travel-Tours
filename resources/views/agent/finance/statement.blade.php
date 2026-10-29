@@ -54,6 +54,7 @@
         @include('finance.partials.account-statement-table', [
             'transactions' => $transactions,
             'includeCustomer' => false,
+            'reservationShowRoute' => 'agent.flights.reservations.show',
         ])
         <div class="p-3">{{ $transactions->links() }}</div>
     </div>

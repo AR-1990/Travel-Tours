@@ -17,8 +17,8 @@ class AccountStatementReport
         $headers = [
             'debit',
             'credit',
-            'balance',
-            'tx_date',
+            'net',
+            'tr_date',
             'maturity',
             'transaction_type',
             'description',
@@ -28,6 +28,7 @@ class AccountStatementReport
             'carrier',
             'provider',
             'unit',
+            'route',
         ];
         if ($includeCustomer) {
             array_splice($headers, 9, 0, ['customer']);
@@ -55,6 +56,7 @@ class AccountStatementReport
             $tx->carrierLabel(),
             $tx->providerLabel(),
             $tx->unitLabel(),
+            $tx->routeLabel(),
         ];
         if ($includeCustomer) {
             array_splice($row, 9, 0, [$tx->customerLabel()]);

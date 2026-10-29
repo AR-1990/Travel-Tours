@@ -36,10 +36,12 @@ class AgentFinanceVisibilityTest extends TestCase
             ->assertOk()
             ->assertSee('Account statement', false)
             ->assertSee('Agency top-up', false)
-            ->assertSee('Tx. date', false)
+            ->assertSee('Tr. date', false)
             ->assertSee('Maturity', false)
             ->assertSee('Seller', false)
-            ->assertSee('Carrier', false);
+            ->assertSee('Carrier', false)
+            ->assertSee('Route', false)
+            ->assertSee('Details', false);
 
         $this->actingAs($agent)
             ->get(route('agent.finance.sales'))

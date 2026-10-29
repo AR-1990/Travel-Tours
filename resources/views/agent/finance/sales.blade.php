@@ -52,7 +52,7 @@
         @include('flights.partials.sales-report-table', [
             'sales' => $sales,
             'includeAgency' => false,
-            'reservationShowRoute' => null,
+            'reservationShowRoute' => 'agent.flights.reservations.show',
             'pageTotals' => $pageTotals ?? null,
         ])
         <div class="p-3">{{ $sales->links() }}</div>

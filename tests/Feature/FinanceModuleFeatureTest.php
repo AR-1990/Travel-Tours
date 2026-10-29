@@ -166,10 +166,12 @@ class FinanceModuleFeatureTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.finance.statement'))
             ->assertOk()
-            ->assertSee('Tx. date', false)
+            ->assertSee('Tr. date', false)
             ->assertSee('Maturity', false)
             ->assertSee('Seller', false)
-            ->assertSee('Transaction type', false);
+            ->assertSee('Transaction type', false)
+            ->assertSee('Route', false)
+            ->assertSee('Details', false);
 
         $csv = $this->actingAs($user)
             ->get(route('admin.finance.sales', ['export' => 'csv']))

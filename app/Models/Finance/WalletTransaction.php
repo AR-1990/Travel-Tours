@@ -130,26 +130,46 @@ class WalletTransaction extends Model
 
     public function orderIdLabel(): string
     {
-        if ($this->flight_reservation_id) {
-            return (string) $this->flight_reservation_id;
-        }
         $ref = trim((string) ($this->order_ref ?? ''));
         if ($ref !== '') {
             return $ref;
         }
+        if ($this->flight_reservation_id) {
+            return (string) $this->flight_reservation_id;
+        }
 
-        return '—';
+        // Reference ledger shows 0 for payments / non-booking rows.
+        return $this->type === self::TYPE_TOPUP || $this->type === self::TYPE_REVERSE ? '0' : '—';
+    }
+
+    public function reservationId(): ?int
+    {
+        if ($this->flight_reservation_id) {
+            return (int) $this->flight_reservation_id;
+        }
+        $ref = trim((string) ($this->order_ref ?? ''));
+        if ($ref !== '' && ctype_digit($ref)) {
+            return (int) $ref;
+        }
+
+        return null;
     }
 
     public function carrierLabel(): string
     {
-        $fromMeta = trim((string) data_get($this->meta, 'carrier', ''));
-        if ($fromMeta !== '') {
-            return strtoupper($fromMeta);
+        $airline = strtoupper(trim((string) data_get($this->meta, 'carrier', '')));
+        if ($airline === '') {
+            $airline = strtoupper(trim((string) ($this->reservation?->carrier ?? '')));
         }
-        $fromRes = strtoupper(trim((string) ($this->reservation?->carrier ?? '')));
-        if ($fromRes !== '') {
-            return $fromRes;
+        $provider = $this->providerLabel();
+        if ($airline !== '' && $provider !== '—') {
+            return $airline.' · '.$provider;
+        }
+        if ($airline !== '') {
+            return $airline;
+        }
+        if ($provider !== '—') {
+            return $provider;
         }
         $vendor = trim((string) ($this->vendor ?? ''));
 
@@ -170,8 +190,28 @@ class WalletTransaction extends Model
         return $vendor !== '' ? \App\Support\FlightProvider::label($vendor) : '—';
     }
 
+    /**
+     * Reference "unit" / cc-ch style: payment channel short code, else currency.
+     */
     public function unitLabel(): string
     {
+        $fop = strtolower(trim((string) data_get($this->meta, 'form_of_payment', '')));
+        if ($fop === '' && $this->reservation) {
+            $fop = strtolower(trim((string) ($this->reservation->form_of_payment ?? '')));
+        }
+        if ($fop !== '') {
+            return match (true) {
+                str_contains($fop, 'wallet') => 'WALLET',
+                str_contains($fop, 'credit') => 'CC',
+                str_contains($fop, 'debit') => 'DC',
+                str_contains($fop, 'bank') => 'BT',
+                str_contains($fop, 'cash') => 'CH',
+                default => strtoupper($fop),
+            };
+        }
+        if ($this->type === self::TYPE_TOPUP || $this->type === self::TYPE_REVERSE) {
+            return 'CH';
+        }
         $cur = strtoupper(trim((string) ($this->currency ?? '')));
         if ($cur !== '') {
             return $cur;
@@ -179,6 +219,22 @@ class WalletTransaction extends Model
         $fromMeta = strtoupper(trim((string) data_get($this->meta, 'currency', '')));
 
         return $fromMeta !== '' ? $fromMeta : '—';
+    }
+
+    public function routeLabel(): string
+    {
+        $fromMeta = trim((string) data_get($this->meta, 'route', ''));
+        if ($fromMeta !== '' && $fromMeta !== '—') {
+            return $fromMeta;
+        }
+        if ($this->reservation) {
+            $route = $this->reservation->salesRouteLabel();
+            if ($route !== '—') {
+                return $route;
+            }
+        }
+
+        return '—';
     }
 
     public function maturityLabel(): string
@@ -197,7 +253,11 @@ class WalletTransaction extends Model
     public function descriptionLabel(): string
     {
         $desc = trim((string) ($this->description ?? ''));
+        $route = $this->routeLabel();
+        if ($desc !== '' && $route !== '—' && ! str_contains($desc, $route)) {
+            return $desc.' · '.$route;
+        }
 
-        return $desc !== '' ? $desc : '—';
+        return $desc !== '' ? $desc : ($route !== '—' ? $route : '—');
     }
 }

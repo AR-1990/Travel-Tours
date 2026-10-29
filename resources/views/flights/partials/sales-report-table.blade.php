@@ -34,6 +34,7 @@
                 <th>Arrival</th>
                 <th>Provider</th>
                 <th>Pay</th>
+                <th>Details</th>
             </tr>
         </thead>
         <tbody>
@@ -70,10 +71,17 @@
                     <td>{{ $r->salesArrivalLabel() }}</td>
                     <td>{{ $r->providerLabel() }}</td>
                     <td>{{ $r->form_of_payment ?: '—' }}</td>
+                    <td>
+                        @if($reservationShowRoute)
+                            <a href="{{ route($reservationShowRoute, $r->id) }}" class="btn btn-link btn-sm py-0 px-1">View</a>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ $includeAgency ? 23 : 22 }}" class="text-muted text-center py-4">No sales in this range.</td>
+                    <td colspan="{{ $includeAgency ? 24 : 23 }}" class="text-muted text-center py-4">No sales in this range.</td>
                 </tr>
             @endforelse
         </tbody>
@@ -89,7 +97,7 @@
                     <td class="text-end">{{ $formatMoney($pageTotals['comm'] ?? null) }}</td>
                     <td class="text-end">{{ $formatMoney($pageTotals['markup'] ?? null) }}</td>
                     <td class="text-end">{{ $formatMoney($pageTotals['profit'] ?? null) }}</td>
-                    <td colspan="9"></td>
+                    <td colspan="10"></td>
                 </tr>
             </tfoot>
         @endif

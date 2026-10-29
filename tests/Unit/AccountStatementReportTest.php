@@ -35,6 +35,8 @@ class AccountStatementReportTest extends TestCase
                 'carrier' => 'FZ',
                 'provider' => 'travelport',
                 'maturity' => '2026-11-10',
+                'route' => 'KHI-DXB',
+                'form_of_payment' => 'Wallet',
             ],
         ]);
         $tx->setRelation('reservation', $reservation);
@@ -45,15 +47,20 @@ class AccountStatementReportTest extends TestCase
         $this->assertSame(0.0, $tx->creditAmount());
         $this->assertSame('PTMORI', $tx->pnrLabel());
         $this->assertSame('30482740', $tx->orderIdLabel());
-        $this->assertSame('FZ', $tx->carrierLabel());
-        $this->assertSame('PKR', $tx->unitLabel());
+        $this->assertSame(30482740, $tx->reservationId());
+        $this->assertSame('FZ · Travelport', $tx->carrierLabel());
+        $this->assertSame('WALLET', $tx->unitLabel());
+        $this->assertSame('KHI-DXB', $tx->routeLabel());
         $this->assertSame('2026-11-10', $tx->maturityLabel());
+        $this->assertStringContainsString('KHI-DXB', $tx->descriptionLabel());
 
         $headers = AccountStatementReport::csvHeaders(true);
         $this->assertContains('maturity', $headers);
         $this->assertContains('seller', $headers);
         $this->assertContains('carrier', $headers);
         $this->assertContains('customer', $headers);
+        $this->assertContains('route', $headers);
+        $this->assertContains('net', $headers);
 
         $row = AccountStatementReport::csvRow($tx, true);
         $this->assertSame(128638.40, $row[0]);
@@ -73,5 +80,8 @@ class AccountStatementReportTest extends TestCase
         $this->assertSame('Payment', $tx->typeLabel());
         $this->assertSame(0.0, $tx->debitAmount());
         $this->assertSame(1000.0, $tx->creditAmount());
+        $this->assertSame('0', $tx->orderIdLabel());
+        $this->assertSame('CH', $tx->unitLabel());
+        $this->assertNull($tx->reservationId());
     }
 }
